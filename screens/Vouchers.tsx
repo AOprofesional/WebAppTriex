@@ -100,7 +100,13 @@ export const Vouchers: React.FC = () => {
         </section>
 
         {/* Coordinator Contact */}
-        <div className="mt-8 px-2">
+        <div className="mt-8 px-2 space-y-4">
+          {/* Desktop Only: Descargar todo button */}
+          <button className="hidden lg:flex w-full py-5 bg-primary text-white rounded-[24px] font-bold items-center justify-center gap-3 shadow-xl shadow-primary/30 active:scale-95 transition-all text-base">
+            <span className="material-symbols-outlined text-2xl">download</span>
+            Descargar todo (.zip)
+          </button>
+
           <button className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all">
             <span className="material-symbols-outlined text-2xl">support_agent</span>
             Contactar coordinador
@@ -112,8 +118,8 @@ export const Vouchers: React.FC = () => {
         </p>
       </div>
 
-      {/* Footer Action Button */}
-      <div className="fixed bottom-24 left-0 right-0 px-6 z-40 pointer-events-none">
+      {/* Footer Action Button - Mobile Only */}
+      <div className="fixed bottom-24 left-0 right-0 px-6 z-40 pointer-events-none lg:hidden">
         <button className="w-full max-w-md mx-auto pointer-events-auto py-5 bg-primary text-white rounded-[24px] font-bold shadow-xl shadow-primary/30 flex items-center justify-center gap-3 active:scale-95 transition-all text-base">
           <span className="material-symbols-outlined text-2xl">download</span>
           Descargar todo (.zip)
