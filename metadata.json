@@ -1,0 +1,7 @@
+{
+  "name": "Triex Travel App",
+  "description": "A comprehensive travel logistics application for managing itineraries, vouchers, documentation, and loyalty points.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
