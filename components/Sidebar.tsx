@@ -2,6 +2,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LOGO_URL, MOCK_USER, AVATAR_URL } from '../constants';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { signOut } = useAuth();
 
   const menuItems = [
     { label: 'Inicio', icon: 'home', path: '/' },
@@ -26,8 +28,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     onClose();
   };
 
-  const handleLogout = () => {
-    navigate('/welcome');
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/login');
     onClose();
   };
 
