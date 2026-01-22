@@ -48,9 +48,22 @@ export const Signup: React.FC = () => {
             if (error) throw error;
 
             if (data.user) {
-                // Successfully registered, redirect to home
-                // Note: Email confirmation is disabled for MVP, so user can login immediately
-                navigate('/');
+                // Obtener el role del usuario
+                const { data: roleData, error: roleError } = await supabase.rpc('get_my_role');
+
+                if (roleError) {
+                    console.error('Error getting role:', roleError);
+                    // Si hay error obteniendo el role, redirigir al home por defecto
+                    navigate('/');
+                    return;
+                }
+
+                // Redirigir según el role (nuevos usuarios son 'passenger' por defecto)
+                if (roleData === 'admin' || roleData === 'operator') {
+                    navigate('/admin');
+                } else {
+                    navigate('/');
+                }
             }
         } catch (err: any) {
             console.error('Signup error:', err);
