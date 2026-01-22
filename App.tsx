@@ -10,6 +10,11 @@ import { Welcome } from './screens/Welcome';
 import { UploadDocument } from './screens/UploadDocument';
 import { Points } from './screens/Points';
 import { Notifications } from './screens/Notifications';
+import { Login } from './screens/Login';
+import { Signup } from './screens/Signup';
+import { ResetPassword } from './screens/ResetPassword';
+import { UpdatePassword } from './screens/UpdatePassword';
+import { AppDashboard } from './screens/AppDashboard';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { Sidebar } from './components/Sidebar';
@@ -30,7 +35,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Skip layout for admin routes and specific paths
-  const hideNavOn = ['/welcome', '/upload', '/admin'];
+  const hideNavOn = ['/welcome', '/upload', '/admin', '/login', '/signup', '/app', '/reset-password', '/update-password'];
   const showNav = !hideNavOn.some(path => location.pathname.startsWith(path));
 
   return (
@@ -109,6 +114,11 @@ const App: React.FC = () => {
           <Layout>
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/update-password" element={<UpdatePassword />} />
+              <Route path="/app" element={<AppDashboard />} />
               <Route path="/welcome" element={<Welcome />} />
               <Route path="/mytrip" element={<MyTrip />} />
               <Route path="/itinerary" element={<Itinerary />} />
