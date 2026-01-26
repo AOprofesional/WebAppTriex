@@ -13,6 +13,8 @@ import { Login } from './screens/Login';
 import { Signup } from './screens/Signup';
 import { ResetPassword } from './screens/ResetPassword';
 import { UpdatePassword } from './screens/UpdatePassword';
+import { AuthCallback } from './screens/AuthCallback';
+import { Pending } from './screens/Pending';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { Sidebar } from './components/Sidebar';
@@ -122,6 +124,20 @@ const App: React.FC = () => {
               <Route path="/signup" element={<Signup />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/update-password" element={<UpdatePassword />} />
+
+              {/* Auth callback for invite-claim flow */}
+              <Route path="/auth/callback" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <AuthCallback />
+                </ProtectedRoute>
+              } />
+
+              {/* Pending account screen */}
+              <Route path="/pending" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <Pending />
+                </ProtectedRoute>
+              } />
 
               {/* Role redirect route */}
               <Route path="/app" element={
