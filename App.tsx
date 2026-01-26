@@ -13,10 +13,11 @@ import { Login } from './screens/Login';
 import { Signup } from './screens/Signup';
 import { ResetPassword } from './screens/ResetPassword';
 import { UpdatePassword } from './screens/UpdatePassword';
-import { AppDashboard } from './screens/AppDashboard';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { Sidebar } from './components/Sidebar';
+import { ProtectedRoute } from './components/ProtectedRoute';
+import { RoleRedirect } from './components/RoleRedirect';
 
 // Admin imports
 import { AdminLayout } from './screens/admin/AdminLayout';
@@ -96,8 +97,12 @@ const App: React.FC = () => {
   return (
     <HashRouter>
       <Routes>
-        {/* Admin Routes - No passenger layout */}
-        <Route path="/admin" element={<AdminLayout />}>
+        {/* Admin Routes - Protected for operators and admins only */}
+        <Route path="/admin" element={
+          <ProtectedRoute allowedRoles={['operator', 'admin']} redirectTo="/">
+            <AdminLayout />
+          </ProtectedRoute>
+        }>
           <Route index element={<AdminDashboard />} />
           <Route path="passengers" element={<AdminPassengers />} />
           <Route path="trips" element={<AdminTrips />} />
@@ -112,19 +117,60 @@ const App: React.FC = () => {
         <Route path="/*" element={
           <Layout>
             <Routes>
-              <Route path="/" element={<Home />} />
+              {/* Public routes - No authentication required */}
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/update-password" element={<UpdatePassword />} />
-              <Route path="/app" element={<AppDashboard />} />
-              <Route path="/mytrip" element={<MyTrip />} />
-              <Route path="/itinerary" element={<Itinerary />} />
-              <Route path="/vouchers" element={<Vouchers />} />
-              <Route path="/points" element={<Points />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/upload" element={<UploadDocument />} />
-              <Route path="/notifications" element={<Notifications />} />
+
+              {/* Role redirect route */}
+              <Route path="/app" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <RoleRedirect />
+                </ProtectedRoute>
+              } />
+
+              {/* Protected passenger routes - Require authentication */}
+              <Route path="/" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <Home />
+                </ProtectedRoute>
+              } />
+              <Route path="/mytrip" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <MyTrip />
+                </ProtectedRoute>
+              } />
+              <Route path="/itinerary" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <Itinerary />
+                </ProtectedRoute>
+              } />
+              <Route path="/vouchers" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <Vouchers />
+                </ProtectedRoute>
+              } />
+              <Route path="/points" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <Points />
+                </ProtectedRoute>
+              } />
+              <Route path="/profile" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <Profile />
+                </ProtectedRoute>
+              } />
+              <Route path="/upload" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <UploadDocument />
+                </ProtectedRoute>
+              } />
+              <Route path="/notifications" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <Notifications />
+                </ProtectedRoute>
+              } />
             </Routes>
           </Layout>
         } />

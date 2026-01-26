@@ -6,8 +6,9 @@ interface AuthContextType {
     user: User | null;
     session: Session | null;
     loading: boolean;
+    role: string | null;
     signOut: () => Promise<void>;
-    getRole: () => Promise<string | null>;
+    refreshRole: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,6 +17,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
+    const [role, setRole] = useState<string | null>(null);
+
+    // Function to fetch and update role
+    const refreshRole = async () => {
+        if (!user) {
+            setRole(null);
+            return;
+        }
+
+        const { data, error } = await supabase.rpc('get_my_role');
+
+        if (error) {
+            console.error('Error getting user role:', error);
+            setRole(null);
+            return;
+        }
+
+        setRole(data);
+    };
 
     useEffect(() => {
         // Get initial session
@@ -37,29 +57,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return () => subscription.unsubscribe();
     }, []);
 
+    // Auto-load role when user changes
+    useEffect(() => {
+        refreshRole();
+    }, [user]);
+
     const signOut = async () => {
         await supabase.auth.signOut();
-    };
-
-    const getRole = async (): Promise<string | null> => {
-        if (!user) return null;
-
-        const { data, error } = await supabase.rpc('get_my_role');
-
-        if (error) {
-            console.error('Error getting user role:', error);
-            return null;
-        }
-
-        return data;
+        setRole(null);
     };
 
     const value = {
         user,
         session,
         loading,
+        role,
         signOut,
-        getRole,
+        refreshRole,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

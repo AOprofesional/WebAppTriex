@@ -25,22 +25,12 @@ export const Login: React.FC = () => {
             if (error) throw error;
 
             if (data.user) {
-                // Obtener el role del usuario
-                const { data: roleData, error: roleError } = await supabase.rpc('get_my_role');
-
-                if (roleError) {
-                    console.error('Error getting role:', roleError);
-                    // Si hay error obteniendo el role, redirigir al home por defecto
-                    navigate('/');
-                    return;
-                }
-
-                // Redirigir según el role
-                if (roleData === 'admin' || roleData === 'operator') {
-                    navigate('/admin');
-                } else {
-                    navigate('/');
-                }
+                // Wait a moment for AuthContext to load the role
+                setTimeout(() => {
+                    // Note: The actual redirect will happen via AuthContext
+                    // For now, just navigate to app, and let router handle it
+                    navigate('/app');
+                }, 500);
             }
         } catch (err: any) {
             console.error('Login error:', err);

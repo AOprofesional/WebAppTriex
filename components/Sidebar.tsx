@@ -3,6 +3,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LOGO_URL, MOCK_USER, AVATAR_URL } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
+import { useRole } from '../hooks/useRole';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { signOut } = useAuth();
+  const { isStaff } = useRole();
 
   const menuItems = [
     { label: 'Inicio', icon: 'home', path: '/' },
@@ -88,6 +90,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </button>
             );
           })}
+
+          {/* Admin Panel - Only visible to operators and admins */}
+          {isStaff && (
+            <>
+              <div className="h-px bg-zinc-200 dark:bg-zinc-700 my-4 mx-4" />
+              <button
+                onClick={() => handleNavigate('/admin')}
+                className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-colors ${location.pathname.startsWith('/admin') ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800'}`}
+              >
+                <span className={`material-symbols-outlined ${location.pathname.startsWith('/admin') ? 'font-fill' : ''}`}>admin_panel_settings</span>
+                <span className="font-bold text-[15px]">Admin Panel</span>
+                {location.pathname.startsWith('/admin') && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-indigo-600" />}
+              </button>
+            </>
+          )}
         </nav>
 
         {/* Footer actions */}
