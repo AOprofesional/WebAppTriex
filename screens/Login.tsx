@@ -24,6 +24,19 @@ export const Login: React.FC = () => {
         setError(null);
 
         try {
+            // Check if email is archived
+            const { data: isArchived, error: checkError } = await supabase.rpc('is_email_archived', {
+                email_to_check: email
+            });
+
+            if (checkError) {
+                console.error('Error checking archived status:', checkError);
+            } else if (isArchived === true) {
+                setError('Esta cuenta ha sido archivada y no puede acceder al sistema. Por favor contacta soporte.');
+                setIsLoading(false);
+                return;
+            }
+
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
@@ -51,6 +64,19 @@ export const Login: React.FC = () => {
         setSuccessMessage(null);
 
         try {
+            // Check if email is archived
+            const { data: isArchived, error: checkError } = await supabase.rpc('is_email_archived', {
+                email_to_check: magicLinkEmail
+            });
+
+            if (checkError) {
+                console.error('Error checking archived status:', checkError);
+            } else if (isArchived === true) {
+                setError('Esta cuenta ha sido archivada y no puede acceder al sistema. Por favor contacta soporte.');
+                setIsLoading(false);
+                return;
+            }
+
             localStorage.setItem('triex_auth_method', 'magiclink');
             const { error } = await supabase.auth.signInWithOtp({
                 email: magicLinkEmail,

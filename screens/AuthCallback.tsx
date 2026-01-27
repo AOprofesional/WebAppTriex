@@ -29,6 +29,11 @@ export const AuthCallback: React.FC = () => {
                         setError('Este email ya está vinculado a otra cuenta. Por favor contacta soporte.');
                         break;
 
+                    case 'ARCHIVED':
+                        // Pasajero archivado
+                        setError('Esta cuenta ha sido archivada y no puede acceder al sistema. Por favor contacta soporte.');
+                        break;
+
                     case 'ERROR':
                     default:
                         setError(result.message || 'Error al configurar tu cuenta');

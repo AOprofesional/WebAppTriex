@@ -7,6 +7,7 @@ interface AuthContextType {
     session: Session | null;
     loading: boolean;
     role: string | null;
+    isArchived: boolean;
     signOut: () => Promise<void>;
     refreshRole: () => Promise<void>;
 }
@@ -18,6 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
     const [role, setRole] = useState<string | null>(null);
+    const [isArchived, setIsArchived] = useState(false);
 
     // Function to fetch and update role
     const refreshRole = async () => {
@@ -35,6 +37,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         setRole(data);
+    };
+
+    // Function to check if passenger is archived
+    const checkArchivedStatus = async () => {
+        if (!user) {
+            setIsArchived(false);
+            return;
+        }
+
+        const { data, error } = await supabase.rpc('is_passenger_archived');
+
+        if (error) {
+            console.error('Error checking archived status:', error);
+            setIsArchived(false);
+            return;
+        }
+
+        setIsArchived(data === true);
     };
 
     useEffect(() => {
@@ -57,9 +77,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return () => subscription.unsubscribe();
     }, []);
 
-    // Auto-load role when user changes
+    // Auto-load role and archived status when user changes
     useEffect(() => {
         refreshRole();
+        checkArchivedStatus();
     }, [user]);
 
     const signOut = async () => {
@@ -72,6 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session,
         loading,
         role,
+        isArchived,
         signOut,
         refreshRole,
     };

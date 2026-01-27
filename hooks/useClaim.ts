@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-export type ClaimStatus = 'OK_LINKED' | 'ALREADY_LINKED' | 'CONFLICT' | 'NOT_FOUND' | 'ERROR';
+export type ClaimStatus = 'OK_LINKED' | 'ALREADY_LINKED' | 'CONFLICT' | 'NOT_FOUND' | 'ARCHIVED' | 'ERROR';
 
 export interface ClaimResult {
     status: ClaimStatus;

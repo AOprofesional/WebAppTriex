@@ -22,6 +22,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { RoleRedirect } from './components/RoleRedirect';
 import { CreatePasswordModal } from './components/CreatePasswordModal';
 import { useAuth } from './contexts/AuthContext';
+import { ArchivedAccountScreen } from './screens/ArchivedAccount';
 
 // Admin imports
 import { AdminLayout } from './screens/admin/AdminLayout';
@@ -36,9 +37,14 @@ import { AdminSettings } from './screens/admin/Settings';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isArchived } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+
+  // Redirect to archived screen if user is archived
+  if (user && isArchived) {
+    return <ArchivedAccountScreen />;
+  }
 
   useEffect(() => {
     // Check if user logged in via Magic Link

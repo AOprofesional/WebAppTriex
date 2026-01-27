@@ -1,8 +1,15 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePassengers } from '../../hooks/usePassengers';
+import { useAuth } from '../../contexts/AuthContext';
 import { CreatePassengerModal } from '../../components/CreatePassengerModal';
+import { EditPassengerModal } from '../../components/EditPassengerModal';
+import { ConfirmArchiveModal } from '../../components/ConfirmArchiveModal';
+import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
+import { Database } from '../../types/database.types';
+
+type PassengerListView = Database['public']['Views']['v_admin_passengers_list']['Row'];
 
 
 // Status Badge Component
@@ -23,10 +30,30 @@ const StatusBadge: React.FC<{ isRecurrent: boolean | null }> = ({ isRecurrent })
 
 export const AdminPassengers: React.FC = () => {
     const navigate = useNavigate();
-    const { passengers, loading, error, deletePassenger } = usePassengers();
+    const { role } = useAuth();
+    const {
+        passengers,
+        loading,
+        error,
+        refetch,
+        archivePassenger,
+        restorePassenger,
+        permanentDeletePassenger
+    } = usePassengers();
+
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('all');
+    const [showArchived, setShowArchived] = useState(false);
+
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [editingPassenger, setEditingPassenger] = useState<PassengerListView | null>(null);
+    const [archiveCandidate, setArchiveCandidate] = useState<{ id: string; name: string } | null>(null);
+    const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; name: string; isArchived: boolean } | null>(null);
+
+    // Refetch passengers when showArchived toggle changes
+    useEffect(() => {
+        refetch(showArchived);
+    }, [showArchived]);
 
 
     const filteredPassengers = passengers.filter(p => {
@@ -37,13 +64,41 @@ export const AdminPassengers: React.FC = () => {
         return matchesSearch && matchesType;
     });
 
-    const handleDelete = async (id: string, name: string) => {
-        if (window.confirm(`¿Estás seguro de eliminar a ${name}?`)) {
-            const { error } = await deletePassenger(id);
-            if (error) {
-                alert(`Error al eliminar: ${error}`);
-            }
+    const handleEdit = (passenger: PassengerListView) => {
+        setEditingPassenger(passenger);
+    };
+
+    const handleArchive = (id: string, name: string) => {
+        setArchiveCandidate({ id, name });
+    };
+
+    const confirmArchive = async () => {
+        if (!archiveCandidate) return;
+        const { error } = await archivePassenger(archiveCandidate.id);
+        if (error) {
+            alert(`Error al archivar: ${error}`);
         }
+        setArchiveCandidate(null);
+    };
+
+    const handleRestore = async (id: string) => {
+        const { error } = await restorePassenger(id);
+        if (error) {
+            alert(`Error al restaurar: ${error}`);
+        }
+    };
+
+    const handlePermanentDelete = (id: string, name: string, isArchived: boolean) => {
+        setDeleteCandidate({ id, name, isArchived });
+    };
+
+    const confirmPermanentDelete = async () => {
+        if (!deleteCandidate) return;
+        const { error } = await permanentDeletePassenger(deleteCandidate.id);
+        if (error) {
+            alert(`Error al eliminar: ${error}`);
+        }
+        setDeleteCandidate(null);
     };
 
     if (loading) {
@@ -102,6 +157,17 @@ export const AdminPassengers: React.FC = () => {
                         <option value="corporate">Corporativo</option>
                         <option value="other">Otro</option>
                     </select>
+
+                    {/* Show Archived Toggle */}
+                    <label className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+                        <input
+                            type="checkbox"
+                            checked={showArchived}
+                            onChange={(e) => setShowArchived(e.target.checked)}
+                            className="w-4 h-4 text-primary bg-white dark:bg-zinc-800 border-zinc-300 dark:border-zinc-600 rounded focus:ring-2 focus:ring-primary/20"
+                        />
+                        <span className="font-medium text-zinc-700 dark:text-zinc-300">Mostrar archivados</span>
+                    </label>
                 </div>
 
                 {/* Add Button */}
@@ -143,6 +209,7 @@ export const AdminPassengers: React.FC = () => {
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Tipo</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Teléfono</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Documento</th>
+                                    <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Perfil</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Estado</th>
                                     <th className="text-right px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Acciones</th>
                                 </tr>
@@ -184,28 +251,66 @@ export const AdminPassengers: React.FC = () => {
                                                 <StatusBadge isRecurrent={passenger.is_recurrent} />
                                             </td>
                                             <td className="px-6 py-4">
+                                                {passenger.archived_at ? (
+                                                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-zinc-200 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400">
+                                                        Archivado
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400">
+                                                        Activo
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4">
                                                 <div className="flex items-center justify-end gap-2">
+                                                    {/* View Details */}
                                                     <button
-                                                        className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
+                                                        className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                                                         title="Ver detalles"
                                                         onClick={() => alert(`Ver detalles de ${fullName} - Próximamente`)}
                                                     >
                                                         <span className="material-symbols-outlined text-lg">visibility</span>
                                                     </button>
-                                                    <button
-                                                        className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 rounded-lg transition-colors"
-                                                        title="Editar"
-                                                        onClick={() => alert(`Editar ${fullName} - Próximamente`)}
-                                                    >
-                                                        <span className="material-symbols-outlined text-lg">edit</span>
-                                                    </button>
-                                                    <button
-                                                        className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                        title="Eliminar"
-                                                        onClick={() => handleDelete(passenger.id, fullName)}
-                                                    >
-                                                        <span className="material-symbols-outlined text-lg">delete</span>
-                                                    </button>
+
+                                                    {!passenger.archived_at ? (
+                                                        // Active passenger actions
+                                                        <>
+                                                            <button
+                                                                className="p-2 text-zinc-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                                                title="Editar"
+                                                                onClick={() => handleEdit(passenger)}
+                                                            >
+                                                                <span className="material-symbols-outlined text-lg">edit</span>
+                                                            </button>
+                                                            <button
+                                                                className="p-2 text-zinc-400 hover:text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-colors"
+                                                                title="Archivar"
+                                                                onClick={() => handleArchive(passenger.id, fullName)}
+                                                            >
+                                                                <span className="material-symbols-outlined text-lg">archive</span>
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        // Archived passenger actions
+                                                        <>
+                                                            <button
+                                                                className="p-2 text-zinc-400 hover:text-green-500 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors"
+                                                                title="Restaurar"
+                                                                onClick={() => handleRestore(passenger.id)}
+                                                            >
+                                                                <span className="material-symbols-outlined text-lg">unarchive</span>
+                                                            </button>
+                                                            {role === 'admin' && (
+                                                                <button
+                                                                    className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                                                    title="Eliminar permanentemente (Solo Admin)"
+                                                                    onClick={() => handlePermanentDelete(passenger.id, fullName, true)}
+                                                                >
+                                                                    <span className="material-symbols-outlined text-lg">delete_forever</span>
+                                                                </button>
+                                                            )}
+                                                        </>
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>
@@ -228,6 +333,34 @@ export const AdminPassengers: React.FC = () => {
             <CreatePassengerModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
+            />
+
+            {/* Edit Passenger Modal */}
+            <EditPassengerModal
+                passenger={editingPassenger}
+                isOpen={!!editingPassenger}
+                onClose={() => setEditingPassenger(null)}
+                onSave={() => {
+                    setEditingPassenger(null);
+                    refetch(showArchived);
+                }}
+            />
+
+            {/* Archive Confirmation Modal */}
+            <ConfirmArchiveModal
+                passengerName={archiveCandidate?.name || ''}
+                isOpen={!!archiveCandidate}
+                onConfirm={confirmArchive}
+                onCancel={() => setArchiveCandidate(null)}
+            />
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmDeleteModal
+                passengerName={deleteCandidate?.name || ''}
+                isArchived={deleteCandidate?.isArchived || false}
+                isOpen={!!deleteCandidate}
+                onConfirm={confirmPermanentDelete}
+                onCancel={() => setDeleteCandidate(null)}
             />
         </div>
     );

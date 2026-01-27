@@ -11,15 +11,21 @@ export const usePassengers = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchPassengers = async () => {
+    const fetchPassengers = async (includeArchived = false) => {
         try {
             setLoading(true);
             setError(null);
 
-            const { data, error: fetchError } = await supabase
+            let query = supabase
                 .from('v_admin_passengers_list')
                 .select('*')
                 .order('created_at', { ascending: false });
+
+            if (!includeArchived) {
+                query = query.is('archived_at', null);
+            }
+
+            const { data, error: fetchError } = await query;
 
             if (fetchError) throw fetchError;
 
@@ -75,6 +81,65 @@ export const usePassengers = () => {
         }
     };
 
+    const archivePassenger = async (id: string) => {
+        try {
+            const { error: archiveError } = await supabase
+                .from('passengers')
+                .update({ archived_at: new Date().toISOString() })
+                .eq('id', id);
+
+            if (archiveError) throw archiveError;
+
+            await fetchPassengers();
+            return { error: null };
+        } catch (err: any) {
+            console.error('Error archiving passenger:', err);
+            return { error: err.message };
+        }
+    };
+
+    const restorePassenger = async (id: string) => {
+        try {
+            const { error: restoreError } = await supabase
+                .from('passengers')
+                .update({ archived_at: null })
+                .eq('id', id);
+
+            if (restoreError) throw restoreError;
+
+            await fetchPassengers();
+            return { error: null };
+        } catch (err: any) {
+            console.error('Error restoring passenger:', err);
+            return { error: err.message };
+        }
+    };
+
+    const permanentDeletePassenger = async (id: string) => {
+        try {
+            // Verify admin role before attempting deletion
+            const { data: roleData, error: roleError } = await supabase.rpc('get_my_role');
+
+            if (roleError) throw roleError;
+
+            if (roleData !== 'admin') {
+                throw new Error('Solo los administradores pueden eliminar pasajeros permanentemente');
+            }
+
+            const { data, error: rpcError } = await supabase
+                .rpc('delete_passenger_cascade', { passenger_id: id });
+
+            if (rpcError) throw rpcError;
+            if (!data.success) throw new Error(data.error);
+
+            await fetchPassengers();
+            return { error: null, data };
+        } catch (err: any) {
+            console.error('Error permanently deleting passenger:', err);
+            return { error: err.message, data: null };
+        }
+    };
+
     const deletePassenger = async (id: string) => {
         try {
             const { error: deleteError } = await supabase
@@ -104,5 +169,8 @@ export const usePassengers = () => {
         createPassenger,
         updatePassenger,
         deletePassenger,
+        archivePassenger,
+        restorePassenger,
+        permanentDeletePassenger,
     };
 };
