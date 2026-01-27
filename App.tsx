@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { Home } from './screens/Home';
 import { MyTrip } from './screens/MyTrip';
@@ -20,6 +20,8 @@ import { BottomNav } from './components/BottomNav';
 import { Sidebar } from './components/Sidebar';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RoleRedirect } from './components/RoleRedirect';
+import { CreatePasswordModal } from './components/CreatePasswordModal';
+import { useAuth } from './contexts/AuthContext';
 
 // Admin imports
 import { AdminLayout } from './screens/admin/AdminLayout';
@@ -34,7 +36,21 @@ import { AdminSettings } from './screens/admin/Settings';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const { user } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+
+  useEffect(() => {
+    // Check if user logged in via Magic Link
+    if (user && localStorage.getItem('triex_auth_method') === 'magiclink') {
+      setShowPasswordModal(true);
+    }
+  }, [user]);
+
+  const handleCloseModal = () => {
+    setShowPasswordModal(false);
+    localStorage.removeItem('triex_auth_method');
+  };
 
   // Skip layout for admin routes and specific paths
   const hideNavOn = ['/upload', '/admin', '/login', '/signup', '/app', '/reset-password', '/update-password'];
@@ -90,6 +106,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
         {/* Bottom Nav - Hidden on desktop */}
         {showNav && <div className="lg:hidden"><BottomNav /></div>}
+
+        {/* Create Password Modal - Only for Magic Link users */}
+        <CreatePasswordModal
+          isOpen={showPasswordModal}
+          onClose={handleCloseModal}
+        />
       </div>
     </div>
   );

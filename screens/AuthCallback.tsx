@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useClaim } from '../hooks/useClaim';
 
@@ -16,7 +16,7 @@ export const AuthCallback: React.FC = () => {
                     case 'OK_LINKED':
                     case 'ALREADY_LINKED':
                         // Usuario vinculado exitosamente → ir a dashboard
-                        navigate('/', { replace: true });
+                        navigate('/app', { replace: true });
                         break;
 
                     case 'NOT_FOUND':
