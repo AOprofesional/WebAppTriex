@@ -40,7 +40,7 @@ export const useCreatePassengerWithInvite = () => {
             const { error: inviteError } = await supabase.auth.signInWithOtp({
                 email: data.email,
                 options: {
-                    emailRedirectTo: `${window.location.origin}/#/auth/callback`,
+                    emailRedirectTo: 'https://www.triex.app/#/admin/passengers',
                     data: {
                         passenger_id: passenger.id,
                         invited_by: 'admin'
