@@ -2,6 +2,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LOGO_URL } from '../../constants';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface AdminSidebarProps {
     collapsed?: boolean;
@@ -10,6 +11,12 @@ interface AdminSidebarProps {
 export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false }) => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { signOut } = useAuth();
+
+    const handleLogout = async () => {
+        await signOut();
+        navigate('/login');
+    };
 
     const menuItems = [
         { label: 'Dashboard', icon: 'dashboard', path: '/admin' },
@@ -86,7 +93,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false })
                         <p className="text-sm font-semibold text-white truncate">Admin Triex</p>
                         <p className="text-xs" style={{ color: '#757575' }}>admin@triex.com</p>
                     </div>
-                    <button className="p-1.5 transition-colors" style={{ color: '#757575' }}>
+                    <button
+                        onClick={handleLogout}
+                        className="p-1.5 transition-colors hover:bg-zinc-800 rounded-lg"
+                        style={{ color: '#757575' }}
+                        title="Cerrar sesión"
+                    >
                         <span className="material-symbols-outlined text-lg">logout</span>
                     </button>
                 </div>
