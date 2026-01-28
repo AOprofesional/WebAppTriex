@@ -1,139 +1,174 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AVATAR_URL } from '../constants';
+import { LOGO_URL } from '../constants';
+import { useVouchers } from '../hooks/useVouchers';
 
 export const Vouchers: React.FC = () => {
   const navigate = useNavigate();
+  const { vouchers, loading } = useVouchers();
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const documents = [
-    { id: '1', name: 'Pasaporte', status: 'APROBADO', icon: 'badge', state: 'approved' },
-    { id: '2', name: 'Visa', status: 'PENDIENTE', icon: 'description', state: 'pending' },
-    { id: '3', name: 'Seguro de Viaje', status: 'APROBADO', icon: 'health_and_safety', state: 'approved' },
-  ];
+  // Filter vouchers by category
+  const filteredVouchers = selectedCategory
+    ? vouchers.filter(v => v.category === selectedCategory)
+    : vouchers;
 
-  return (
-    <div className="min-h-screen bg-[#F3F4F6] dark:bg-zinc-950 pb-32 lg:pb-8">
-      {/* Top Navigation - Hidden on desktop */}
-      <div className="px-5 py-4 flex items-center bg-white/50 dark:bg-zinc-950/50 backdrop-blur-sm sticky top-0 z-50 lg:hidden">
-        <button onClick={() => navigate(-1)} className="p-1 -ml-1 text-zinc-500 dark:text-zinc-400">
-          <span className="material-symbols-outlined text-[28px]">chevron_left</span>
-        </button>
-        <div className="flex-1 flex justify-center -ml-8">
-          <div className="w-9 h-9 rounded-full bg-zinc-200 dark:bg-zinc-800 overflow-hidden border border-white dark:border-zinc-700 shadow-sm">
-            <img src={AVATAR_URL} alt="Avatar de Camila" className="w-full h-full object-cover" />
+  // Get unique categories
+  const categories = Array.from(new Set(vouchers.map(v => v.category).filter(Boolean))) as string[];
+
+  const categoryIcons: Record<string, string> = {
+    HOTEL: 'hotel',
+    TRANSPORTE: 'directions_car',
+    ACTIVIDAD: 'hiking',
+    EVENTO: 'event',
+    ASISTENCIA: 'medical_services',
+    EXPERIENCIA: 'stars',
+    OTRO: 'folder',
+  };
+
+  const handleVoucherClick = (voucher: any) => {
+    if (voucher.external_url) {
+      window.open(voucher.external_url, '_blank');
+    } else if (voucher.file_url) {
+      window.open(voucher.file_url, '_blank');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-triex-bg dark:bg-zinc-950 pb-20 lg:pb-8">
+        <div className="px-5 py-4 flex items-center justify-center bg-white dark:bg-zinc-950">
+          <div className="animate-pulse">
+            <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-48"></div>
           </div>
         </div>
       </div>
+    );
+  }
 
-      <div className="px-6 pt-6">
-        <h1 className="text-[28px] font-extrabold tracking-tight text-[#2D333D] dark:text-white mb-8">
-          Vouchers y documentación
-        </h1>
+  return (
+    <div className="min-h-screen bg-triex-bg dark:bg-zinc-950 pb-20 lg:pb-8">
+      {/* Custom Header - Hidden on desktop */}
+      <div className="px-5 py-4 flex items-center justify-between bg-white dark:bg-zinc-950 sticky top-0 z-50 lg:hidden">
+        <button onClick={() => navigate(-1)} className="p-1 -ml-1 text-zinc-800 dark:text-zinc-200">
+          <span className="material-symbols-outlined text-[28px]">chevron_left</span>
+        </button>
+        <h1 className="text-lg font-bold text-zinc-800 dark:text-white">Mis Vouchers</h1>
+        <div className="w-16 flex justify-end">
+          <img src={LOGO_URL} alt="Triex" className="h-4 object-contain brightness-0 dark:brightness-200 opacity-80" />
+        </div>
+      </div>
 
-        {/* Vouchers Section */}
-        <section className="mb-8">
-          <h2 className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-4 px-1">
-            Vouchers
-          </h2>
-          <div className="bg-white dark:bg-zinc-900 rounded-[28px] p-5 shadow-sm border border-zinc-100 dark:border-zinc-800/50">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 rounded-full bg-[#F0F2F5] dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
-                <span className="material-symbols-outlined text-2xl font-fill">hotel</span>
-              </div>
-              <div>
-                <h3 className="font-bold text-[#2D333D] dark:text-zinc-100 text-[16px]">Hotel Hilton</h3>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="material-symbols-outlined text-zinc-400 text-sm font-fill">check_circle</span>
-                  <span className="text-[13px] font-medium text-zinc-400">Disponible</span>
-                </div>
-              </div>
-            </div>
+      <div className="px-5 pt-6 space-y-6">
+        {/* Desktop Title */}
+        <div className="hidden lg:block">
+          <h1 className="text-[32px] font-extrabold text-triex-grey dark:text-white">
+            Mis Vouchers
+          </h1>
+          <p className="text-zinc-500 dark:text-zinc-400 mt-2">
+            Toda tu documentación de viaje en un solo lugar
+          </p>
+        </div>
 
-            <div className="flex gap-3">
-              <button className="flex-1 flex items-center justify-center gap-2 py-3.5 px-4 border border-zinc-100 dark:border-zinc-800 rounded-2xl text-[14px] font-bold text-zinc-500 dark:text-zinc-400 active:scale-95 transition-all">
-                <span className="material-symbols-outlined text-[20px] font-fill">visibility</span>
-                Ver
-              </button>
-              <button className="flex-1 flex items-center justify-center gap-2 py-3.5 px-4 border border-zinc-100 dark:border-zinc-800 rounded-2xl text-[14px] font-bold text-zinc-500 dark:text-zinc-400 active:scale-95 transition-all">
-                <span className="material-symbols-outlined text-[20px]">download</span>
-                Descargar
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* Documentation Section */}
-        <section>
-          <h2 className="text-[11px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-4 px-1">
-            Documentación
-          </h2>
-          <div className="bg-white dark:bg-zinc-900 rounded-[28px] overflow-hidden shadow-sm border border-zinc-100 dark:border-zinc-800/50">
-            {documents.map((doc, idx) => (
-              <div
-                key={doc.id}
-                className={`flex items-center justify-between p-5 ${idx !== documents.length - 1 ? 'border-b border-zinc-50 dark:border-zinc-800/50' : ''}`}
+        {/* Category Filters */}
+        {categories.length > 0 && (
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={`px-4 py-2 rounded-full font-bold text-[13px] whitespace-nowrap transition-all ${!selectedCategory
+                  ? 'bg-[#3D3935] text-white'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                }`}
+            >
+              Todos ({vouchers.length})
+            </button>
+            {categories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setSelectedCategory(category)}
+                className={`px-4 py-2 rounded-full font-bold text-[13px] whitespace-nowrap transition-all flex items-center gap-1.5 ${selectedCategory === category
+                    ? 'bg-[#3D3935] text-white'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                  }`}
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-[18px] bg-[#F0F2F5] dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
-                    <span className="material-symbols-outlined text-2xl">{doc.icon}</span>
+                <span className="material-symbols-outlined text-[16px]">
+                  {categoryIcons[category] || 'folder'}
+                </span>
+                {category}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Vouchers Grid */}
+        {filteredVouchers.length > 0 ? (
+          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
+            {filteredVouchers.map((voucher) => (
+              <div
+                key={voucher.id}
+                onClick={() => handleVoucherClick(voucher)}
+                className="bg-white dark:bg-zinc-900 rounded-[28px] p-6 shadow-sm border border-zinc-100 dark:border-zinc-800 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all active:scale-[0.98]"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-12 h-12 bg-[#F0F5FA] dark:bg-zinc-800 rounded-2xl flex items-center justify-center">
+                    <span className="material-symbols-outlined text-[#E0592A] text-[24px]">
+                      {voucher.format === 'PDF'
+                        ? 'picture_as_pdf'
+                        : voucher.format === 'IMAGE'
+                          ? 'image'
+                          : 'link'}
+                    </span>
                   </div>
-                  <p className="font-bold text-[#2D333D] dark:text-zinc-100 text-[15px]">{doc.name}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-[10px] font-bold uppercase tracking-wider ${doc.state === 'approved' ? 'text-zinc-400 dark:text-zinc-500' : 'text-primary'}`}>
-                    {doc.status}
-                  </span>
-                  {doc.state === 'approved' ? (
-                    <div className="w-6 h-6 rounded-full bg-[#A5ABB5] dark:bg-zinc-700 flex items-center justify-center text-white">
-                      <span className="material-symbols-outlined text-[16px] font-bold">check</span>
-                    </div>
-                  ) : (
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                      <span className="material-symbols-outlined text-[16px] animate-pulse">more_horiz</span>
-                    </div>
+                  {voucher.category && (
+                    <span className="text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-1 rounded-full uppercase tracking-wide">
+                      {voucher.category}
+                    </span>
                   )}
+                </div>
+
+                <h3 className="font-extrabold text-[17px] text-triex-grey dark:text-white mb-2 leading-tight">
+                  {voucher.title}
+                </h3>
+
+                {voucher.description && (
+                  <p className="text-[13px] text-zinc-500 dark:text-zinc-400 leading-snug mb-4">
+                    {voucher.description}
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                  <span className="text-[12px] font-semibold text-zinc-400 uppercase tracking-wide">
+                    {voucher.format || 'ARCHIVO'}
+                  </span>
+                  <span className="material-symbols-outlined text-zinc-300 dark:text-zinc-600">
+                    chevron_right
+                  </span>
                 </div>
               </div>
             ))}
           </div>
-        </section>
-
-        {/* Coordinator Contact */}
-        <div className="mt-8 px-2 space-y-4">
-          {/* Desktop Only: Descargar todo button */}
-          <button className="hidden lg:flex w-full py-5 bg-primary text-white rounded-[24px] font-bold items-center justify-center gap-3 shadow-xl shadow-primary/30 active:scale-95 transition-all text-base">
-            <span className="material-symbols-outlined text-2xl">download</span>
-            Descargar todo (.zip)
-          </button>
-
-          <button className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all">
-            <span className="material-symbols-outlined text-2xl">support_agent</span>
-            Contactar coordinador
-          </button>
-        </div>
-
-        <p className="mt-8 text-[12px] text-zinc-400 italic leading-relaxed px-2">
-          * Por favor asegúrese de completar los documentos pendientes antes de su fecha de viaje.
-        </p>
-      </div>
-
-      {/* Footer Action Button - Mobile Only */}
-      <div className="fixed bottom-24 left-0 right-0 px-6 z-40 pointer-events-none lg:hidden">
-        <button className="w-full max-w-md mx-auto pointer-events-auto py-5 bg-primary text-white rounded-[24px] font-bold shadow-xl shadow-primary/30 flex items-center justify-center gap-3 active:scale-95 transition-all text-base">
-          <span className="material-symbols-outlined text-2xl">download</span>
-          Descargar todo (.zip)
-        </button>
-      </div>
-
-      {/* Dark mode toggle helper */}
-      <div className="fixed bottom-40 right-6 z-[100]">
-        <button
-          onClick={() => document.documentElement.classList.toggle('dark')}
-          className="w-12 h-12 bg-[#2D333D] dark:bg-white text-white dark:text-triex-grey rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-all border-4 border-white dark:border-zinc-950"
-        >
-          <span className="material-symbols-outlined text-xl">dark_mode</span>
-        </button>
+        ) : (
+          <div className="text-center py-16">
+            <div className="w-20 h-20 mx-auto rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 mb-6">
+              <span className="material-symbols-outlined text-5xl">confirmation_number</span>
+            </div>
+            <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-3">
+              {selectedCategory ? 'No hay vouchers en esta categoría' : 'No hay vouchers disponibles'}
+            </h2>
+            <p className="text-zinc-500 dark:text-zinc-400 mb-8">
+              Los vouchers estarán disponibles más cerca de la fecha de tu viaje
+            </p>
+            {selectedCategory && (
+              <button
+                onClick={() => setSelectedCategory(null)}
+                className="px-8 py-3 bg-[#3D3935] hover:bg-black/90 text-white rounded-[20px] font-bold transition-all"
+              >
+                Ver todos los vouchers
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

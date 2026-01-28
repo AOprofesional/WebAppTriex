@@ -1,10 +1,44 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MOCK_USER, AVATAR_URL } from '../constants';
+import { MOCK_USER } from '../constants';
+import { usePassengerTrips } from '../hooks/usePassengerTrips';
+import { NextStepCard } from '../components/NextStepCard';
+import { TripStatusBadge } from '../components/TripStatusBadge';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
+  const { activeTrip, nextTrip, loading } = usePassengerTrips();
+
+  // Determine which trip to display (active first, then next)
+  const displayTrip = activeTrip || nextTrip;
+
+  // Format date range
+  const formatDateRange = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const startDay = start.getDate();
+    const endDay = end.getDate();
+    const startMonth = start.toLocaleDateString('es-AR', { month: 'short' });
+    const endMonth = end.toLocaleDateString('es-AR', { month: 'short' });
+    const year = start.getFullYear();
+
+    if (startMonth === endMonth) {
+      return `${startDay} - ${endDay} ${startMonth}, ${year}`;
+    }
+    return `${startDay} ${startMonth} - ${endDay} ${endMonth}, ${year}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="px-5 py-6 space-y-8 max-w-md mx-auto min-h-screen bg-triex-bg dark:bg-zinc-950 pb-12 lg:max-w-none lg:px-8 lg:py-8">
+        <div className="animate-pulse">
+          <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-48 mb-2"></div>
+          <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-32"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="px-5 py-6 space-y-8 max-w-md mx-auto min-h-screen bg-triex-bg dark:bg-zinc-950 pb-12 lg:max-w-none lg:px-8 lg:py-8">
@@ -23,66 +57,98 @@ export const Home: React.FC = () => {
         {/* Sección: Próximo Viaje */}
         <section>
           <div className="flex items-center justify-between mb-4 px-1">
-            <h2 className="text-[18px] font-extrabold text-triex-grey dark:text-white">Próximo viaje</h2>
-            <span className="text-zinc-600 dark:text-zinc-300 text-[12px] font-bold px-4 py-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full">
-              Confirmado
-            </span>
+            <h2 className="text-[18px] font-extrabold text-triex-grey dark:text-white">
+              {activeTrip ? 'Viaje actual' : 'Próximo viaje'}
+            </h2>
+            {displayTrip && (
+              <TripStatusBadge
+                status={(displayTrip.status_operational || 'PREVIO') as any}
+                size="sm"
+              />
+            )}
           </div>
 
-          <div className="bg-white dark:bg-zinc-900 rounded-[32px] shadow-sm border border-zinc-100 dark:border-zinc-800 p-6">
-            <div className="flex items-start justify-between">
-              <div className="space-y-1.5">
-                <h3 className="text-[22px] font-extrabold text-triex-grey dark:text-white">Viaje a Bariloche</h3>
-                <div className="flex items-center text-zinc-400 text-[14px] gap-2">
-                  <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-                  <span className="font-semibold tracking-tight">15 Oct - 22 Oct, 2024</span>
+          {displayTrip ? (
+            <div className="bg-white dark:bg-zinc-900 rounded-[32px] shadow-sm border border-zinc-100 dark:border-zinc-800 p-6">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1.5 flex-1">
+                  <h3 className="text-[22px] font-extrabold text-triex-grey dark:text-white">
+                    {displayTrip.name}
+                  </h3>
+                  <div className="flex items-center text-zinc-400 text-[14px] gap-2">
+                    <span className="material-symbols-outlined text-[18px]">location_on</span>
+                    <span className="font-semibold tracking-tight">{displayTrip.destination}</span>
+                  </div>
+                  <div className="flex items-center text-zinc-400 text-[14px] gap-2">
+                    <span className="material-symbols-outlined text-[18px]">calendar_today</span>
+                    <span className="font-semibold tracking-tight">
+                      {formatDateRange(displayTrip.start_date, displayTrip.end_date)}
+                    </span>
+                  </div>
+                </div>
+                <div className="w-12 h-12 bg-[#F0F2F5] dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-triex-grey dark:text-zinc-300">
+                  <span className="material-symbols-outlined text-[26px] font-fill">flight_takeoff</span>
                 </div>
               </div>
-              <div className="w-12 h-12 bg-[#F0F2F5] dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-triex-grey dark:text-zinc-300">
-                <span className="material-symbols-outlined text-[26px] font-fill">mountain_flag</span>
-              </div>
-            </div>
 
-            <div className="mt-6 flex items-center gap-3">
-              <div className="flex -space-x-3 overflow-hidden">
-                <img className="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-zinc-900" src="https://i.pravatar.cc/100?u=1" alt="" />
-                <img className="inline-block h-8 w-8 rounded-full ring-2 ring-white dark:ring-zinc-900" src="https://i.pravatar.cc/100?u=2" alt="" />
-                <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#2D333D] text-[11px] font-bold text-white ring-2 ring-white dark:ring-zinc-900">
-                  +2
-                </div>
-              </div>
-              <span className="text-[13px] text-zinc-400 font-semibold">Vas con 3 personas más</span>
+              <button
+                onClick={() => navigate('/mytrip')}
+                className="w-full mt-8 bg-[#3D3935] hover:bg-black/90 text-white py-[18px] rounded-[20px] font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm text-[16px]"
+              >
+                Ver detalles del viaje
+                <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+              </button>
             </div>
-
-            <button
-              onClick={() => navigate('/mytrip')}
-              className="w-full mt-8 bg-[#3D3935] hover:bg-black/90 text-white py-[18px] rounded-[20px] font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm text-[16px]"
-            >
-              Ver detalles del viaje
-              <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-            </button>
-          </div>
+          ) : (
+            <div className="bg-white dark:bg-zinc-900 rounded-[32px] shadow-sm border border-zinc-100 dark:border-zinc-800 p-8 text-center">
+              <div className="w-16 h-16 mx-auto rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-400 mb-4">
+                <span className="material-symbols-outlined text-3xl">travel_explore</span>
+              </div>
+              <h3 className="text-lg font-bold text-zinc-800 dark:text-white mb-2">
+                No hay viajes programados
+              </h3>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                Contactá a tu coordinador para más información
+              </p>
+            </div>
+          )}
         </section>
 
         {/* Sección: Tu Próximo Paso */}
         <section>
-          <h2 className="text-[18px] font-extrabold text-triex-grey dark:text-white mb-4 px-1">Tu próximo paso</h2>
-          <div className="bg-[#3D3935] dark:bg-zinc-900 rounded-[32px] p-7 text-white shadow-xl relative overflow-hidden">
-            <div className="flex items-center gap-5 mb-8">
-              <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center">
-                <span className="material-symbols-outlined text-white text-[32px]">description</span>
-              </div>
-              <div>
-                <h3 className="text-[19px] font-bold">Cargar documentación</h3>
+          <h2 className="text-[18px] font-extrabold text-triex-grey dark:text-white mb-4 px-1">
+            Tu próximo paso
+          </h2>
+          {displayTrip && displayTrip.next_step_type && displayTrip.next_step_type !== 'NONE' ? (
+            <NextStepCard
+              type={displayTrip.next_step_type as any}
+              title={displayTrip.next_step_title || 'Próximo paso'}
+              detail={displayTrip.next_step_detail || ''}
+              ctaLabel={displayTrip.next_step_cta_label || 'Continuar'}
+              ctaRoute={displayTrip.next_step_cta_route || '/mytrip'}
+              onCtaClick={() => {
+                if (displayTrip.next_step_cta_route) {
+                  navigate(displayTrip.next_step_cta_route);
+                } else {
+                  navigate('/mytrip');
+                }
+              }}
+            />
+          ) : (
+            <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-7 border border-zinc-100 dark:border-zinc-800">
+              <div className="text-center py-4">
+                <div className="w-14 h-14 mx-auto bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center mb-4">
+                  <span className="material-symbols-outlined text-zinc-400 text-[32px]">check_circle</span>
+                </div>
+                <h3 className="font-bold text-triex-grey dark:text-white text-[16px] mb-2">
+                  Todo listo por ahora
+                </h3>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  No hay acciones pendientes en este momento
+                </p>
               </div>
             </div>
-            <button
-              onClick={() => navigate('/upload')}
-              className="w-full py-[18px] bg-[#E0592A] hover:bg-[#F06A3B] text-white rounded-[20px] font-bold shadow-lg shadow-black/20 transition-all active:scale-[0.98] text-[17px] tracking-tight"
-            >
-              Realizar ahora
-            </button>
-          </div>
+          )}
         </section>
       </div>
 
@@ -100,8 +166,10 @@ export const Home: React.FC = () => {
                 <span className="material-symbols-outlined text-[28px]">confirmation_number</span>
               </div>
               <div className="flex-1">
-                <h3 className="font-bold text-triex-grey dark:text-white text-[16px] leading-tight">Tus vouchers ya están disponibles</h3>
-                <p className="text-[13px] text-zinc-400 mt-1.5 leading-snug font-medium">Podés descargarlos desde la sección de mis viajes.</p>
+                <h3 className="font-bold text-triex-grey dark:text-white text-[16px] leading-tight">Tus vouchers</h3>
+                <p className="text-[13px] text-zinc-400 mt-1.5 leading-snug font-medium">
+                  Accedé a toda tu documentación de viaje
+                </p>
               </div>
             </div>
             <span className="material-symbols-outlined text-zinc-300 dark:text-zinc-600 transition-transform group-hover:translate-x-1">chevron_right</span>
