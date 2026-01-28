@@ -8,10 +8,7 @@ import { TripStatusBadge } from '../components/TripStatusBadge';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
-  const { activeTrip, nextTrip, loading } = usePassengerTrips();
-
-  // Determine which trip to display (active first, then next)
-  const displayTrip = activeTrip || nextTrip;
+  const { primaryTrip, nextStep, loading } = usePassengerTrips();
 
   // Format date range
   const formatDateRange = (startDate: string, endDate: string) => {
@@ -58,31 +55,32 @@ export const Home: React.FC = () => {
         <section>
           <div className="flex items-center justify-between mb-4 px-1">
             <h2 className="text-[18px] font-extrabold text-triex-grey dark:text-white">
-              {activeTrip ? 'Viaje actual' : 'Próximo viaje'}
+              {primaryTrip?.status_operational === 'EN_CURSO' ? 'Viaje actual' :
+                primaryTrip?.status_operational === 'PREVIO' ? 'Próximo viaje' : 'Tu viaje'}
             </h2>
-            {displayTrip && (
+            {primaryTrip && (
               <TripStatusBadge
-                status={(displayTrip.status_operational || 'PREVIO') as any}
+                status={(primaryTrip.status_operational || 'PREVIO') as any}
                 size="sm"
               />
             )}
           </div>
 
-          {displayTrip ? (
+          {primaryTrip ? (
             <div className="bg-white dark:bg-zinc-900 rounded-[32px] shadow-sm border border-zinc-100 dark:border-zinc-800 p-6">
               <div className="flex items-start justify-between">
                 <div className="space-y-1.5 flex-1">
                   <h3 className="text-[22px] font-extrabold text-triex-grey dark:text-white">
-                    {displayTrip.name}
+                    {primaryTrip.name}
                   </h3>
                   <div className="flex items-center text-zinc-400 text-[14px] gap-2">
                     <span className="material-symbols-outlined text-[18px]">location_on</span>
-                    <span className="font-semibold tracking-tight">{displayTrip.destination}</span>
+                    <span className="font-semibold tracking-tight">{primaryTrip.destination}</span>
                   </div>
                   <div className="flex items-center text-zinc-400 text-[14px] gap-2">
                     <span className="material-symbols-outlined text-[18px]">calendar_today</span>
                     <span className="font-semibold tracking-tight">
-                      {formatDateRange(displayTrip.start_date, displayTrip.end_date)}
+                      {formatDateRange(primaryTrip.start_date, primaryTrip.end_date)}
                     </span>
                   </div>
                 </div>
@@ -119,20 +117,14 @@ export const Home: React.FC = () => {
           <h2 className="text-[18px] font-extrabold text-triex-grey dark:text-white mb-4 px-1">
             Tu próximo paso
           </h2>
-          {displayTrip && displayTrip.next_step_type && displayTrip.next_step_type !== 'NONE' ? (
+          {nextStep ? (
             <NextStepCard
-              type={displayTrip.next_step_type as any}
-              title={displayTrip.next_step_title || 'Próximo paso'}
-              detail={displayTrip.next_step_detail || ''}
-              ctaLabel={displayTrip.next_step_cta_label || 'Continuar'}
-              ctaRoute={displayTrip.next_step_cta_route || '/mytrip'}
-              onCtaClick={() => {
-                if (displayTrip.next_step_cta_route) {
-                  navigate(displayTrip.next_step_cta_route);
-                } else {
-                  navigate('/mytrip');
-                }
-              }}
+              type={nextStep.type}
+              title={nextStep.title}
+              detail={nextStep.detail}
+              ctaLabel={nextStep.ctaLabel}
+              ctaRoute={nextStep.ctaRoute}
+              onCtaClick={() => navigate(nextStep.ctaRoute)}
             />
           ) : (
             <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-7 border border-zinc-100 dark:border-zinc-800">

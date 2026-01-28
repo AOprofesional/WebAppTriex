@@ -30,7 +30,7 @@ export const useTrips = () => {
 
             let query = supabase
                 .from('trips')
-                .select('*, trip_passengers(count)')
+                .select('*')
                 .is('archived_at', null)
                 .order('start_date', { ascending: false });
 
@@ -149,6 +149,51 @@ export const useTrips = () => {
         }
     };
 
+    const assignPassengers = async (tripId: string, passengerIds: string[]) => {
+        try {
+            // Get existing assignments
+            const { data: existing, error: fetchError } = await supabase
+                .from('trip_passengers')
+                .select('passenger_id')
+                .eq('trip_id', tripId);
+
+            if (fetchError) throw fetchError;
+
+            const existingIds = existing?.map(e => e.passenger_id) || [];
+
+            // IDs to add (not in existing)
+            const toAdd = passengerIds.filter(id => !existingIds.includes(id));
+
+            // IDs to remove (in existing but not in new selection)
+            const toRemove = existingIds.filter(id => !passengerIds.includes(id));
+
+            // Delete removed assignments
+            if (toRemove.length > 0) {
+                const { error: deleteError } = await supabase
+                    .from('trip_passengers')
+                    .delete()
+                    .eq('trip_id', tripId)
+                    .in('passenger_id', toRemove);
+
+                if (deleteError) throw deleteError;
+            }
+
+            // Insert new assignments
+            if (toAdd.length > 0) {
+                const { error: insertError } = await supabase
+                    .from('trip_passengers')
+                    .insert(toAdd.map(pid => ({ trip_id: tripId, passenger_id: pid })));
+
+                if (insertError) throw insertError;
+            }
+
+            return { error: null };
+        } catch (err: any) {
+            console.error('Error assigning passengers:', err);
+            return { error: err.message };
+        }
+    };
+
     return {
         trips,
         loading,
@@ -158,5 +203,6 @@ export const useTrips = () => {
         updateTrip,
         archiveTrip,
         getTripById,
+        assignPassengers,
     };
 };

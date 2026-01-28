@@ -29,6 +29,7 @@ import { AdminLayout } from './screens/admin/AdminLayout';
 import { AdminDashboard } from './screens/admin/Dashboard';
 import { AdminPassengers } from './screens/admin/Passengers';
 import { AdminTrips } from './screens/admin/Trips';
+import { TripForm } from './screens/admin/TripForm';
 import { AdminVouchers } from './screens/admin/Vouchers';
 import { AdminPoints } from './screens/admin/Points';
 import { AdminCommunications } from './screens/admin/Communications';
@@ -136,6 +137,8 @@ const App: React.FC = () => {
           <Route index element={<AdminDashboard />} />
           <Route path="passengers" element={<AdminPassengers />} />
           <Route path="trips" element={<AdminTrips />} />
+          <Route path="trips/new" element={<TripForm />} />
+          <Route path="trips/:id" element={<TripForm />} />
           <Route path="vouchers" element={<AdminVouchers />} />
           <Route path="points" element={<AdminPoints />} />
           <Route path="communications" element={<AdminCommunications />} />
