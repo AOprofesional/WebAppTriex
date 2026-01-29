@@ -33,6 +33,10 @@ export const useCreatePassengerWithInvite = () => {
                 .single();
 
             if (createError) {
+                // Check for duplicate email error
+                if (createError.code === '23505' && createError.message.includes('passengers_email_key')) {
+                    throw new Error('Ya existe un pasajero registrado con este correo electrónico');
+                }
                 throw new Error(`Error al crear pasajero: ${createError.message}`);
             }
 

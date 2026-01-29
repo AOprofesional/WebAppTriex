@@ -1,0 +1,78 @@
+{
+    "tech_stack": [
+        "TypeScript",
+        "React",
+        "Vite",
+        "Supabase"
+    ],
+    "features": [
+        {
+            "name": "Authentication",
+            "description": "User authentication flows including login, signup, password reset, and role-based protection.",
+            "files": [
+                "screens/Login.tsx",
+                "screens/Signup.tsx",
+                "screens/AuthCallback.tsx",
+                "screens/ResetPassword.tsx",
+                "screens/UpdatePassword.tsx",
+                "components/ProtectedRoute.tsx",
+                "components/RoleGate.tsx",
+                "components/RoleRedirect.tsx",
+                "hooks/useRole.ts"
+            ]
+        },
+        {
+            "name": "Passenger Management",
+            "description": "Management of passenger accounts, including creation, editing, and archiving.",
+            "files": [
+                "components/CreatePassengerModal.tsx",
+                "components/EditPassengerModal.tsx",
+                "components/ConfirmArchiveModal.tsx",
+                "components/ConfirmDeleteModal.tsx",
+                "screens/ArchivedAccount.tsx",
+                "hooks/usePassengers.ts",
+                "hooks/useCreatePassengerWithInvite.ts"
+            ]
+        },
+        {
+            "name": "Trip Management",
+            "description": "Core trip functionality including itineraries, documents, and vouchers.",
+            "files": [
+                "screens/Home.tsx",
+                "screens/MyTrip.tsx",
+                "screens/Itinerary.tsx",
+                "screens/UploadDocument.tsx",
+                "screens/Vouchers.tsx",
+                "hooks/useTrips.ts",
+                "hooks/useTripDetails.ts",
+                "hooks/useItineraryItems.ts",
+                "hooks/useVouchers.ts",
+                "hooks/usePassengerTrips.ts"
+            ]
+        },
+        {
+            "name": "Gamification",
+            "description": "Points and rewards system for passengers.",
+            "files": [
+                "screens/Points.tsx",
+                "components/ActivityModal.tsx"
+            ]
+        },
+        {
+            "name": "Navigation & Layout",
+            "description": "Main navigation components.",
+            "files": [
+                "components/BottomNav.tsx",
+                "components/Header.tsx",
+                "components/Sidebar.tsx"
+            ]
+        },
+        {
+            "name": "Profile",
+            "description": "User profile management.",
+            "files": [
+                "screens/Profile.tsx"
+            ]
+        }
+    ]
+}

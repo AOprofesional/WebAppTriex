@@ -200,12 +200,10 @@ export const TripForm: React.FC = () => {
         return Object.keys(newErrors).length === 0;
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
+    const saveTrip = async (redirectToList: boolean = true): Promise<string | null> => {
         if (!validate()) {
             alert('Por favor corrige los errores del formulario');
-            return;
+            return null;
         }
 
         setSaving(true);
@@ -236,12 +234,29 @@ export const TripForm: React.FC = () => {
                 }
             }
 
-            navigate('/admin/trips');
+            if (redirectToList) {
+                navigate('/admin/trips');
+            } else {
+                // If not redirecting to list, we update title or just return id
+                // But since we are likely moving from "new" to "edit", we should navigate to the edit URL
+                if (!id) {
+                    navigate(`/admin/trips/${tripId}`, { replace: true });
+                }
+            }
+
+            return tripId;
+
         } catch (error: any) {
             alert('Error al guardar viaje: ' + error.message);
+            return null;
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        await saveTrip(true);
     };
 
     const calculateAutoStatus = (): string => {
@@ -273,7 +288,11 @@ export const TripForm: React.FC = () => {
     // Itinerary Handlers
     const handleAddDay = async () => {
         if (!id) {
-            alert('Debes guardar el viaje primero antes de agregar itinerario');
+            if (confirm('Para agregar días al itinerario, primero debes guardar el viaje. ¿Deseas guardarlo ahora?')) {
+                const newId = await saveTrip(false);
+                // After navigation to edit mode, the user can click add again.
+                // We could auto-trigger it but standard page reload is safer/simpler.
+            }
             return;
         }
 
@@ -518,206 +537,204 @@ export const TripForm: React.FC = () => {
                     </div>
 
                     {/* Detailed Itinerary Editor */}
-                    {id && (
-                        <div className="pt-6 mt-6 border-t border-zinc-200 dark:border-zinc800">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <h3 className="text-base font-bold text-triex-grey dark:text-white">
-                                        Itinerario Detallado (día por día)
-                                    </h3>
-                                    <p className="text-xs text-zinc-500 mt-1">
-                                        Agrega días con actividades detalladas
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={handleAddDay}
-                                    className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
-                                >
-                                    <span className="material-symbols-outlined text-lg">add</span>
-                                    Agregar día
-                                </button>
+                    <div className="pt-6 mt-6 border-t border-zinc-200 dark:border-zinc800">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 className="text-base font-bold text-triex-grey dark:text-white">
+                                    Itinerario Detallado (día por día)
+                                </h3>
+                                <p className="text-xs text-zinc-500 mt-1">
+                                    Agrega días con actividades detalladas
+                                </p>
                             </div>
+                            <button
+                                type="button"
+                                onClick={handleAddDay}
+                                className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
+                            >
+                                <span className="material-symbols-outlined text-lg">add</span>
+                                Agregar día
+                            </button>
+                        </div>
 
-                            {/* Day Tabs */}
-                            {days.length > 0 && (
-                                <div className="overflow-x-auto mb-5">
-                                    <div className="flex gap-2 min-w-max">
-                                        {days.map((day) => (
-                                            <button
-                                                key={day.id}
-                                                type="button"
-                                                onClick={() => setSelectedDayId(day.id)}
-                                                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${selectedDayId === day.id
-                                                    ? 'bg-primary text-white'
-                                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
-                                                    }`}
-                                            >
-                                                Día {day.day_number}
-                                                {day.title && <span className="text-xs opacity-80"> - {day.title}</span>}
-                                            </button>
-                                        ))}
+                        {/* Day Tabs */}
+                        {days.length > 0 && (
+                            <div className="overflow-x-auto mb-5">
+                                <div className="flex gap-2 min-w-max">
+                                    {days.map((day) => (
+                                        <button
+                                            key={day.id}
+                                            type="button"
+                                            onClick={() => setSelectedDayId(day.id)}
+                                            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${selectedDayId === day.id
+                                                ? 'bg-primary text-white'
+                                                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                                                }`}
+                                        >
+                                            Día {day.day_number}
+                                            {day.title && <span className="text-xs opacity-80"> - {day.title}</span>}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Selected Day Content */}
+                        {selectedDayId && days.find(d => d.id === selectedDayId) && (
+                            <div className="space-y-4 bg-zinc-50 dark:bg-zinc-800/50 p-5 rounded-xl">
+                                {/* Day Info */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-1">
+                                            Título del día (opcional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={days.find(d => d.id === selectedDayId)?.title || ''}
+                                            onChange={(e) => updateDay(selectedDayId, { title: e.target.value })}
+                                            className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                            placeholder="Ej: Llegada a Cancún"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-1">
+                                            Fecha (opcional)
+                                        </label>
+                                        <input
+                                            type="date"
+                                            value={days.find(d => d.id === selectedDayId)?.date || ''}
+                                            onChange={(e) => updateDay(selectedDayId, { date: e.target.value })}
+                                            className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                        />
                                     </div>
                                 </div>
-                            )}
 
-                            {/* Selected Day Content */}
-                            {selectedDayId && days.find(d => d.id === selectedDayId) && (
-                                <div className="space-y-4 bg-zinc-50 dark:bg-zinc-800/50 p-5 rounded-xl">
-                                    {/* Day Info */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-1">
-                                                Título del día (opcional)
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={days.find(d => d.id === selectedDayId)?.title || ''}
-                                                onChange={(e) => updateDay(selectedDayId, { title: e.target.value })}
-                                                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                                placeholder="Ej: Llegada a Cancún"
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-1">
-                                                Fecha (opcional)
-                                            </label>
-                                            <input
-                                                type="date"
-                                                value={days.find(d => d.id === selectedDayId)?.date || ''}
-                                                onChange={(e) => updateDay(selectedDayId, { date: e.target.value })}
-                                                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                                            />
+                                {/* Activities */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
+                                            Actividades del día
+                                        </h4>
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => setActivityModal({ isOpen: true, activity: null })}
+                                                className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-semibold hover:bg-green-600 transition-colors flex items-center gap-1"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">add</span>
+                                                Actividad
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteDay(selectedDayId)}
+                                                className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 transition-colors flex items-center gap-1"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">delete</span>
+                                                Eliminar día
+                                            </button>
                                         </div>
                                     </div>
 
-                                    {/* Activities */}
-                                    <div>
-                                        <div className="flex items-center justify-between mb-3">
-                                            <h4 className="text-sm font-bold text-zinc-700 dark:text-zinc-300">
-                                                Actividades del día
-                                            </h4>
-                                            <div className="flex gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setActivityModal({ isOpen: true, activity: null })}
-                                                    className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-semibold hover:bg-green-600 transition-colors flex items-center gap-1"
+                                    {items.length === 0 ? (
+                                        <p className="text-xs text-zinc-500 text-center py-8 bg-white dark:bg-zinc-900 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700">
+                                            No hay actividades. Haz clic en "+ Actividad" para agregar una.
+                                        </p>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {items.map((item, index) => (
+                                                <div
+                                                    key={item.id}
+                                                    className="bg-white dark:bg-zinc-900 p-4 rounded-lg border border-zinc-200 dark:border-zinc-700 flex items-start gap-3"
                                                 >
-                                                    <span className="material-symbols-outlined text-sm">add</span>
-                                                    Actividad
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDeleteDay(selectedDayId)}
-                                                    className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 transition-colors flex items-center gap-1"
-                                                >
-                                                    <span className="material-symbols-outlined text-sm">delete</span>
-                                                    Eliminar día
-                                                </button>
-                                            </div>
-                                        </div>
+                                                    {/* Move buttons */}
+                                                    <div className="flex flex-col gap-1">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleMoveActivity(index, 'up')}
+                                                            disabled={index === 0}
+                                                            className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                            title="Mover arriba"
+                                                        >
+                                                            <span className="material-symbols-outlined text-lg">arrow_upward</span>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleMoveActivity(index, 'down')}
+                                                            disabled={index === items.length - 1}
+                                                            className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
+                                                            title="Mover abajo"
+                                                        >
+                                                            <span className="material-symbols-outlined text-lg">arrow_downward</span>
+                                                        </button>
+                                                    </div>
 
-                                        {items.length === 0 ? (
-                                            <p className="text-xs text-zinc-500 text-center py-8 bg-white dark:bg-zinc-900 rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700">
-                                                No hay actividades. Haz clic en "+ Actividad" para agregar una.
-                                            </p>
-                                        ) : (
-                                            <div className="space-y-2">
-                                                {items.map((item, index) => (
-                                                    <div
-                                                        key={item.id}
-                                                        className="bg-white dark:bg-zinc-900 p-4 rounded-lg border border-zinc-200 dark:border-zinc-700 flex items-start gap-3"
-                                                    >
-                                                        {/* Move buttons */}
-                                                        <div className="flex flex-col gap-1">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleMoveActivity(index, 'up')}
-                                                                disabled={index === 0}
-                                                                className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
-                                                                title="Mover arriba"
-                                                            >
-                                                                <span className="material-symbols-outlined text-lg">arrow_upward</span>
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleMoveActivity(index, 'down')}
-                                                                disabled={index === items.length - 1}
-                                                                className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 disabled:opacity-30 disabled:cursor-not-allowed"
-                                                                title="Mover abajo"
-                                                            >
-                                                                <span className="material-symbols-outlined text-lg">arrow_downward</span>
-                                                            </button>
-                                                        </div>
+                                                    {/* Activity Content */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="flex-1">
+                                                                {item.time && (
+                                                                    <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary text-xs font-bold rounded mb-1">
+                                                                        {item.time}
+                                                                    </span>
+                                                                )}
+                                                                <h5 className="font-bold text-sm text-triex-grey dark:text-white">
+                                                                    {item.title}
+                                                                </h5>
+                                                                {item.description && (
+                                                                    <p className="text-xs text-zinc-500 mt-1 line-clamp-2">
+                                                                        {item.description}
+                                                                    </p>
+                                                                )}
+                                                                {item.location_name && (
+                                                                    <div className="flex items-center gap-1 mt-2 text-xs text-zinc-600 dark:text-zinc-400">
+                                                                        <span className="material-symbols-outlined text-sm">location_on</span>
+                                                                        <span>{item.location_name}</span>
+                                                                    </div>
+                                                                )}
+                                                                {(item.instructions_url || item.instructions_text) && (
+                                                                    <span className="inline-flex items-center gap-1 mt-2 text-xs text-amber-600 dark:text-amber-400 font-semibold">
+                                                                        <span className="material-symbols-outlined text-sm">info</span>
+                                                                        Tiene instrucciones
+                                                                    </span>
+                                                                )}
+                                                            </div>
 
-                                                        {/* Activity Content */}
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-start justify-between gap-2">
-                                                                <div className="flex-1">
-                                                                    {item.time && (
-                                                                        <span className="inline-block px-2 py-0.5 bg-primary/10 text-primary text-xs font-bold rounded mb-1">
-                                                                            {item.time}
-                                                                        </span>
-                                                                    )}
-                                                                    <h5 className="font-bold text-sm text-triex-grey dark:text-white">
-                                                                        {item.title}
-                                                                    </h5>
-                                                                    {item.description && (
-                                                                        <p className="text-xs text-zinc-500 mt-1 line-clamp-2">
-                                                                            {item.description}
-                                                                        </p>
-                                                                    )}
-                                                                    {item.location_name && (
-                                                                        <div className="flex items-center gap-1 mt-2 text-xs text-zinc-600 dark:text-zinc-400">
-                                                                            <span className="material-symbols-outlined text-sm">location_on</span>
-                                                                            <span>{item.location_name}</span>
-                                                                        </div>
-                                                                    )}
-                                                                    {(item.instructions_url || item.instructions_text) && (
-                                                                        <span className="inline-flex items-center gap-1 mt-2 text-xs text-amber-600 dark:text-amber-400 font-semibold">
-                                                                            <span className="material-symbols-outlined text-sm">info</span>
-                                                                            Tiene instrucciones
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-
-                                                                {/* Action Buttons */}
-                                                                <div className="flex gap-1">
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => setActivityModal({ isOpen: true, activity: item })}
-                                                                        className="p-1.5 text-zinc-400 hover:text-primary hover:bg-primary/10 rounded transition-colors"
-                                                                        title="Editar"
-                                                                    >
-                                                                        <span className="material-symbols-outlined text-lg">edit</span>
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleDeleteActivity(item.id)}
-                                                                        className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
-                                                                        title="Eliminar"
-                                                                    >
-                                                                        <span className="material-symbols-outlined text-lg">delete</span>
-                                                                    </button>
-                                                                </div>
+                                                            {/* Action Buttons */}
+                                                            <div className="flex gap-1">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setActivityModal({ isOpen: true, activity: item })}
+                                                                    className="p-1.5 text-zinc-400 hover:text-primary hover:bg-primary/10 rounded transition-colors"
+                                                                    title="Editar"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-lg">edit</span>
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleDeleteActivity(item.id)}
+                                                                    className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                                                    title="Eliminar"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-lg">delete</span>
+                                                                </button>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                            )}
+                            </div>
+                        )}
 
-                            {days.length === 0 && (
-                                <p className="text-sm text-zinc-500 text-center py-8">
-                                    Haz clic en "Agregar día" para empezar a crear el itinerario detallado
-                                </p>
-                            )}
-                        </div>
-                    )}
+                        {days.length === 0 && (
+                            <p className="text-sm text-zinc-500 text-center py-8">
+                                Haz clic en "Agregar día" para empezar a crear el itinerario detallado
+                            </p>
+                        )}
+                    </div>
 
                     <div>
                         <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">

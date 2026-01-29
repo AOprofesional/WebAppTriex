@@ -1,0 +1,20 @@
+{
+  "status": "commited",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000/https://www.triex.app",
+  "loginUser": "triexwebapp@gmail.com",
+  "loginPassword": "12345678",
+  "executionArgs": {
+    "projectName": "WebAppTriex",
+    "projectPath": "c:\\Users\\54261\\Documents\\WebAppTriex",
+    "testIds": [
+      "TC008"
+    ],
+    "additionalInstruction": "Run only TC008 to verify RLS fix",
+    "envs": {
+      "API_KEY": "sk-user-ZpP4VmM6Kywt7guvzW-69_Y5FAIGD7iE7KnTATd1rjizxhO7tcJSFc397n0gAupy52LYpL4a8H-5_8XlQDhXMqdiTy_ySN4UHzOuIYw5yZyvoiSnJqGgi9z9sGOLyBT3ZSk"
+    }
+  },
+  "proxy": "http://d7f4c25d-112b-46af-a5bc-fa6f83c4c2cd:9P0w4KiAwC9rXMINrIbQZSRtaTqeuRPW@tun.testsprite.com:8080"
+}
