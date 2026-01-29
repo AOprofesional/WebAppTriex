@@ -31,6 +31,8 @@ import { AdminPassengers } from './screens/admin/Passengers';
 import { AdminTrips } from './screens/admin/Trips';
 import { TripForm } from './screens/admin/TripForm';
 import { AdminVouchers } from './screens/admin/Vouchers';
+import { AdminDocumentRequirements } from './screens/admin/DocumentRequirements';
+import { AdminDocumentReview } from './screens/admin/DocumentReview';
 import { AdminPoints } from './screens/admin/Points';
 import { AdminCommunications } from './screens/admin/Communications';
 import { AdminUsers } from './screens/admin/Users';
@@ -140,6 +142,8 @@ const App: React.FC = () => {
           <Route path="trips/new" element={<TripForm />} />
           <Route path="trips/:id" element={<TripForm />} />
           <Route path="vouchers" element={<AdminVouchers />} />
+          <Route path="document-requirements" element={<AdminDocumentRequirements />} />
+          <Route path="document-review" element={<AdminDocumentReview />} />
           <Route path="points" element={<AdminPoints />} />
           <Route path="communications" element={<AdminCommunications />} />
           <Route path="users" element={<AdminUsers />} />

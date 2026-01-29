@@ -1,0 +1,5 @@
+# Uploaded files (local storage)
+uploads/
+
+# Keep directory structure but ignore files
+!uploads/.gitkeep

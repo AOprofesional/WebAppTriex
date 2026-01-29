@@ -32,3 +32,6 @@ Thumbs.db
 
 # Docker (opcional)
 *.pid
+
+# Tests automatizados (TestSprite)
+testsprite_tests/

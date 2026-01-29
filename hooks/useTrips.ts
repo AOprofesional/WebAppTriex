@@ -30,7 +30,7 @@ export const useTrips = () => {
 
             let query = supabase
                 .from('trips')
-                .select('*')
+                .select('*, trip_passengers(count)')
                 .is('archived_at', null)
                 .order('start_date', { ascending: false });
 
