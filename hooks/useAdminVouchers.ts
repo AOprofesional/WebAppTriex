@@ -126,32 +126,10 @@ export const useAdminVouchers = () => {
             if (insertError) throw insertError;
 
             // Upload file if provided
-            if (file) {
-                // Determine trip_id for file organization
-                let uploadTripId = voucher.trip_id;
-
-                console.log('🔍 DEBUG - voucher object:', voucher);
-                console.log('🔍 uploadTripId:', uploadTripId);
-
-                // If voucher is assigned to passenger only, get trip from passenger
-                if (!uploadTripId && voucher.passenger_id) {
-                    const { data: passengerTrip } = await supabase
-                        .from('trip_passengers')
-                        .select('trip_id')
-                        .eq('passenger_id', voucher.passenger_id)
-                        .limit(1)
-                        .single();
-
-                    uploadTripId = passengerTrip?.trip_id || 'general';
-                }
-
-                if (!uploadTripId) {
-                    uploadTripId = 'general';
-                }
-
+            if (file && voucher.trip_id) {
                 const { fileUrl, error: uploadError } = await uploadVoucher(
                     file,
-                    uploadTripId,
+                    voucher.trip_id,
                     voucher.id
                 );
 
@@ -197,29 +175,10 @@ export const useAdminVouchers = () => {
             if (updateError) throw updateError;
 
             // Upload new file if provided
-            if (file) {
-                // Determine trip_id for file organization
-                let uploadTripId = voucher.trip_id;
-
-                // If voucher is assigned to passenger only, get trip from passenger
-                if (!uploadTripId && voucher.passenger_id) {
-                    const { data: passengerTrip } = await supabase
-                        .from('trip_passengers')
-                        .select('trip_id')
-                        .eq('passenger_id', voucher.passenger_id)
-                        .limit(1)
-                        .single();
-
-                    uploadTripId = passengerTrip?.trip_id || 'general';
-                }
-
-                if (!uploadTripId) {
-                    uploadTripId = 'general';
-                }
-
+            if (file && voucher.trip_id) {
                 const { fileUrl, error: uploadError } = await uploadVoucher(
                     file,
-                    uploadTripId,
+                    voucher.trip_id,
                     id
                 );
 

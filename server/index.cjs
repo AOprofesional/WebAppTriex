@@ -114,13 +114,6 @@ app.delete('/api/delete/voucher', (req, res) => {
     }
 });
 
-// Logging middleware for debugging
-app.use('/uploads', (req, res, next) => {
-    console.log(`📥 File request: ${req.url}`);
-    console.log(`   Full path: ${path.join(__dirname, '..', 'uploads', req.url)}`);
-    next();
-});
-
 // Serve static files
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
