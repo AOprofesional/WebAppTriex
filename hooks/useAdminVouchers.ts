@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { uploadVoucher, getSignedUrl } from '../utils/storage';
+import { uploadVoucher, getSignedUrl, deleteFile } from '../utils/storage';
 
 export interface VoucherType {
     id: string;
@@ -239,6 +239,66 @@ export const useAdminVouchers = () => {
         }
     };
 
+    const restoreVoucher = async (id: string) => {
+        try {
+            setLoading(true);
+
+            const { error } = await supabase
+                .from('vouchers')
+                .update({ status: 'active' })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            await fetchAllVouchers();
+            return { error: null };
+        } catch (err: any) {
+            console.error('Error restoring voucher:', err);
+            return { error: err.message };
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const deleteVoucher = async (id: string) => {
+        try {
+            setLoading(true);
+
+            // Get voucher data first to check for file
+            const { data: voucher, error: fetchError } = await supabase
+                .from('vouchers')
+                .select('bucket, file_path')
+                .eq('id', id)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            // Delete file from storage if exists
+            if (voucher?.bucket && voucher?.file_path) {
+                const { error: storageError } = await deleteFile(voucher.bucket as any, voucher.file_path);
+                if (storageError) {
+                    console.warn('Error deleting file from storage:', storageError);
+                }
+            }
+
+            // Delete record
+            const { error: deleteError } = await supabase
+                .from('vouchers')
+                .delete()
+                .eq('id', id);
+
+            if (deleteError) throw deleteError;
+
+            await fetchAllVouchers();
+            return { error: null };
+        } catch (err: any) {
+            console.error('Error deleting voucher:', err);
+            return { error: err.message };
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const getVoucherSignedUrl = async (filePath: string) => {
         return await getSignedUrl('triex-vouchers', filePath);
     };
@@ -283,6 +343,8 @@ export const useAdminVouchers = () => {
         createVoucher,
         updateVoucher,
         archiveVoucher,
+        restoreVoucher,
+        deleteVoucher,
         getVoucherSignedUrl,
     };
 };

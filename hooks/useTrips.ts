@@ -23,6 +23,7 @@ export const useTrips = () => {
         searchTerm?: string;
         startDate?: string;
         endDate?: string;
+        status?: 'active' | 'archived' | 'all';
     }) => {
         try {
             setLoading(true);
@@ -31,17 +32,25 @@ export const useTrips = () => {
             let query = supabase
                 .from('trips')
                 .select('*, trip_passengers(count)')
-                .is('archived_at', null)
                 .order('start_date', { ascending: false });
 
+            // Status filter (active by default)
+            const status = filters?.status || 'active';
+            if (status === 'active') {
+                query = query.is('archived_at', null);
+            } else if (status === 'archived') {
+                query = query.not('archived_at', 'is', null);
+            }
+            // 'all' includes both (no filter on archived_at)
+
             if (filters) {
-                if (filters.statusOperational) {
+                if (filters.statusOperational && filters.statusOperational !== 'all') {
                     query = query.eq('status_operational', filters.statusOperational);
                 }
-                if (filters.statusCommercial) {
+                if (filters.statusCommercial && filters.statusCommercial !== 'all') {
                     query = query.eq('status_commercial', filters.statusCommercial);
                 }
-                if (filters.brandSub) {
+                if (filters.brandSub && filters.brandSub !== 'all') {
                     query = query.eq('brand_sub', filters.brandSub);
                 }
                 if (filters.searchTerm) {
@@ -132,6 +141,47 @@ export const useTrips = () => {
         }
     };
 
+    const restoreTrip = async (id: string) => {
+        try {
+            const { error: restoreError } = await supabase
+                .from('trips')
+                .update({ archived_at: null })
+                .eq('id', id);
+
+            if (restoreError) throw restoreError;
+
+            await fetchTrips();
+            return { error: null };
+        } catch (err: any) {
+            console.error('Error restoring trip:', err);
+            return { error: err.message };
+        }
+    };
+
+    const deleteTrip = async (id: string) => {
+        try {
+            // Verify admin role before attempting deletion
+            const { data: roleData, error: roleError } = await supabase.rpc('get_my_role');
+            if (roleError) throw roleError;
+            if (roleData !== 'admin' && roleData !== 'superadmin') { // Check for superadmin too just in case
+                throw new Error('Solo los administradores pueden eliminar viajes permanentemente');
+            }
+
+            const { error: deleteError } = await supabase
+                .from('trips')
+                .delete()
+                .eq('id', id);
+
+            if (deleteError) throw deleteError;
+
+            await fetchTrips();
+            return { error: null };
+        } catch (err: any) {
+            console.error('Error deleting trip:', err);
+            return { error: err.message };
+        }
+    };
+
     const getTripById = async (id: string) => {
         try {
             const { data, error: fetchError } = await supabase
@@ -202,6 +252,8 @@ export const useTrips = () => {
         createTrip,
         updateTrip,
         archiveTrip,
+        restoreTrip,
+        deleteTrip,
         getTripById,
         assignPassengers,
     };

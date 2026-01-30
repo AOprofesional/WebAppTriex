@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
 import { useAdminVouchers } from '../../hooks/useAdminVouchers';
 import { useTrips } from '../../hooks/useTrips';
 import { usePassengers } from '../../hooks/usePassengers';
@@ -18,7 +19,8 @@ export const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
 }) => {
     const { voucherTypes, fetchVoucherTypes, createVoucher, updateVoucher, loading } = useAdminVouchers();
     const { trips } = useTrips();
-    const { passengers } = usePassengers();
+    // usePassengers kept for broader context if needed, but we fetch trip specific passengers manually
+    usePassengers();
 
     const [formData, setFormData] = useState({
         title: '',
@@ -36,6 +38,8 @@ export const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
 
     const [file, setFile] = useState<File | null>(null);
     const [filePreview, setFilePreview] = useState<string | null>(null);
+    const [tripPassengers, setTripPassengers] = useState<any[]>([]);
+    const [loadingPassengers, setLoadingPassengers] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
@@ -70,6 +74,45 @@ export const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
         }
     }, [file]);
 
+    // Fetch passengers when trip_id changes
+    useEffect(() => {
+        const fetchTripPassengers = async () => {
+            if (!formData.trip_id) {
+                setTripPassengers([]);
+                return;
+            }
+
+            try {
+                setLoadingPassengers(true);
+                // Get passengers for this trip via trip_passengers table
+                const { data, error } = await supabase
+                    .from('trip_passengers')
+                    .select('passenger_id, passengers(id, first_name, last_name, email)')
+                    .eq('trip_id', formData.trip_id);
+
+                if (error) throw error;
+
+                // Format data and filter out nulls
+                const formattedPassengers = data
+                    ?.map((item: any) => item.passengers)
+                    .filter((p: any) => p !== null) || [];
+
+                // Sort by name
+                formattedPassengers.sort((a: any, b: any) => a.first_name.localeCompare(b.first_name));
+
+                setTripPassengers(formattedPassengers);
+            } catch (err) {
+                console.error("Error fetching trip passengers", err);
+            } finally {
+                setLoadingPassengers(false);
+            }
+        };
+
+        if (isOpen) {
+            fetchTripPassengers();
+        }
+    }, [formData.trip_id, isOpen]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -77,14 +120,20 @@ export const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
             title: formData.title,
             type_id: formData.type_id,
             format: formData.format,
-            trip_id: formData.assignment === 'trip' && formData.trip_id ? formData.trip_id : null,
+            trip_id: (formData.assignment === 'trip' || formData.assignment === 'passenger') && formData.trip_id ? formData.trip_id : null,
             passenger_id: formData.assignment === 'passenger' && formData.passenger_id ? formData.passenger_id : null,
             provider_name: formData.provider_name || undefined,
             service_date: formData.service_date || undefined,
             external_url: formData.format === 'link' ? formData.external_url : undefined,
-            visibility: formData.visibility,
+            visibility: formData.assignment === 'trip' ? formData.visibility : 'passenger_only', // Force passenger_only if assigned to passenger
             notes: formData.notes || undefined,
         };
+
+        // Validation logic fix: if passenger assignment, ensure trip is selected too (as context)
+        if (formData.assignment === 'passenger' && !formData.trip_id) {
+            alert('Por favor selecciona un viaje para buscar al pasajero.');
+            return;
+        }
 
         let result;
         if (voucher) {
@@ -117,6 +166,7 @@ export const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
         });
         setFile(null);
         setFilePreview(null);
+        setTripPassengers([]);
         onClose();
     };
 
@@ -186,7 +236,7 @@ export const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
                                         value={format}
                                         checked={formData.format === format}
                                         onChange={(e) => setFormData({ ...formData, format: e.target.value as any })}
-                                        className="w-4 h-4"
+                                        className="w-4 h-4 text-primary focus:ring-primary"
                                     />
                                     <span className="text-sm text-zinc-700 dark:text-zinc-300 capitalize">{format === 'image' ? 'Imagen' : format === 'link' ? 'Link Externo' : 'PDF'}</span>
                                 </label>
@@ -194,42 +244,18 @@ export const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
                         </div>
                     </div>
 
-                    {/* Assignment */}
-                    <div>
-                        <label className="block text-sm font-semibold text-triex-grey dark:text-white mb-2">
-                            Asignar a *
-                        </label>
-                        <div className="flex gap-4 mb-3">
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="assignment"
-                                    value="trip"
-                                    checked={formData.assignment === 'trip'}
-                                    onChange={() => setFormData({ ...formData, assignment: 'trip', passenger_id: '' })}
-                                    className="w-4 h-4"
-                                />
-                                <span className="text-sm text-zinc-700 dark:text-zinc-300">Todo el viaje</span>
+                    {/* Assignment Section - Reordered */}
+                    <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-100 dark:border-zinc-800">
+                        {/* 1. Select Trip - Always First */}
+                        <div>
+                            <label className="block text-sm font-semibold text-triex-grey dark:text-white mb-2">
+                                Viaje *
                             </label>
-                            <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="assignment"
-                                    value="passenger"
-                                    checked={formData.assignment === 'passenger'}
-                                    onChange={() => setFormData({ ...formData, assignment: 'passenger' })}
-                                    className="w-4 h-4"
-                                />
-                                <span className="text-sm text-zinc-700 dark:text-zinc-300">Pasajero específico</span>
-                            </label>
-                        </div>
-
-                        {formData.assignment === 'trip' ? (
                             <select
                                 value={formData.trip_id}
-                                onChange={(e) => setFormData({ ...formData, trip_id: e.target.value })}
+                                onChange={(e) => setFormData({ ...formData, trip_id: e.target.value, passenger_id: '', assignment: 'trip' })}
                                 required
-                                className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                             >
                                 <option value="">Seleccionar viaje</option>
                                 {trips.map((trip: any) => (
@@ -238,26 +264,75 @@ export const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
                                     </option>
                                 ))}
                             </select>
-                        ) : (
-                            <select
-                                value={formData.passenger_id}
-                                onChange={(e) => setFormData({ ...formData, passenger_id: e.target.value })}
-                                required
-                                className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                            >
-                                <option value="">Seleccionar pasajero</option>
-                                {passengers.map((passenger: any) => (
-                                    <option key={passenger.id} value={passenger.id}>
-                                        {passenger.first_name} {passenger.last_name}
-                                    </option>
-                                ))}
-                            </select>
+                        </div>
+
+                        {/* 2. Assignment Type (Only if trip is selected, or force selection) */}
+                        {formData.trip_id && (
+                            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                <label className="block text-sm font-semibold text-triex-grey dark:text-white mb-2">
+                                    ¿A quién aplica? *
+                                </label>
+                                <div className="flex gap-4 mb-3">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="assignment"
+                                            value="trip"
+                                            checked={formData.assignment === 'trip'}
+                                            onChange={() => setFormData({ ...formData, assignment: 'trip', passenger_id: '' })}
+                                            className="w-4 h-4 text-primary focus:ring-primary"
+                                        />
+                                        <span className="text-sm text-zinc-700 dark:text-zinc-300">Todo el grupo</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="assignment"
+                                            value="passenger"
+                                            checked={formData.assignment === 'passenger'}
+                                            onChange={() => setFormData({ ...formData, assignment: 'passenger' })}
+                                            className="w-4 h-4 text-primary focus:ring-primary"
+                                        />
+                                        <span className="text-sm text-zinc-700 dark:text-zinc-300">Pasajero específico</span>
+                                    </label>
+                                </div>
+
+                                {/* 3. Select Passenger (Only if assignment is passenger) */}
+                                {formData.assignment === 'passenger' && (
+                                    <div className="animate-in fade-in slide-in-from-top-2 duration-200 mt-3">
+                                        <label className="block text-sm font-semibold text-triex-grey dark:text-white mb-2">
+                                            Seleccionar Pasajero *
+                                        </label>
+                                        <select
+                                            value={formData.passenger_id}
+                                            onChange={(e) => setFormData({ ...formData, passenger_id: e.target.value })}
+                                            required
+                                            disabled={loadingPassengers}
+                                            className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+                                        >
+                                            <option value="">
+                                                {loadingPassengers ? 'Cargando pasajeros...' : 'Seleccionar pasajero del viaje'}
+                                            </option>
+                                            {tripPassengers.map((passenger: any) => (
+                                                <option key={passenger.id} value={passenger.id}>
+                                                    {passenger.first_name} {passenger.last_name} ({passenger.email || 'Sin email'})
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {tripPassengers.length === 0 && !loadingPassengers && (
+                                            <p className="text-xs text-orange-500 mt-1">
+                                                Este viaje no tiene pasajeros asignados aún o no se pudieron cargar.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
 
                     {/* Visibility (only for trip assignment) */}
-                    {formData.assignment === 'trip' && (
-                        <div>
+                    {formData.assignment === 'trip' && formData.trip_id && (
+                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                             <label className="block text-sm font-semibold text-triex-grey dark:text-white mb-2">
                                 Visibilidad
                             </label>
@@ -266,9 +341,10 @@ export const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
                                 onChange={(e) => setFormData({ ...formData, visibility: e.target.value as any })}
                                 className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                             >
-                                <option value="all_trip_passengers">Todos los pasajeros del viaje</option>
-                                <option value="passenger_only">Solo pasajero asignado</option>
+                                <option value="all_trip_passengers">Todos los pasajeros del viaje pueden verlo</option>
+                                <option value="passenger_only">Solo visible para administradores (Oculto)</option>
                             </select>
+                            <p className="text-xs text-zinc-500 mt-1">Define quién puede ver este voucher en la app.</p>
                         </div>
                     )}
 

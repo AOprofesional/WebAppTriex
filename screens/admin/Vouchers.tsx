@@ -5,7 +5,16 @@ import { VoucherFormModal } from '../../components/modals/VoucherFormModal';
 import { VoucherViewModal } from '../../components/modals/VoucherViewModal';
 
 export const AdminVouchers: React.FC = () => {
-    const { vouchers, voucherTypes, loading, fetchVoucherTypes, fetchAllVouchers, archiveVoucher } = useAdminVouchers();
+    const {
+        vouchers,
+        voucherTypes,
+        loading,
+        fetchVoucherTypes,
+        fetchAllVouchers,
+        archiveVoucher,
+        restoreVoucher,
+        deleteVoucher
+    } = useAdminVouchers();
     const { trips } = useTrips();
 
     const [filters, setFilters] = useState({
@@ -73,6 +82,24 @@ export const AdminVouchers: React.FC = () => {
             alert('Error al archivar: ' + error);
         } else {
             setViewModalOpen(false);
+        }
+    };
+
+    const handleRestore = async (voucher: any) => {
+        if (!confirm(`¿Restaurar el voucher "${voucher.title}"?`)) return;
+
+        const { error } = await restoreVoucher(voucher.id);
+        if (error) {
+            alert('Error al restaurar: ' + error);
+        }
+    };
+
+    const handleDelete = async (voucher: any) => {
+        if (!confirm(`¿ESTÁS SEGURO? Eliminar permanentemente el voucher "${voucher.title}" borrará el archivo asociado y NO se puede deshacer.`)) return;
+
+        const { error } = await deleteVoucher(voucher.id);
+        if (error) {
+            alert('Error al eliminar: ' + error);
         }
     };
 
@@ -323,20 +350,42 @@ export const AdminVouchers: React.FC = () => {
                                                         >
                                                             <span className="material-symbols-outlined text-lg">visibility</span>
                                                         </button>
-                                                        <button
-                                                            onClick={() => handleEdit(voucher)}
-                                                            className="p-2 text-zinc-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all"
-                                                            title="Editar"
-                                                        >
-                                                            <span className="material-symbols-outlined text-lg">edit</span>
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleArchive(voucher)}
-                                                            className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                                                            title="Archivar"
-                                                        >
-                                                            <span className="material-symbols-outlined text-lg">archive</span>
-                                                        </button>
+
+                                                        {filters.status === 'archived' ? (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => handleRestore(voucher)}
+                                                                    className="p-2 text-zinc-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all"
+                                                                    title="Restaurar"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-lg">restore_from_trash</span>
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDelete(voucher)}
+                                                                    className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                                                    title="Eliminar permanentemente"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-lg">delete_forever</span>
+                                                                </button>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => handleEdit(voucher)}
+                                                                    className="p-2 text-zinc-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-all"
+                                                                    title="Editar"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-lg">edit</span>
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleArchive(voucher)}
+                                                                    className="p-2 text-zinc-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                                                                    title="Archivar"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-lg">archive</span>
+                                                                </button>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>

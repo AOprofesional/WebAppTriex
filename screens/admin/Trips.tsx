@@ -6,7 +6,7 @@ import { TripStatusBadge } from '../../components/TripStatusBadge';
 
 export const AdminTrips: React.FC = () => {
     const navigate = useNavigate();
-    const { trips, loading, fetchTrips, archiveTrip } = useTrips();
+    const { trips, loading, fetchTrips, archiveTrip, restoreTrip, deleteTrip } = useTrips();
 
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatusCommercial, setFilterStatusCommercial] = useState('all');
@@ -15,14 +15,18 @@ export const AdminTrips: React.FC = () => {
     const [filterStartDate, setFilterStartDate] = useState('');
     const [filterEndDate, setFilterEndDate] = useState('');
 
+    const [filterStatus, setFilterStatus] = useState<'active' | 'archived'>('active');
+
     const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
-        return (localStorage.getItem('adminTripsViewMode') as 'list' | 'grid') || 'list';
+        return (localStorage.getItem('adminTripsViewMode') as 'list' | 'grid') || 'grid';
     });
 
     const toggleViewMode = (mode: 'list' | 'grid') => {
         setViewMode(mode);
         localStorage.setItem('adminTripsViewMode', mode);
     };
+
+
 
     // Apply filters whenever they change
     useEffect(() => {
@@ -35,11 +39,14 @@ export const AdminTrips: React.FC = () => {
         if (filterStartDate) filters.startDate = filterStartDate;
         if (filterEndDate) filters.endDate = filterEndDate;
 
-        fetchTrips(Object.keys(filters).length > 0 ? filters : undefined);
-    }, [searchTerm, filterStatusCommercial, filterStatusOperational, filterBrandSub, filterStartDate, filterEndDate]);
+        // Add Status filter
+        filters.status = filterStatus;
+
+        fetchTrips(Object.keys(filters).length > 0 ? filters : { status: filterStatus });
+    }, [searchTerm, filterStatusCommercial, filterStatusOperational, filterBrandSub, filterStartDate, filterEndDate, filterStatus]);
 
     const handleArchive = async (id: string, tripName: string) => {
-        if (!confirm(`¿Archivar el viaje "${tripName}"?\n\nEl viaje no se eliminará, solo se ocultará de la lista principal.`)) {
+        if (!confirm(`¿Archivar el viaje "${tripName}"?\n\nEl viaje no se eliminará, solo se moverá a la lista de archivados.`)) {
             return;
         }
 
@@ -51,7 +58,40 @@ export const AdminTrips: React.FC = () => {
         }
     };
 
+    const handleRestore = async (id: string, tripName: string) => {
+        if (!confirm(`¿Restaurar el viaje "${tripName}"?\n\nVolverá a aparecer en la lista principal.`)) {
+            return;
+        }
+
+        const { error } = await restoreTrip(id);
+        if (error) {
+            alert('Error al restaurar viaje: ' + error);
+        }
+    };
+
+    const handleDelete = async (id: string, tripName: string) => {
+        if (!confirm(`⚠ ¿ELIMINAR PERMANENTEMENTE "${tripName}"?\n\nEsta acción NO SE PUEDE DESHACER. Se borrarán todos los datos asociados (pasajeros, documentos, vouchers, etc).`)) {
+            return;
+        }
+
+        // Double check
+        const confirmName = prompt(`Para confirmar, escribe el nombre del viaje: "${tripName}"`);
+        if (confirmName !== tripName) {
+            alert('El nombre no coincide. Eliminación cancelada.');
+            return;
+        }
+
+        const { error } = await deleteTrip(id);
+        if (error) {
+            alert('Error al eliminar viaje: ' + error);
+        }
+    };
+
+
+
+
     const formatDate = (dateStr: string) => {
+        if (!dateStr) return '-';
         const date = new Date(dateStr);
         return date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
     };
@@ -97,55 +137,77 @@ export const AdminTrips: React.FC = () => {
             </div>
 
             {/* Status Operational Tabs (Top Filter) */}
-            <div className="flex gap-6 border-b border-zinc-200 dark:border-zinc-800">
-                <button
-                    onClick={() => setFilterStatusOperational('all')}
-                    className={`pb-4 text-sm font-semibold transition-all relative ${filterStatusOperational === 'all'
-                        ? 'text-primary'
-                        : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'
-                        }`}
-                >
-                    Todos
-                    {filterStatusOperational === 'all' && (
-                        <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></span>
-                    )}
-                </button>
-                <button
-                    onClick={() => setFilterStatusOperational('PREVIO')}
-                    className={`pb-4 text-sm font-semibold transition-all relative ${filterStatusOperational === 'PREVIO'
-                        ? 'text-primary'
-                        : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'
-                        }`}
-                >
-                    Previo
-                    {filterStatusOperational === 'PREVIO' && (
-                        <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></span>
-                    )}
-                </button>
-                <button
-                    onClick={() => setFilterStatusOperational('EN_CURSO')}
-                    className={`pb-4 text-sm font-semibold transition-all relative ${filterStatusOperational === 'EN_CURSO'
-                        ? 'text-primary'
-                        : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'
-                        }`}
-                >
-                    En curso
-                    {filterStatusOperational === 'EN_CURSO' && (
-                        <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></span>
-                    )}
-                </button>
-                <button
-                    onClick={() => setFilterStatusOperational('FINALIZADO')}
-                    className={`pb-4 text-sm font-semibold transition-all relative ${filterStatusOperational === 'FINALIZADO'
-                        ? 'text-primary'
-                        : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'
-                        }`}
-                >
-                    Finalizado
-                    {filterStatusOperational === 'FINALIZADO' && (
-                        <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></span>
-                    )}
-                </button>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-0">
+                <div className="flex gap-6 overflow-x-auto pb-0">
+                    <button
+                        onClick={() => setFilterStatusOperational('all')}
+                        className={`pb-4 text-sm font-semibold transition-all relative ${filterStatusOperational === 'all'
+                            ? 'text-primary'
+                            : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'
+                            }`}
+                    >
+                        Todos
+                        {filterStatusOperational === 'all' && (
+                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></span>
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setFilterStatusOperational('PREVIO')}
+                        className={`pb-4 text-sm font-semibold transition-all relative ${filterStatusOperational === 'PREVIO'
+                            ? 'text-primary'
+                            : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'
+                            }`}
+                    >
+                        Previo
+                        {filterStatusOperational === 'PREVIO' && (
+                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></span>
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setFilterStatusOperational('EN_CURSO')}
+                        className={`pb-4 text-sm font-semibold transition-all relative ${filterStatusOperational === 'EN_CURSO'
+                            ? 'text-primary'
+                            : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'
+                            }`}
+                    >
+                        En curso
+                        {filterStatusOperational === 'EN_CURSO' && (
+                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></span>
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setFilterStatusOperational('FINALIZADO')}
+                        className={`pb-4 text-sm font-semibold transition-all relative ${filterStatusOperational === 'FINALIZADO'
+                            ? 'text-primary'
+                            : 'text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'
+                            }`}
+                    >
+                        Finalizado
+                        {filterStatusOperational === 'FINALIZADO' && (
+                            <span className="absolute bottom-0 left-0 w-full h-0.5 bg-primary rounded-t-full"></span>
+                        )}
+                    </button>
+                </div>
+
+                {/* Active/Archived Toggle */}
+                <div className="flex bg-zinc-100 dark:bg-zinc-800 p-1 rounded-lg mb-2 sm:mb-0">
+                    <button
+                        onClick={() => setFilterStatus('active')}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${filterStatus === 'active'
+                            ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white'
+                            : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                    >
+                        Activos
+                    </button>
+                    <button
+                        onClick={() => setFilterStatus('archived')}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${filterStatus === 'archived'
+                            ? 'bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white'
+                            : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'}`}
+                    >
+                        Archivados
+                    </button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -346,20 +408,41 @@ export const AdminTrips: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    onClick={() => navigate(`/admin/trips/${trip.id}`)}
-                                                    className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
-                                                    title="Editar"
-                                                >
-                                                    <span className="material-symbols-outlined text-xl">edit</span>
-                                                </button>
-                                                <button
-                                                    onClick={() => handleArchive(trip.id, trip.name)}
-                                                    className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 rounded-lg transition-colors"
-                                                    title="Archivar"
-                                                >
-                                                    <span className="material-symbols-outlined text-xl">archive</span>
-                                                </button>
+                                                {filterStatus === 'archived' ? (
+                                                    <>
+                                                        <button
+                                                            onClick={() => handleRestore(trip.id, trip.name)}
+                                                            className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-green-50 dark:hover:bg-green-900/20 hover:text-green-600 dark:hover:text-green-400 rounded-lg transition-colors"
+                                                            title="Restaurar"
+                                                        >
+                                                            <span className="material-symbols-outlined text-xl">restore_from_trash</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(trip.id, trip.name)}
+                                                            className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 rounded-lg transition-colors"
+                                                            title="Eliminar permanentemente"
+                                                        >
+                                                            <span className="material-symbols-outlined text-xl">delete_forever</span>
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => navigate(`/admin/trips/${trip.id}`)}
+                                                            className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+                                                            title="Editar"
+                                                        >
+                                                            <span className="material-symbols-outlined text-xl">edit</span>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleArchive(trip.id, trip.name)}
+                                                            className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 rounded-lg transition-colors"
+                                                            title="Archivar"
+                                                        >
+                                                            <span className="material-symbols-outlined text-xl">archive</span>
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -439,20 +522,41 @@ export const AdminTrips: React.FC = () => {
                                         Ver detalle
                                     </button>
                                     <div className="flex items-center gap-1">
-                                        <button
-                                            onClick={() => navigate(`/admin/trips/${trip.id}`)}
-                                            className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
-                                            title="Editar"
-                                        >
-                                            <span className="material-symbols-outlined text-xl">edit</span>
-                                        </button>
-                                        <button
-                                            onClick={() => handleArchive(trip.id, trip.name)}
-                                            className="p-1.5 text-zinc-400 hover:text-red-500 transition-colors"
-                                            title="Archivar"
-                                        >
-                                            <span className="material-symbols-outlined text-xl">more_vert</span>
-                                        </button>
+                                        {filterStatus === 'archived' ? (
+                                            <>
+                                                <button
+                                                    onClick={() => handleRestore(trip.id, trip.name)}
+                                                    className="p-1.5 text-zinc-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+                                                    title="Restaurar"
+                                                >
+                                                    <span className="material-symbols-outlined text-xl">restore_from_trash</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(trip.id, trip.name)}
+                                                    className="p-1.5 text-zinc-400 hover:text-red-600 transition-colors"
+                                                    title="Eliminar permanentemente"
+                                                >
+                                                    <span className="material-symbols-outlined text-xl">delete_forever</span>
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button
+                                                    onClick={() => navigate(`/admin/trips/${trip.id}`)}
+                                                    className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                                                    title="Editar"
+                                                >
+                                                    <span className="material-symbols-outlined text-xl">edit</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleArchive(trip.id, trip.name)}
+                                                    className="p-1.5 text-zinc-400 hover:text-red-500 transition-colors"
+                                                    title="Archivar"
+                                                >
+                                                    <span className="material-symbols-outlined text-xl">archive</span>
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>
