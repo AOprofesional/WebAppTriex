@@ -21,16 +21,16 @@ export const VoucherViewModal: React.FC<VoucherViewModalProps> = ({
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (isOpen && voucher?.file_url) {
+        if (isOpen && voucher?.file_path) {
             loadSignedUrl();
         }
     }, [isOpen, voucher]);
 
     const loadSignedUrl = async () => {
-        if (!voucher.file_url) return;
+        if (!voucher.file_path) return;
 
         setLoading(true);
-        const { url } = await getVoucherSignedUrl(voucher.file_url);
+        const { url } = await getVoucherSignedUrl(voucher.file_path);
         setSignedUrl(url);
         setLoading(false);
     };

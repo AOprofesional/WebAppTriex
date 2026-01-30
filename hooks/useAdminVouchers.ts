@@ -17,7 +17,10 @@ export interface AdminVoucher {
     provider_name: string | null;
     service_date: string | null;
     format: 'pdf' | 'image' | 'link';
-    file_url: string | null;
+    bucket: string | null;
+    file_path: string | null;
+    mime_type: string | null;
+    size: number | null;
     external_url: string | null;
     notes: string | null;
     visibility: 'passenger_only' | 'all_trip_passengers';
@@ -117,8 +120,11 @@ export const useAdminVouchers = () => {
                 .from('vouchers')
                 .insert([{
                     ...voucherData,
-                    file_url: file ? 'temp' : null,
-                    status: 'active'
+                    status: 'active',
+                    bucket: file ? 'triex-vouchers' : null,
+                    file_path: null,
+                    mime_type: null,
+                    size: null
                 }])
                 .select()
                 .single();
@@ -127,18 +133,23 @@ export const useAdminVouchers = () => {
 
             // Upload file if provided
             if (file && voucher.trip_id) {
-                const { fileUrl, error: uploadError } = await uploadVoucher(
+                const uploadResult = await uploadVoucher(
                     file,
                     voucher.trip_id,
                     voucher.id
                 );
 
-                if (uploadError) throw new Error(uploadError);
+                if (uploadResult.error) throw new Error(uploadResult.error);
 
-                // Update voucher with file URL
+                // Update voucher with file metadata
                 const { error: updateError } = await supabase
                     .from('vouchers')
-                    .update({ file_url: fileUrl })
+                    .update({
+                        bucket: uploadResult.bucket,
+                        file_path: uploadResult.filePath,
+                        mime_type: uploadResult.mimeType,
+                        size: uploadResult.size
+                    })
                     .eq('id', voucher.id);
 
                 if (updateError) throw updateError;
@@ -176,17 +187,22 @@ export const useAdminVouchers = () => {
 
             // Upload new file if provided
             if (file && voucher.trip_id) {
-                const { fileUrl, error: uploadError } = await uploadVoucher(
+                const uploadResult = await uploadVoucher(
                     file,
                     voucher.trip_id,
                     id
                 );
 
-                if (uploadError) throw new Error(uploadError);
+                if (uploadResult.error) throw new Error(uploadResult.error);
 
                 const { error: fileUpdateError } = await supabase
                     .from('vouchers')
-                    .update({ file_url: fileUrl })
+                    .update({
+                        bucket: uploadResult.bucket,
+                        file_path: uploadResult.filePath,
+                        mime_type: uploadResult.mimeType,
+                        size: uploadResult.size
+                    })
                     .eq('id', id);
 
                 if (fileUpdateError) throw fileUpdateError;
@@ -223,8 +239,8 @@ export const useAdminVouchers = () => {
         }
     };
 
-    const getVoucherSignedUrl = async (fileUrl: string) => {
-        return await getSignedUrl('triex-vouchers', fileUrl);
+    const getVoucherSignedUrl = async (filePath: string) => {
+        return await getSignedUrl('triex-vouchers', filePath);
     };
 
     const createVoucherNotifications = async (voucher: any) => {

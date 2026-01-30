@@ -2,66 +2,120 @@ import { supabase } from '../lib/supabase';
 
 /**
  * Upload a voucher file to Supabase Storage
+ * Returns full metadata for database storage
  */
 export const uploadVoucher = async (
     file: File,
     tripId: string,
     voucherId: string
-): Promise<{ fileUrl: string | null; error: string | null }> => {
+): Promise<{
+    bucket: string | null;
+    filePath: string | null;
+    mimeType: string | null;
+    size: number | null;
+    error: string | null;
+}> => {
     try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${file.name}`;
-        const filePath = `trips/${tripId}/vouchers/${voucherId}/${fileName}`;
+        const timestamp = Date.now();
+        const sanitizedName = file.name.toLowerCase().replace(/[^a-z0-9.-]/g, '_');
+        const fileName = `${timestamp}-${sanitizedName}`;
+        const filePath = `trips/${tripId}/${voucherId}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
             .from('triex-vouchers')
             .upload(filePath, file, {
                 cacheControl: '3600',
                 upsert: false,
+                contentType: file.type
             });
 
         if (uploadError) {
             console.error('Upload error:', uploadError);
-            return { fileUrl: null, error: uploadError.message };
+            return {
+                bucket: null,
+                filePath: null,
+                mimeType: null,
+                size: null,
+                error: uploadError.message
+            };
         }
 
-        return { fileUrl: filePath, error: null };
+        return {
+            bucket: 'triex-vouchers',
+            filePath,
+            mimeType: file.type,
+            size: file.size,
+            error: null
+        };
     } catch (err: any) {
         console.error('Exception during upload:', err);
-        return { fileUrl: null, error: err.message };
+        return {
+            bucket: null,
+            filePath: null,
+            mimeType: null,
+            size: null,
+            error: err.message
+        };
     }
 };
 
 /**
  * Upload a document file to Supabase Storage
+ * Returns full metadata for database storage
  */
 export const uploadDocument = async (
     file: File,
     tripId: string,
     passengerId: string,
     documentId: string
-): Promise<{ fileUrl: string | null; error: string | null }> => {
+): Promise<{
+    bucket: string | null;
+    filePath: string | null;
+    mimeType: string | null;
+    size: number | null;
+    error: string | null;
+}> => {
     try {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Date.now()}_${file.name}`;
-        const filePath = `trips/${tripId}/passengers/${passengerId}/docs/${documentId}/${fileName}`;
+        const timestamp = Date.now();
+        const sanitizedName = file.name.toLowerCase().replace(/[^a-z0-9.-]/g, '_');
+        const fileName = `${timestamp}-${sanitizedName}`;
+        const filePath = `trips/${tripId}/passengers/${passengerId}/${documentId}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
             .from('triex-documents')
             .upload(filePath, file, {
                 cacheControl: '3600',
                 upsert: false,
+                contentType: file.type
             });
 
         if (uploadError) {
             console.error('Upload error:', uploadError);
-            return { fileUrl: null, error: uploadError.message };
+            return {
+                bucket: null,
+                filePath: null,
+                mimeType: null,
+                size: null,
+                error: uploadError.message
+            };
         }
 
-        return { fileUrl: filePath, error: null };
+        return {
+            bucket: 'triex-documents',
+            filePath,
+            mimeType: file.type,
+            size: file.size,
+            error: null
+        };
     } catch (err: any) {
         console.error('Exception during upload:', err);
-        return { fileUrl: null, error: err.message };
+        return {
+            bucket: null,
+            filePath: null,
+            mimeType: null,
+            size: null,
+            error: err.message
+        };
     }
 };
 

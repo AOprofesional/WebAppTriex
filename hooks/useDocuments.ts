@@ -25,7 +25,10 @@ export interface PassengerDocument {
     passenger_id: string;
     required_document_id: string;
     format: 'pdf' | 'image';
-    file_url: string;
+    bucket: string | null;
+    file_path: string | null;
+    mime_type: string | null;
+    size: number | null;
     status: 'pending' | 'uploaded' | 'approved' | 'rejected';
     review_comment: string | null;
     uploaded_at: string | null;
@@ -152,9 +155,12 @@ export const useDocuments = () => {
                 .from('passenger_documents')
                 .insert([{
                     ...data,
-                    file_url: 'temp', // Temporary value
                     status: 'uploaded',
-                    uploaded_at: new Date().toISOString()
+                    uploaded_at: new Date().toISOString(),
+                    bucket: 'triex-documents',
+                    file_path: null,
+                    mime_type: null,
+                    size: null
                 }])
                 .select()
                 .single();
@@ -171,10 +177,15 @@ export const useDocuments = () => {
 
             if (uploadResult.error) throw new Error(uploadResult.error);
 
-            // Update document with file URL
+            // Update document with file metadata
             const { error: updateError } = await supabase
                 .from('passenger_documents')
-                .update({ file_url: uploadResult.fileUrl })
+                .update({
+                    bucket: uploadResult.bucket,
+                    file_path: uploadResult.filePath,
+                    mime_type: uploadResult.mimeType,
+                    size: uploadResult.size
+                })
                 .eq('id', doc.id);
 
             if (updateError) throw updateError;
@@ -240,8 +251,8 @@ export const useDocuments = () => {
         }
     };
 
-    const getDocumentSignedUrl = async (fileUrl: string) => {
-        return await getSignedUrl('triex-documents', fileUrl);
+    const getDocumentSignedUrl = async (filePath: string) => {
+        return await getSignedUrl('triex-documents', filePath);
     };
 
     return {
