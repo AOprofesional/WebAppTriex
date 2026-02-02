@@ -9,10 +9,10 @@ import { useAuth } from '../contexts/AuthContext';
  */
 export const RoleRedirect: React.FC = () => {
     const navigate = useNavigate();
-    const { user, role, loading } = useAuth();
+    const { user, role, loading, roleLoading } = useAuth();
 
     useEffect(() => {
-        if (loading) return;
+        if (loading || roleLoading) return;
 
         if (!user) {
             navigate('/login');
@@ -25,7 +25,7 @@ export const RoleRedirect: React.FC = () => {
         } else {
             navigate('/');
         }
-    }, [user, role, loading, navigate]);
+    }, [user, role, loading, roleLoading, navigate]);
 
     // Show loading while determining redirect
     return (

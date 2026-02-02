@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Stat Card Component
@@ -73,8 +73,15 @@ const ActivityItem: React.FC<{
     </div>
 );
 
+import { CreatePassengerModal } from '../../components/CreatePassengerModal';
+import { VoucherFormModal } from '../../components/modals/VoucherFormModal';
+
+// ... (StatCard, QuickAction, ActivityItem components remain unchanged)
+
 export const AdminDashboard: React.FC = () => {
     const navigate = useNavigate();
+    const [isPassengerModalOpen, setIsPassengerModalOpen] = useState(false);
+    const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
 
     // Mock data
     const stats = [
@@ -102,8 +109,8 @@ export const AdminDashboard: React.FC = () => {
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-3">
                 <QuickAction label="Crear viaje" icon="add" onClick={() => navigate('/admin/trips/new')} />
-                <QuickAction label="Crear pasajero" icon="person_add" onClick={() => navigate('/admin/passengers/new')} />
-                <QuickAction label="Cargar voucher" icon="upload_file" onClick={() => navigate('/admin/vouchers/new')} />
+                <QuickAction label="Crear pasajero" icon="person_add" onClick={() => setIsPassengerModalOpen(true)} />
+                <QuickAction label="Cargar voucher" icon="upload_file" onClick={() => setIsVoucherModalOpen(true)} />
             </div>
 
             {/* Stats Grid */}
@@ -143,8 +150,8 @@ export const AdminDashboard: React.FC = () => {
                                     <p className="text-xs text-zinc-400">{trip.passengers} pasajeros</p>
                                 </div>
                                 <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${trip.status === 'confirmado'
-                                        ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                                        : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
+                                    ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                    : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
                                     }`}>
                                     {trip.status === 'confirmado' ? 'Confirmado' : 'En proceso'}
                                 </span>
@@ -184,6 +191,17 @@ export const AdminDashboard: React.FC = () => {
                     Revisar ahora
                 </button>
             </div>
+
+            {/* Modals */}
+            <CreatePassengerModal
+                isOpen={isPassengerModalOpen}
+                onClose={() => setIsPassengerModalOpen(false)}
+            />
+            <VoucherFormModal
+                isOpen={isVoucherModalOpen}
+                onClose={() => setIsVoucherModalOpen(false)}
+                onSuccess={() => setIsVoucherModalOpen(false)}
+            />
         </div>
     );
 };

@@ -45,9 +45,7 @@ export const Login: React.FC = () => {
             if (error) throw error;
 
             if (data.user) {
-                setTimeout(() => {
-                    navigate('/app');
-                }, 500);
+                navigate('/app');
             }
         } catch (err: any) {
             console.error('Login error:', err);

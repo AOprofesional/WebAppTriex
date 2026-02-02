@@ -19,6 +19,7 @@ export interface NextStep {
 export const usePassengerTrips = () => {
     const [trips, setTrips] = useState<Trip[]>([]);
     const [primaryTrip, setPrimaryTrip] = useState<Trip | null>(null);
+    const [passenger, setPassenger] = useState<{ id: string; first_name: string; last_name: string } | null>(null);
     const [nextStep, setNextStep] = useState<NextStep | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -39,12 +40,14 @@ export const usePassengerTrips = () => {
             // Get passenger record for current user
             const { data: passenger, error: passengerError } = await supabase
                 .from('passengers')
-                .select('id')
+                .select('id, first_name, last_name')
                 .eq('profile_id', user.id)
                 .single();
 
             if (passengerError) throw passengerError;
             if (!passenger) throw new Error('No passenger record found');
+
+            setPassenger(passenger);
 
             // Get trips for this passenger
             const { data: tripPassengers, error: tpError } = await supabase
@@ -101,6 +104,7 @@ export const usePassengerTrips = () => {
     return {
         trips,
         primaryTrip,
+        passenger, // Expose passenger data
         nextStep,
         loading,
         error,

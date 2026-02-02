@@ -3,10 +3,15 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
 import { useVouchers } from '../hooks/useVouchers';
+import { usePassengerTrips } from '../hooks/usePassengerTrips';
 
 export const Vouchers: React.FC = () => {
   const navigate = useNavigate();
-  const { vouchers, loading } = useVouchers();
+  const { primaryTrip, passenger } = usePassengerTrips();
+  const { vouchers, loading } = useVouchers({
+    tripId: primaryTrip?.id,
+    passengerId: passenger?.id
+  });
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   // Filter vouchers by category
@@ -77,8 +82,8 @@ export const Vouchers: React.FC = () => {
             <button
               onClick={() => setSelectedCategory(null)}
               className={`px-4 py-2 rounded-full font-bold text-[13px] whitespace-nowrap transition-all ${!selectedCategory
-                  ? 'bg-[#3D3935] text-white'
-                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                ? 'bg-[#3D3935] text-white'
+                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                 }`}
             >
               Todos ({vouchers.length})
@@ -88,8 +93,8 @@ export const Vouchers: React.FC = () => {
                 key={category}
                 onClick={() => setSelectedCategory(category)}
                 className={`px-4 py-2 rounded-full font-bold text-[13px] whitespace-nowrap transition-all flex items-center gap-1.5 ${selectedCategory === category
-                    ? 'bg-[#3D3935] text-white'
-                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                  ? 'bg-[#3D3935] text-white'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
                   }`}
               >
                 <span className="material-symbols-outlined text-[16px]">

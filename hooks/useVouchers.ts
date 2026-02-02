@@ -48,11 +48,17 @@ export function useVouchers(filters?: UseVouchersFilters) {
                 .eq('status', 'active')
                 .order('created_at', { ascending: false });
 
-            if (filters?.tripId) {
-                query = query.eq('trip_id', filters.tripId);
-            }
-            if (filters?.passengerId) {
-                query = query.eq('passenger_id', filters.passengerId);
+            if (filters?.passengerId && filters?.tripId) {
+                // Passenger context: Fetch Trip Vouchers OR Personal Vouchers
+                query = query.or(`and(trip_id.eq.${filters.tripId},passenger_id.is.null),passenger_id.eq.${filters.passengerId}`);
+            } else {
+                // Admin context: Strict filtering
+                if (filters?.tripId) {
+                    query = query.eq('trip_id', filters.tripId);
+                }
+                if (filters?.passengerId) {
+                    query = query.eq('passenger_id', filters.passengerId);
+                }
             }
 
             const { data, error: fetchError } = await query;

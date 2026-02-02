@@ -7,6 +7,7 @@ interface AuthContextType {
     session: Session | null;
     loading: boolean;
     role: string | null;
+    roleLoading: boolean;
     isArchived: boolean;
     signOut: () => Promise<void>;
     refreshRole: () => Promise<void>;
@@ -19,12 +20,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
     const [role, setRole] = useState<string | null>(null);
+    const [roleLoading, setRoleLoading] = useState(true);
     const [isArchived, setIsArchived] = useState(false);
 
     // Function to fetch and update role
     const refreshRole = async () => {
+        setRoleLoading(true);
         if (!user) {
             setRole(null);
+            setRoleLoading(false);
             return;
         }
 
@@ -33,10 +37,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (error) {
             console.error('Error getting user role:', error);
             setRole(null);
-            return;
+        } else {
+            setRole(data);
         }
-
-        setRole(data);
+        setRoleLoading(false);
     };
 
     // Function to check if passenger is archived
@@ -93,6 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         session,
         loading,
         role,
+        roleLoading,
         isArchived,
         signOut,
         refreshRole,

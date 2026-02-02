@@ -1,14 +1,17 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MOCK_USER } from '../constants';
 import { usePassengerTrips } from '../hooks/usePassengerTrips';
+import { usePassenger } from '../hooks/usePassenger';
 import { NextStepCard } from '../components/NextStepCard';
 import { TripStatusBadge } from '../components/TripStatusBadge';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
-  const { primaryTrip, nextStep, loading } = usePassengerTrips();
+  const { primaryTrip, nextStep, loading: loadingTrips } = usePassengerTrips();
+  const { passenger, loading: loadingPassenger } = usePassenger();
+
+  const loading = loadingTrips || loadingPassenger;
 
   // Format date range
   const formatDateRange = (startDate: string, endDate: string) => {
@@ -42,7 +45,7 @@ export const Home: React.FC = () => {
       {/* Saludo */}
       <section className="pt-2">
         <h1 className="text-[30px] font-extrabold tracking-tight text-triex-grey dark:text-white leading-tight">
-          Hola, {MOCK_USER.name.split(' ')[0]} 👋
+          Hola, {passenger?.first_name || 'Viajero'} 👋
         </h1>
         <p className="text-[#7E8CA0] dark:text-zinc-400 text-[16px] font-medium mt-1">
           ¡Qué bueno volver a verte!
@@ -173,7 +176,8 @@ export const Home: React.FC = () => {
           <div>
             <p className="text-[13px] font-bold text-zinc-500 dark:text-zinc-400">Tus puntos</p>
             <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-[32px] font-black text-triex-grey dark:text-white leading-none">1.250</span>
+              <span className="text-[32px] font-black text-triex-grey dark:text-white leading-none">0</span>
+              {/* TODO: Connect to real points system when available */}
               <span className="text-[12px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded tracking-tighter">PTS</span>
             </div>
           </div>

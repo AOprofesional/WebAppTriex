@@ -31,8 +31,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false })
 
     const vouchersSubItems = [
         { label: 'Vouchers', icon: 'confirmation_number', path: '/admin/vouchers' },
-        { label: 'Requisitos Docs', icon: 'checklist', path: '/admin/document-requirements' },
-        { label: 'Revisar Docs', icon: 'fact_check', path: '/admin/document-review' },
+        { label: 'Documentos', icon: 'description', path: '/admin/documents' },
     ];
 
     const isActive = (path: string) => {

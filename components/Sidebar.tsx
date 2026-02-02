@@ -4,6 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { LOGO_URL, MOCK_USER, AVATAR_URL } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 import { useRole } from '../hooks/useRole';
+import { usePassenger } from '../hooks/usePassenger';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -15,6 +16,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const location = useLocation();
   const { signOut } = useAuth();
   const { isStaff } = useRole();
+  const { passenger } = usePassenger(); // Use custom hook
+
 
   const menuItems = [
     { label: 'Inicio', icon: 'home', path: '/' },
@@ -69,8 +72,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <img src={AVATAR_URL} alt="Avatar de Camila" className="w-full h-full object-cover" />
           </div>
           <div>
-            <h3 className="font-bold text-zinc-800 dark:text-white text-sm">{MOCK_USER.name}</h3>
-            <p className="text-[10px] font-bold text-primary uppercase tracking-wider">{MOCK_USER.points} PUNTOS</p>
+            <div>
+              <h3 className="font-bold text-zinc-800 dark:text-white text-sm">
+                {passenger ? `${passenger.first_name} ${passenger.last_name}` : 'Cargando...'}
+              </h3>
+              <p className="text-[10px] font-bold text-primary uppercase tracking-wider">
+                VIAJERO FRECUENTE {/* Placeholder until points are real */}
+              </p>
+            </div>
           </div>
         </div>
 

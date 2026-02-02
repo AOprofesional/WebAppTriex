@@ -327,7 +327,7 @@ export const MyTrip: React.FC = () => {
               ))}
             </div>
             <button
-              onClick={() => navigate('/mytrip')}
+              onClick={() => navigate('/upload')}
               className="w-full mt-5 bg-[#E0592A] hover:bg-[#F06A3B] text-white py-4 rounded-[20px] font-bold transition-all active:scale-[0.98]"
             >
               Cargar Documentación

@@ -24,7 +24,7 @@ export const AdminDocumentReview: React.FC = () => {
 
     const handleViewDocument = async (doc: any) => {
         setSelectedDoc(doc);
-        const { signedUrl: url } = await getDocumentSignedUrl(doc.file_url);
+        const { url } = await getDocumentSignedUrl(doc.file_url);
         setSignedUrl(url);
     };
 
@@ -103,10 +103,10 @@ export const AdminDocumentReview: React.FC = () => {
                             <span className="material-symbols-outlined text-3xl text-zinc-400">fact_check</span>
                         </div>
                         <h3 className="text-lg font-bold text-triex-grey dark:text-white mb-2">
-                            No hay documentos
+                            Bandeja de revisión vacía
                         </h3>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                            No se encontraron documentos con los filtros aplicados
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 max-w-md mx-auto">
+                            Aquí solo aparecen los archivos que los pasajeros ya han subido. Si ningún pasajero ha subido nada todavía, esta pantalla estará vacía.
                         </p>
                     </div>
                 ) : (
@@ -132,8 +132,8 @@ export const AdminDocumentReview: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${doc.status === 'approved' ? 'bg-green-50 text-green-600' :
-                                                    doc.status === 'rejected' ? 'bg-red-50 text-red-600' :
-                                                        'bg-amber-50 text-amber-600'
+                                                doc.status === 'rejected' ? 'bg-red-50 text-red-600' :
+                                                    'bg-amber-50 text-amber-600'
                                                 }`}>
                                                 {doc.status === 'approved' ? 'Aprobado' : doc.status === 'rejected' ? 'Rechazado' : 'En revisión'}
                                             </span>

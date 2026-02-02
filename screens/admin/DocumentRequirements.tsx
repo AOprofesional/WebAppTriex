@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useDocuments } from '../../hooks/useDocuments';
 import { useTrips } from '../../hooks/useTrips';
 
@@ -8,8 +9,14 @@ export const AdminDocumentRequirements: React.FC = () => {
     const [selectedTripId, setSelectedTripId] = useState<string>('');
     const [requirements, setRequirements] = useState<any[]>([]);
 
+    const location = useLocation();
+
     useEffect(() => {
         fetchDocumentTypes();
+        // Check for tripId in location state
+        if (location.state && (location.state as any).tripId) {
+            setSelectedTripId((location.state as any).tripId);
+        }
     }, []);
 
     useEffect(() => {

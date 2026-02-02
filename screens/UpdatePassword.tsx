@@ -14,14 +14,68 @@ export const UpdatePassword: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        // Check if user came from password reset email
-        const checkSession = async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setError('El enlace de recuperación ha expirado o es inválido.');
+        const handleRecovery = async () => {
+            const hash = window.location.hash;
+            console.log('UpdatePassword mounted. Hash:', hash);
+
+            // Manual parsing to handle potential HashRouter "double hash" issues
+            // structure might be: #/update-password#access_token=... or #access_token=...
+            const extractParam = (paramName: string) => {
+                const regex = new RegExp(`[#&]${paramName}=([^&]*)`);
+                const match = hash.match(regex);
+                return match ? match[1] : null;
+            };
+
+            const accessToken = extractParam('access_token');
+            const refreshToken = extractParam('refresh_token');
+
+            if (accessToken && refreshToken) {
+                console.log('Manual token extraction successful. Setting session...');
+                try {
+                    const { data, error } = await supabase.auth.setSession({
+                        access_token: accessToken,
+                        refresh_token: refreshToken,
+                    });
+
+                    if (error) {
+                        console.error('Error setting session manually:', error);
+                        setError('Error al restablecer la sesión. El enlace podría ser inválido.');
+                    } else if (data.session) {
+                        console.log('Session successfully established manually.');
+                        setError(null);
+                    }
+                } catch (err) {
+                    console.error('Exception setting session:', err);
+                }
+            } else {
+                // Determine if we should be waiting or if it's just a raw view without tokens
+                const hasRecoveryParams = hash.includes('type=recovery') || hash.includes('access_token');
+                if (hasRecoveryParams) {
+                    console.log('Recovery params detected but extraction failed or incomplete. Waiting for auto-detect...');
+                } else {
+                    // No tokens found, check for existing session
+                    const { data: { session } } = await supabase.auth.getSession();
+                    console.log('Initial session check (no manual tokens):', session ? 'Session found' : 'No session');
+                    if (!session) {
+                        setError('El enlace de recuperación ha expirado o es inválido.');
+                    }
+                }
             }
         };
-        checkSession();
+
+        // Listen for auth state changes as backup and for subsequent events
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+            console.log('Auth state changed:', event, session ? 'Session active' : 'No session');
+            if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
+                setError(null);
+            }
+        });
+
+        handleRecovery();
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []);
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -43,6 +97,14 @@ export const UpdatePassword: React.FC = () => {
         setIsLoading(true);
 
         try {
+            // Verify session exists before attempting update
+            const { data: { session } } = await supabase.auth.getSession();
+
+            if (!session) {
+                console.error('No session found during update attempt');
+                throw new Error('Auth session missing!');
+            }
+
             const { error } = await supabase.auth.updateUser({
                 password: password,
             });
@@ -57,7 +119,19 @@ export const UpdatePassword: React.FC = () => {
             }, 3000);
         } catch (err: any) {
             console.error('Update password error:', err);
-            setError(err.message || 'Error al actualizar la contraseña');
+
+            let message = 'Error al actualizar la contraseña';
+
+            // Translate common Supabase errors
+            if (err.message === 'Auth session missing!') {
+                message = 'La sesión ha expirado o no se pudo establecer. Por favor solicita un nuevo enlace.';
+            } else if (err.message === 'New password should be different from the old password.') {
+                message = 'La nueva contraseña debe ser diferente a la anterior.';
+            } else if (err.message.includes('Password should be at least')) {
+                message = 'La contraseña debe tener al menos 8 caracteres.';
+            }
+
+            setError(message);
         } finally {
             setIsLoading(false);
         }

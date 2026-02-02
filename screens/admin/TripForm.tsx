@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTrips } from '../../hooks/useTrips';
 import { useItineraryDays, ItineraryDay } from '../../hooks/useItineraryDays';
 import { useItineraryItems, ItineraryItem } from '../../hooks/useItineraryItems';
+import { useDocuments } from '../../hooks/useDocuments';
 import { supabase } from '../../lib/supabase';
 import { NextStepCard } from '../../components/NextStepCard';
 import { ActivityModal } from '../../components/ActivityModal';
@@ -43,6 +44,12 @@ export const TripForm: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { createTrip, updateTrip, getTripById, assignPassengers } = useTrips();
+    const {
+        fetchRequiredDocuments,
+        fetchPassengerDocuments,
+        requiredDocuments,
+        passengerDocuments
+    } = useDocuments();
 
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -71,7 +78,7 @@ export const TripForm: React.FC = () => {
         end_date: '',
         trip_type: 'EGRESADOS',
         brand_sub: 'Triex Egresados',
-        status_commercial: 'CON_CUPO',
+        status_commercial: 'ABIERTO',
         general_itinerary: '',
         includes_text: '',
         excludes_text: '',
@@ -92,6 +99,9 @@ export const TripForm: React.FC = () => {
         if (id) {
             loadTripData();
             fetchDays();
+            // Fetch documents data
+            fetchRequiredDocuments(id);
+            fetchPassengerDocuments({ tripId: id });
         }
         loadPassengers();
     }, [id]);
@@ -122,7 +132,7 @@ export const TripForm: React.FC = () => {
                 end_date: data.end_date || '',
                 trip_type: data.trip_type || 'EGRESADOS',
                 brand_sub: data.brand_sub || 'Triex Egresados',
-                status_commercial: data.status_commercial || 'CON_CUPO',
+                status_commercial: data.status_commercial || 'ABIERTO',
                 general_itinerary: data.general_itinerary || '',
                 includes_text: data.includes_text || '',
                 excludes_text: data.excludes_text || '',
@@ -360,13 +370,25 @@ export const TripForm: React.FC = () => {
                         {id ? 'Modifica los detalles del viaje' : 'Completa los detalles del nuevo viaje'}
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={() => navigate('/admin/trips')}
-                    className="px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"
-                >
-                    Cancelar
-                </button>
+                <div className="flex items-center gap-3">
+                    {id && (
+                        <button
+                            type="button"
+                            onClick={() => navigate('/admin/document-requirements', { state: { tripId: id } })}
+                            className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-sm font-semibold hover:bg-indigo-100 transition-colors flex items-center gap-2"
+                        >
+                            <span className="material-symbols-outlined text-lg">description</span>
+                            Configurar Documentos
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => navigate('/admin/trips')}
+                        className="px-4 py-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                </div>
             </div>
 
             {/* Section A: Datos Básicos */}
@@ -456,6 +478,8 @@ export const TripForm: React.FC = () => {
                             <option value="CORPORATIVO">Corporativo</option>
                             <option value="FAMILIAR">Familiar</option>
                             <option value="GRUPO">Grupo</option>
+                            <option value="GRUPAL">Grupal (Legacy)</option>
+                            <option value="INDIVIDUAL">Individual (Legacy)</option>
                         </select>
                     </div>
 
@@ -492,8 +516,8 @@ export const TripForm: React.FC = () => {
                             onChange={(e) => handleInputChange('status_commercial', e.target.value)}
                             className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         >
-                            <option value="CON_CUPO">Con Cupo</option>
-                            <option value="SIN_CUPO">Sin Cupo</option>
+                            <option value="ABIERTO">Con Cupo (Abierto)</option>
+                            <option value="COMPLETO">Sin Cupo (Completo)</option>
                             <option value="CERRADO">Cerrado</option>
                         </select>
                     </div>
@@ -978,27 +1002,68 @@ export const TripForm: React.FC = () => {
                             {passengerSearch ? 'No se encontraron pasajeros' : 'No hay pasajeros disponibles'}
                         </p>
                     ) : (
-                        filteredPassengers.map(passenger => (
-                            <label
-                                key={passenger.id}
-                                className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-900 rounded-lg cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-                            >
-                                <input
-                                    type="checkbox"
-                                    checked={selectedPassengers.includes(passenger.id)}
-                                    onChange={() => togglePassenger(passenger.id)}
-                                    className="w-5 h-5 text-primary border-zinc-300 rounded focus:ring-2 focus:ring-primary/20"
-                                />
-                                <div className="flex-1">
-                                    <div className="font-semibold text-triex-grey dark:text-white text-sm">
-                                        {passenger.first_name} {passenger.last_name}
+                        filteredPassengers.map(passenger => {
+                            // Calculate document status
+                            const passengerDocs = passengerDocuments.filter(pd => pd.passenger_id === passenger.id);
+                            const requiredDocs = requiredDocuments.filter(rd => rd.is_required);
+
+                            const isComplete = requiredDocs.length > 0 && requiredDocs.every(req => {
+                                const doc = passengerDocs.find(pd => pd.required_document_id === req.id);
+                                return doc && (doc.status === 'approved' || doc.status === 'uploaded');
+                            });
+
+                            const hasPending = passengerDocs.some(pd => pd.status === 'uploaded');
+                            const hasRejected = passengerDocs.some(pd => pd.status === 'rejected');
+
+                            let statusColor = 'text-zinc-400';
+                            let statusIcon = 'check_circle';
+                            let statusText = 'Sin datos';
+
+                            if (requiredDocs.length === 0) {
+                                statusText = 'No requiere doc.';
+                            } else if (isComplete) {
+                                statusColor = 'text-green-500';
+                                statusText = 'Completo';
+                            } else if (hasRejected) {
+                                statusColor = 'text-red-500';
+                                statusIcon = 'error';
+                                statusText = 'Rechazado';
+                            } else if (hasPending) {
+                                statusColor = 'text-amber-500';
+                                statusIcon = 'schedule';
+                                statusText = 'Pendiente revisión';
+                            } else {
+                                statusText = 'Incompleto';
+                            }
+
+                            return (
+                                <label
+                                    key={passenger.id}
+                                    className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-900 rounded-lg cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedPassengers.includes(passenger.id)}
+                                        onChange={() => togglePassenger(passenger.id)}
+                                        className="w-5 h-5 text-primary border-zinc-300 rounded focus:ring-2 focus:ring-primary/20"
+                                    />
+                                    <div className="flex-1">
+                                        <div className="font-semibold text-triex-grey dark:text-white text-sm">
+                                            {passenger.first_name} {passenger.last_name}
+                                        </div>
+                                        <div className="text-xs text-zinc-500">
+                                            {passenger.email}
+                                        </div>
                                     </div>
-                                    <div className="text-xs text-zinc-500">
-                                        {passenger.email}
-                                    </div>
-                                </div>
-                            </label>
-                        ))
+                                    {id && selectedPassengers.includes(passenger.id) && (
+                                        <div className={`flex items-center gap-1 text-xs font-semibold ${statusColor}`} title={statusText}>
+                                            <span className="material-symbols-outlined text-base">{statusIcon}</span>
+                                            <span className="hidden sm:inline">{statusText}</span>
+                                        </div>
+                                    )}
+                                </label>
+                            );
+                        })
                     )}
                 </div>
             </div>

@@ -92,9 +92,17 @@ export const useDocuments = () => {
 
             // Insert new requirements
             if (requirements.length > 0) {
+                const cleanRequirements = requirements.map(req => ({
+                    trip_id: tripId,
+                    doc_type_id: req.doc_type_id,
+                    is_required: req.is_required,
+                    description: req.description,
+                    due_date: req.due_date
+                }));
+
                 const { error } = await supabase
                     .from('required_documents')
-                    .insert(requirements.map(req => ({ ...req, trip_id: tripId })));
+                    .insert(cleanRequirements);
 
                 if (error) throw error;
             }
