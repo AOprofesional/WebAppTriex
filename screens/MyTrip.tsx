@@ -4,10 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
 import { useTripDetails } from '../hooks/useTripDetails';
 import { TripStatusBadge } from '../components/TripStatusBadge';
+import { PageLoading } from '../components/PageLoading';
+import { useNextActivity } from '../hooks/useNextActivity';
 
 export const MyTrip: React.FC = () => {
   const navigate = useNavigate();
   const { trip, vouchers, documentRequirements, loading } = useTripDetails();
+  const { nextActivity } = useNextActivity(trip?.id);
 
   // Format date range
   const formatDateRange = (startDate: string | null, endDate: string | null) => {
@@ -26,15 +29,7 @@ export const MyTrip: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-triex-bg dark:bg-zinc-950 pb-20 lg:pb-8">
-        <div className="px-5 py-4 flex items-center justify-center bg-white dark:bg-zinc-950">
-          <div className="animate-pulse">
-            <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-48"></div>
-          </div>
-        </div>
-      </div>
-    );
+    return <PageLoading message="Cargando tu viaje..." />;
   }
 
   if (!trip) {
@@ -88,7 +83,8 @@ export const MyTrip: React.FC = () => {
         <div className="bg-[#3D3935] dark:bg-zinc-900 rounded-[40px] overflow-hidden shadow-xl">
           <div className="relative h-48">
             <img
-              src="https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800"
+              // Use trip icon/image or default placeholder
+              src={trip.image_url || "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800"}
               alt={trip.destination}
               className="w-full h-full object-cover"
             />
@@ -145,27 +141,70 @@ export const MyTrip: React.FC = () => {
           </div>
         </div>
 
+
         {/* Itinerary Section */}
-        {trip.general_itinerary && (
-          <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-7 shadow-sm border border-zinc-100 dark:border-zinc-800">
-            <h3 className="text-[20px] font-extrabold text-triex-grey dark:text-white mb-5 flex items-center gap-3">
-              <span className="material-symbols-outlined text-[26px]">map</span>
-              Itinerario
-            </h3>
-            <div className="text-[14px] leading-relaxed text-zinc-600 dark:text-zinc-300 whitespace-pre-line">
-              {trip.general_itinerary}
-            </div>
+        <div className="space-y-4">
+          <h3 className="text-[20px] font-extrabold text-triex-grey dark:text-white">
+            Tu Itinerario
+          </h3>
+
+          <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-6 shadow-sm border border-zinc-100 dark:border-zinc-800">
+            {nextActivity ? (
+              <div className="flex items-start gap-4 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-[#F97316]/10 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-[#F97316] text-[24px]">calendar_clock</span>
+                </div>
+                <div className="flex-1">
+                  <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1 block">
+                    PRÓXIMA ACTIVIDAD
+                  </span>
+                  <h4 className="text-lg font-bold text-triex-grey dark:text-white leading-tight mb-1">
+                    {nextActivity.title}
+                  </h4>
+                  {nextActivity.time && (
+                    <span className="inline-block px-2 py-1 bg-[#F97316]/10 rounded-md text-[#F97316] text-xs font-bold">
+                      {nextActivity.time.slice(0, 5)} hs
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-zinc-400 text-[24px]">map</span>
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold text-triex-grey dark:text-white leading-tight">
+                    Explora tu viaje
+                  </h4>
+                  <p className="text-sm text-zinc-500">Revisa todas las actividades</p>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={() => navigate('/itinerary')}
+              className="w-full py-4 bg-[#E0592A] hover:bg-[#F06A3B] text-white rounded-[20px] font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            >
+              Ver itinerario completo
+              <span className="material-symbols-outlined text-[20px]">chevron_right</span>
+            </button>
           </div>
-        )}
+        </div>
+
 
         {/* Includes/Excludes */}
         <div className="grid lg:grid-cols-2 gap-6">
           {trip.includes_text && (
             <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-7 shadow-sm border border-zinc-100 dark:border-zinc-800">
-              <h3 className="text-[18px] font-extrabold text-triex-grey dark:text-white mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-green-500 text-[24px]">check_circle</span>
-                Incluye
-              </h3>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-green-600 text-[20px]">check</span>
+                </div>
+                <h3 className="text-[18px] font-extrabold text-triex-grey dark:text-white">
+                  Incluye
+                </h3>
+              </div>
               <div className="text-[13px] leading-relaxed text-zinc-600 dark:text-zinc-300">
                 {trip.includes_text}
               </div>
@@ -173,10 +212,14 @@ export const MyTrip: React.FC = () => {
           )}
           {trip.excludes_text && (
             <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-7 shadow-sm border border-zinc-100 dark:border-zinc-800">
-              <h3 className="text-[18px] font-extrabold text-triex-grey dark:text-white mb-4 flex items-center gap-2">
-                <span className="material-symbols-outlined text-red-400 text-[24px]">cancel</span>
-                No incluye
-              </h3>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center flex-shrink-0">
+                  <span className="material-symbols-outlined text-red-600 text-[20px]">close</span>
+                </div>
+                <h3 className="text-[18px] font-extrabold text-triex-grey dark:text-white">
+                  No incluye
+                </h3>
+              </div>
               <div className="text-[13px] leading-relaxed text-zinc-600 dark:text-zinc-300">
                 {trip.excludes_text}
               </div>
@@ -245,7 +288,7 @@ export const MyTrip: React.FC = () => {
                 Mis Vouchers
               </h3>
               <button
-                onClick={() => navigate('/vouchers')}
+                onClick={() => navigate('/travel-docs')}
                 className="text-[13px] font-bold text-[#E0592A] hover:underline"
               >
                 Ver todos
@@ -327,7 +370,7 @@ export const MyTrip: React.FC = () => {
               ))}
             </div>
             <button
-              onClick={() => navigate('/upload')}
+              onClick={() => navigate('/travel-docs')}
               className="w-full mt-5 bg-[#E0592A] hover:bg-[#F06A3B] text-white py-4 rounded-[20px] font-bold transition-all active:scale-[0.98]"
             >
               Cargar Documentación

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useCreatePassengerWithInvite } from '../hooks/useCreatePassengerWithInvite';
 import { usePassengers } from '../hooks/usePassengers';
+import { supabase } from '../lib/supabase';
 
 interface CreatePassengerModalProps {
     isOpen: boolean;
@@ -9,7 +10,7 @@ interface CreatePassengerModalProps {
 
 export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOpen, onClose }) => {
     const { createAndInvite, creating } = useCreatePassengerWithInvite();
-    const { refetch } = usePassengers();
+    const { refetch } = usePassengers(); // This might refetch the main passenger list
 
     const [formData, setFormData] = useState({
         first_name: '',
@@ -20,8 +21,37 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
         birth_date: '',
         cuil: '',
         document_type: '' as 'DNI' | 'Pasaporte' | 'Otro' | '',
-        document_number: ''
+        document_number: '',
+        trip_id: '' // New field for optional trip linking
     });
+
+    const [availableTrips, setAvailableTrips] = useState<{ id: string; name: string }[]>([]);
+    const [loadingTrips, setLoadingTrips] = useState(false);
+
+    // Fetch trips when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            fetchTrips();
+        }
+    }, [isOpen]);
+
+    const fetchTrips = async () => {
+        try {
+            setLoadingTrips(true);
+            const { data, error } = await supabase
+                .from('trips')
+                .select('id, name')
+                .is('archived_at', null)
+                .order('start_date', { ascending: false }); // Show newest trips first
+
+            if (error) throw error;
+            setAvailableTrips(data || []);
+        } catch (err) {
+            console.error('Error fetching trips:', err);
+        } finally {
+            setLoadingTrips(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -38,7 +68,27 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
             document_number: formData.document_number || undefined
         });
 
-        if (result.success) {
+        if (result.success && result.passenger) {
+            // Link to trip if selected
+            if (formData.trip_id) {
+                try {
+                    const { error: linkError } = await supabase
+                        .from('trip_passengers')
+                        .insert({
+                            trip_id: formData.trip_id,
+                            passenger_id: result.passenger.id
+                        });
+
+                    if (linkError) {
+                        console.error('Error linking passenger to trip:', linkError);
+                        alert(`Pasajero creado, pero error al vincular al viaje: ${linkError.message}`);
+                    }
+                } catch (linkErr: any) {
+                    console.error('Error linking passenger to trip:', linkErr);
+                    alert(`Pasajero creado, pero error al vincular al viaje: ${linkErr.message}`);
+                }
+            }
+
             alert(result.message);
             refetch(); // Refrescar lista de pasajeros
             onClose();
@@ -52,7 +102,8 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                 birth_date: '',
                 cuil: '',
                 document_type: '',
-                document_number: ''
+                document_number: '',
+                trip_id: ''
             });
         } else {
             alert(result.message);
@@ -77,6 +128,31 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    {/* Sección: Vincular a Viaje (Nuevo) */}
+                    <div className="bg-primary/5 dark:bg-primary/10 p-4 rounded-xl border border-primary/20">
+                        <label className="block text-sm font-bold text-primary dark:text-primary mb-2 flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[18px]">airplane_ticket</span>
+                            Vincular a un Viaje (Opcional)
+                        </label>
+                        <select
+                            value={formData.trip_id}
+                            onChange={(e) => setFormData({ ...formData, trip_id: e.target.value })}
+                            className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        >
+                            <option value="">-- No vincular a ningún viaje --</option>
+                            {loadingTrips ? (
+                                <option disabled>Cargando viajes...</option>
+                            ) : (
+                                availableTrips.map(trip => (
+                                    <option key={trip.id} value={trip.id}>{trip.name}</option>
+                                ))
+                            )}
+                        </select>
+                        <p className="text-xs text-zinc-500 mt-2">
+                            Si seleccionas un viaje, el pasajero se agregará automáticamente a la lista de ese viaje.
+                        </p>
+                    </div>
+
                     {/* Datos Básicos */}
                     <div className="space-y-4">
                         <h3 className="font-bold text-zinc-800 dark:text-white">Datos Básicos</h3>

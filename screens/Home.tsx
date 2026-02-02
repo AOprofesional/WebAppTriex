@@ -5,11 +5,33 @@ import { usePassengerTrips } from '../hooks/usePassengerTrips';
 import { usePassenger } from '../hooks/usePassenger';
 import { NextStepCard } from '../components/NextStepCard';
 import { TripStatusBadge } from '../components/TripStatusBadge';
+import { PageLoading } from '../components/PageLoading';
+import { useDocuments } from '../hooks/useDocuments';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
   const { primaryTrip, nextStep, loading: loadingTrips } = usePassengerTrips();
+
   const { passenger, loading: loadingPassenger } = usePassenger();
+  const {
+    requiredDocuments,
+    passengerDocuments,
+    fetchRequiredDocuments,
+    fetchPassengerDocuments
+  } = useDocuments();
+
+  React.useEffect(() => {
+    if (primaryTrip) {
+      fetchRequiredDocuments(primaryTrip.id);
+      fetchPassengerDocuments({ tripId: primaryTrip.id, passengerId: passenger?.id });
+    }
+  }, [primaryTrip, passenger]);
+
+  const pendingDocsCount = requiredDocuments.filter(req => {
+    if (!req.is_required) return false;
+    const doc = passengerDocuments.find(d => d.required_document_id === req.id);
+    return !doc || doc.status === 'rejected'; // Missing or rejected
+  }).length;
 
   const loading = loadingTrips || loadingPassenger;
 
@@ -30,14 +52,7 @@ export const Home: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="px-5 py-6 space-y-8 max-w-md mx-auto min-h-screen bg-triex-bg dark:bg-zinc-950 pb-12 lg:max-w-none lg:px-8 lg:py-8">
-        <div className="animate-pulse">
-          <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-48 mb-2"></div>
-          <div className="h-4 bg-zinc-200 dark:bg-zinc-800 rounded w-32"></div>
-        </div>
-      </div>
-    );
+    return <PageLoading />;
   }
 
   return (
@@ -152,22 +167,44 @@ export const Home: React.FC = () => {
         {/* Sección: Avisos Importantes */}
         <section>
           <h2 className="text-[18px] font-extrabold text-triex-grey dark:text-white mb-4 px-1">Avisos importantes</h2>
-          <div
-            onClick={() => navigate('/vouchers')}
-            className="group bg-white dark:bg-zinc-900 rounded-[32px] p-6 shadow-sm border border-zinc-100 dark:border-zinc-800 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all"
-          >
-            <div className="flex items-center gap-5 flex-1">
-              <div className="w-14 h-14 bg-[#F0F5FA] dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-triex-grey dark:text-zinc-300">
-                <span className="material-symbols-outlined text-[28px]">confirmation_number</span>
+          <div className="space-y-4">
+            {pendingDocsCount > 0 && (
+              <div
+                onClick={() => navigate('/travel-docs')}
+                className="group bg-red-50 dark:bg-red-900/10 rounded-[32px] p-6 shadow-sm border border-red-100 dark:border-red-900/30 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all"
+              >
+                <div className="flex items-center gap-5 flex-1">
+                  <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-2xl flex items-center justify-center text-red-500 dark:text-red-400">
+                    <span className="material-symbols-outlined text-[28px]">priority_high</span>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-triex-grey dark:text-white text-[16px] leading-tight">Documentación pendiente</h3>
+                    <p className="text-[13px] text-red-600 dark:text-red-400 mt-1.5 leading-snug font-medium">
+                      Tenés {pendingDocsCount} {pendingDocsCount === 1 ? 'documento' : 'documentos'} sin completar
+                    </p>
+                  </div>
+                </div>
+                <span className="material-symbols-outlined text-red-300 dark:text-red-700 transition-transform group-hover:translate-x-1">chevron_right</span>
               </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-triex-grey dark:text-white text-[16px] leading-tight">Tus vouchers</h3>
-                <p className="text-[13px] text-zinc-400 mt-1.5 leading-snug font-medium">
-                  Accedé a toda tu documentación de viaje
-                </p>
+            )}
+
+            <div
+              onClick={() => navigate('/travel-docs')}
+              className="group bg-white dark:bg-zinc-900 rounded-[32px] p-6 shadow-sm border border-zinc-100 dark:border-zinc-800 flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all"
+            >
+              <div className="flex items-center gap-5 flex-1">
+                <div className="w-14 h-14 bg-[#F0F5FA] dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-triex-grey dark:text-zinc-300">
+                  <span className="material-symbols-outlined text-[28px]">confirmation_number</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-triex-grey dark:text-white text-[16px] leading-tight">Tus vouchers</h3>
+                  <p className="text-[13px] text-zinc-400 mt-1.5 leading-snug font-medium">
+                    Accedé a toda tu documentación de viaje
+                  </p>
+                </div>
               </div>
+              <span className="material-symbols-outlined text-zinc-300 dark:text-zinc-600 transition-transform group-hover:translate-x-1">chevron_right</span>
             </div>
-            <span className="material-symbols-outlined text-zinc-300 dark:text-zinc-600 transition-transform group-hover:translate-x-1">chevron_right</span>
           </div>
         </section>
 

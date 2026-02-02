@@ -5,6 +5,7 @@ import { Home } from './screens/Home';
 import { MyTrip } from './screens/MyTrip';
 import { Itinerary } from './screens/Itinerary';
 import { Vouchers } from './screens/Vouchers';
+import { VouchersAndDocs } from './screens/VouchersAndDocs';
 import { Profile } from './screens/Profile';
 import { UploadDocument } from './screens/UploadDocument';
 import { Points } from './screens/Points';
@@ -97,10 +98,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               {location.pathname === '/' ? 'Inicio' :
                 location.pathname === '/mytrip' ? 'Mi Viaje' :
                   location.pathname === '/itinerary' ? 'Itinerario' :
-                    location.pathname === '/vouchers' ? 'Documentos' :
-                      location.pathname === '/points' ? 'Mis Puntos' :
-                        location.pathname === '/profile' ? 'Perfil' :
-                          location.pathname === '/notifications' ? 'Notificaciones' : ''}
+                    location.pathname === '/itinerary' ? 'Itinerario' :
+                      location.pathname === '/travel-docs' ? 'Docs y Vouchers' :
+                        location.pathname === '/vouchers' ? 'Documentos' :
+                          location.pathname === '/points' ? 'Mis Puntos' :
+                            location.pathname === '/profile' ? 'Perfil' :
+                              location.pathname === '/notifications' ? 'Notificaciones' : ''}
             </h1>
             <button className="p-2 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
               <span className="material-symbols-outlined">notifications</span>
@@ -198,6 +201,11 @@ const App: React.FC = () => {
               <Route path="/vouchers" element={
                 <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
                   <Vouchers />
+                </ProtectedRoute>
+              } />
+              <Route path="/travel-docs" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <VouchersAndDocs />
                 </ProtectedRoute>
               } />
               <Route path="/points" element={

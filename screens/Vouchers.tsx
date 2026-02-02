@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
 import { useVouchers } from '../hooks/useVouchers';
 import { usePassengerTrips } from '../hooks/usePassengerTrips';
+import { PageLoading } from '../components/PageLoading';
 
 export const Vouchers: React.FC = () => {
   const navigate = useNavigate();
@@ -41,15 +42,7 @@ export const Vouchers: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-triex-bg dark:bg-zinc-950 pb-20 lg:pb-8">
-        <div className="px-5 py-4 flex items-center justify-center bg-white dark:bg-zinc-950">
-          <div className="animate-pulse">
-            <div className="h-8 bg-zinc-200 dark:bg-zinc-800 rounded w-48"></div>
-          </div>
-        </div>
-      </div>
-    );
+    return <PageLoading message="Cargando tus vouchers..." />;
   }
 
   return (

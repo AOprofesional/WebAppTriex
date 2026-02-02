@@ -22,9 +22,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const menuItems = [
     { label: 'Inicio', icon: 'home', path: '/' },
     { label: 'Mi viaje', icon: 'luggage', path: '/mytrip' },
-    { label: 'Itinerario', icon: 'calendar_month', path: '/itinerary' },
-    { label: 'Documentos', icon: 'description', path: '/vouchers' },
-    { label: 'Mis Puntos', icon: 'stars', path: '/points' },
+    { icon: 'map', label: 'Itinerario', path: '/itinerary' },
+    { icon: 'confirmation_number', label: 'Docs y Vouchers', path: '/travel-docs' },
+    { icon: 'stars', label: 'Puntos', path: '/points' },
     { label: 'Perfil', icon: 'person', path: '/profile' },
   ];
 

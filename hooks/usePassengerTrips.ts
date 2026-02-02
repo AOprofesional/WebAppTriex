@@ -171,7 +171,7 @@ async function calculateNextStep(trip: Trip, passengerId: string): Promise<NextS
             title: 'Cargar documentación',
             detail: 'Subí los documentos requeridos para tu viaje.',
             ctaLabel: 'Cargar ahora',
-            ctaRoute: '/upload-document',
+            ctaRoute: '/travel-docs',
         };
     }
 
@@ -183,12 +183,12 @@ async function calculateNextStep(trip: Trip, passengerId: string): Promise<NextS
             title: 'Ver tus vouchers',
             detail: 'Accedé a hotel, traslados y actividades.',
             ctaLabel: 'Ver vouchers',
-            ctaRoute: '/vouchers',
+            ctaRoute: '/travel-docs',
         };
     }
 
     // Priority 3: INFO - Check if has itinerary or includes/excludes
-    if (trip.itinerary || trip.includes || trip.excludes) {
+    if (trip.general_itinerary || trip.includes || trip.excludes) {
         return {
             type: 'INFO',
             title: 'Ver itinerario',

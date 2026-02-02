@@ -17,6 +17,9 @@ export interface RequiredDocument {
     due_date: string | null;
     created_at: string;
     updated_at: string;
+    document_types?: {
+        name: string;
+    };
 }
 
 export interface PassengerDocument {

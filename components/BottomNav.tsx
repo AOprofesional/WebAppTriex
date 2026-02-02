@@ -4,12 +4,13 @@ import { Link, useLocation } from 'react-router-dom';
 
 export const BottomNav: React.FC = () => {
   const location = useLocation();
-  
+
   const navItems = [
     { path: '/', label: 'Inicio', icon: 'home' },
+
     { path: '/mytrip', label: 'Mi viaje', icon: 'luggage' },
     { path: '/itinerary', label: 'Itinerario', icon: 'calendar_month' },
-    { path: '/vouchers', label: 'Documentos', icon: 'description' },
+    { path: '/travel-docs', label: 'Docs', icon: 'confirmation_number' },
     { path: '/profile', label: 'Perfil', icon: 'person' },
   ];
 
@@ -19,12 +20,12 @@ export const BottomNav: React.FC = () => {
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
-            <Link 
-              key={item.path} 
-              to={item.path} 
+            <Link
+              key={item.path}
+              to={item.path}
               className="flex flex-col items-center gap-1 group flex-1"
             >
-              <span 
+              <span
                 className={`material-symbols-outlined transition-all duration-200 text-[26px] ${isActive ? 'text-primary' : 'text-zinc-400 dark:text-zinc-600'}`}
                 style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}
               >
