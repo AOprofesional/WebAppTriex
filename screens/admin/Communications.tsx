@@ -1,16 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAdminNotifications } from '../../hooks/useAdminNotifications';
+import { CreateNotificationModal } from '../../components/admin/CreateNotificationModal';
 
-// Mock Data
-const mockNotifications = [
-    { id: 1, title: 'Documento aprobado', message: 'Seguro de viaje de María González fue aprobado', type: 'success', time: 'Hace 5 min', read: false },
-    { id: 2, title: 'Nuevo pasajero registrado', message: 'Juan Pérez fue agregado al viaje Bariloche', type: 'info', time: 'Hace 15 min', read: false },
-    { id: 3, title: 'Documento pendiente', message: 'Carlos Rodríguez aún no cargó su pasaporte', type: 'warning', time: 'Hace 1 hora', read: true },
-    { id: 4, title: 'Viaje confirmado', message: 'Viaje a Bariloche fue confirmado exitosamente', type: 'success', time: 'Hace 2 horas', read: true },
-    { id: 5, title: 'Puntos asignados', message: '500 puntos fueron acreditados a Diego López', type: 'info', time: 'Hace 3 horas', read: true },
-    { id: 6, title: 'Documento vencido', message: 'El seguro de Ana Martínez expiró ayer', type: 'error', time: 'Ayer', read: true },
-];
-
+// Auto notification config (keep as mock for now since it's configuration management)
 const autoNotifications = [
     { event: 'Nuevo pasajero registrado', trigger: 'Al crear pasajero', enabled: true },
     { event: 'Documento cargado', trigger: 'Al subir archivo', enabled: true },
@@ -21,17 +14,51 @@ const autoNotifications = [
 ];
 
 export const AdminCommunications: React.FC = () => {
+    const { notifications, loading, fetchAllNotifications } = useAdminNotifications();
     const [filter, setFilter] = useState('all');
     const [showConfig, setShowConfig] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    useEffect(() => {
+        fetchAllNotifications({
+            limit: 50,
+        });
+    }, []);
 
     const typeStyles: Record<string, { icon: string; bg: string }> = {
         success: { icon: 'check_circle', bg: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
         info: { icon: 'info', bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
         warning: { icon: 'warning', bg: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' },
         error: { icon: 'error', bg: 'bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-400' },
+        doc_approved: { icon: 'check_circle', bg: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
+        doc_rejected: { icon: 'cancel', bg: 'bg-red-50 text-red-500 dark:bg-red-900/30 dark:text-red-400' },
+        voucher_available: { icon: 'download_for_offline', bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
+        trip_reminder: { icon: 'schedule', bg: 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' },
+        trip_update: { icon: 'flight_takeoff', bg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
     };
 
-    const unreadCount = mockNotifications.filter(n => !n.read).length;
+    const unreadCount = notifications.filter(n => !n.is_read).length;
+
+    const getTimeAgo = (timestamp: string) => {
+        const now = new Date();
+        const notifTime = new Date(timestamp);
+        const diffMs = now.getTime() - notifTime.getTime();
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffMins < 1) return 'Ahora';
+        if (diffMins < 60) return `Hace ${diffMins} min`;
+        if (diffHours < 24) return `Hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`;
+        if (diffDays === 1) return 'Ayer';
+        return `Hace ${diffDays} días`;
+    };
+
+    const handleModalClose = () => {
+        setIsModalOpen(false);
+        // Refresh notifications after modal closes
+        fetchAllNotifications({ limit: 50 });
+    };
 
     return (
         <div className="space-y-6">
@@ -43,24 +70,28 @@ export const AdminCommunications: React.FC = () => {
                         onChange={(e) => setFilter(e.target.value)}
                         className="px-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm"
                     >
-                        <option value="all">Todas</option>
+                        <option value="all">Todas ({notifications.length})</option>
                         <option value="unread">Sin leer ({unreadCount})</option>
-                        <option value="success">Exitosas</option>
+                        <option value="success">Éxito</option>
                         <option value="warning">Advertencias</option>
                     </select>
-                    {unreadCount > 0 && (
-                        <button className="text-sm text-primary font-semibold hover:underline">
-                            Marcar todas como leídas
-                        </button>
-                    )}
                 </div>
-                <button
-                    onClick={() => setShowConfig(!showConfig)}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl font-semibold text-sm hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                >
-                    <span className="material-symbols-outlined text-xl">settings</span>
-                    Configurar automáticas
-                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setShowConfig(!showConfig)}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl font-semibold text-sm hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    >
+                        <span className="material-symbols-outlined text-xl">settings</span>
+                        Configurar automáticas
+                    </button>
+                    <button
+                        onClick={() => setIsModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary/90"
+                    >
+                        <span className="material-symbols-outlined text-xl">send</span>
+                        Enviar Notificación
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -69,25 +100,43 @@ export const AdminCommunications: React.FC = () => {
                     <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
                         <h2 className="text-base font-bold text-zinc-800 dark:text-white">Historial de Notificaciones</h2>
                     </div>
-                    <div className="divide-y divide-zinc-50 dark:divide-zinc-800">
-                        {mockNotifications.map((notification) => (
-                            <div
-                                key={notification.id}
-                                className={`px-6 py-4 flex items-start gap-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors ${!notification.read ? 'bg-primary/5' : ''}`}
-                            >
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${typeStyles[notification.type].bg}`}>
-                                    <span className="material-symbols-outlined">{typeStyles[notification.type].icon}</span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2">
-                                        <p className="text-sm font-semibold text-zinc-800 dark:text-white">{notification.title}</p>
-                                        {!notification.read && <span className="w-2 h-2 rounded-full bg-primary"></span>}
-                                    </div>
-                                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">{notification.message}</p>
-                                </div>
-                                <span className="text-xs text-zinc-400 shrink-0">{notification.time}</span>
+                    <div className="divide-y divide-zinc-50 dark:divide-zinc-800 max-h-[600px] overflow-y-auto">
+                        {loading ? (
+                            <div className="px-6 py-12 text-center text-zinc-500">
+                                Cargando notificaciones...
                             </div>
-                        ))}
+                        ) : notifications.length === 0 ? (
+                            <div className="px-6 py-12 text-center text-zinc-500">
+                                No hay notificaciones aún
+                            </div>
+                        ) : (
+                            notifications.map((notification: any) => {
+                                const typeStyle = typeStyles[notification.type] || typeStyles.info;
+                                return (
+                                    <div
+                                        key={notification.id}
+                                        className={`px-6 py-4 flex items-start gap-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors ${!notification.is_read ? 'bg-primary/5' : ''}`}
+                                    >
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${typeStyle.bg}`}>
+                                            <span className="material-symbols-outlined">{typeStyle.icon}</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-sm font-semibold text-zinc-800 dark:text-white">{notification.title}</p>
+                                                {!notification.is_read && <span className="w-2 h-2 rounded-full bg-primary"></span>}
+                                            </div>
+                                            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">{notification.message}</p>
+                                            {notification.passengers && (
+                                                <p className="text-xs text-zinc-400 mt-1">
+                                                    Para: {notification.passengers.first_name} {notification.passengers.last_name}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <span className="text-xs text-zinc-400 shrink-0">{getTimeAgo(notification.created_at)}</span>
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
                 </div>
 
@@ -111,6 +160,12 @@ export const AdminCommunications: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* CreateNotificationModal */}
+            <CreateNotificationModal
+                isOpen={isModalOpen}
+                onClose={handleModalClose}
+            />
         </div>
     );
 };
