@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { Home } from './screens/Home';
 import { MyTrip } from './screens/MyTrip';
 import { Itinerary } from './screens/Itinerary';
@@ -23,6 +23,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { RoleRedirect } from './components/RoleRedirect';
 import { CreatePasswordModal } from './components/CreatePasswordModal';
 import { useAuth } from './contexts/AuthContext';
+import { useNotifications } from './hooks/useNotifications';
 import { ArchivedAccountScreen } from './screens/ArchivedAccount';
 
 // Admin imports
@@ -41,6 +42,8 @@ import { AdminSettings } from './screens/admin/Settings';
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const { user, isArchived } = useAuth();
+  const navigate = useNavigate();
+  const { unreadCount } = useNotifications();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
 
@@ -105,8 +108,16 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                             location.pathname === '/profile' ? 'Perfil' :
                               location.pathname === '/notifications' ? 'Notificaciones' : ''}
             </h1>
-            <button className="p-2 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
+            <button
+              onClick={() => navigate('/notifications')}
+              className="relative p-2 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            >
               <span className="material-symbols-outlined">notifications</span>
+              {unreadCount > 0 && (
+                <span className="absolute top-1.5 right-1.5 min-w-[16px] h-[16px] bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center px-0.5 border-2 border-white dark:border-zinc-900">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
           </header>
         )}

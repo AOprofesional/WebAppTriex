@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { uploadDocument, getSignedUrl } from '../utils/storage';
+import { checkNotificationEnabled } from './useAutoNotificationSettings';
 
 export interface DocumentType {
     id: string;
@@ -233,23 +234,30 @@ export const useDocuments = () => {
 
             if (error) throw error;
 
-            // Create notification
+            // Create notification if enabled
             if (doc) {
                 const notificationType = status === 'approved' ? 'doc_approved' : 'doc_rejected';
-                const title = status === 'approved'
-                    ? 'Documento aprobado'
-                    : 'Documento rechazado';
-                const message = status === 'approved'
-                    ? `Tu documento ${doc.required_documents?.document_types?.name} ha sido aprobado`
-                    : `Tu documento ${doc.required_documents?.document_types?.name} ha sido rechazado${comment ? `: ${comment}` : ''}`;
+                const eventKey = status === 'approved' ? 'document_approved' : 'document_approved'; // Both use same setting
 
-                await supabase.from('notifications').insert({
-                    passenger_id: doc.passenger_id,
-                    trip_id: doc.trip_id,
-                    type: notificationType,
-                    title,
-                    message
-                });
+                // Check if notifications are enabled for this event
+                const isEnabled = await checkNotificationEnabled(eventKey);
+
+                if (isEnabled) {
+                    const title = status === 'approved'
+                        ? 'Documento aprobado'
+                        : 'Documento rechazado';
+                    const message = status === 'approved'
+                        ? `Tu documento ${doc.required_documents?.document_types?.name} ha sido aprobado`
+                        : `Tu documento ${doc.required_documents?.document_types?.name} ha sido rechazado${comment ? `: ${comment}` : ''}`;
+
+                    await supabase.from('notifications').insert({
+                        passenger_id: doc.passenger_id,
+                        trip_id: doc.trip_id,
+                        type: notificationType,
+                        title,
+                        message
+                    });
+                }
             }
 
             await fetchPassengerDocuments();

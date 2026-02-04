@@ -7,9 +7,23 @@ import { CreatePassengerModal } from '../../components/CreatePassengerModal';
 import { EditPassengerModal } from '../../components/EditPassengerModal';
 import { ConfirmArchiveModal } from '../../components/ConfirmArchiveModal';
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
+import { PassengerDetailsModal } from '../../components/admin/PassengerDetailsModal';
 import { Database } from '../../types/database.types';
 
-type PassengerListView = Database['public']['Views']['v_admin_passengers_list']['Row'];
+type PassengerListView = {
+    id: string;
+    created_at: string | null;
+    first_name: string;
+    last_name: string;
+    passenger_email: string | null;
+    phone: string | null;
+    document_type: string | null;
+    document_number: string | null;
+    type_name: string | null;
+    profile_id: string | null;
+    is_recurrent: boolean | null;
+    archived_at: string | null;
+};
 
 
 // Status Badge Component
@@ -47,6 +61,7 @@ export const AdminPassengers: React.FC = () => {
 
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingPassenger, setEditingPassenger] = useState<PassengerListView | null>(null);
+    const [viewingPassenger, setViewingPassenger] = useState<PassengerListView | null>(null);
     const [archiveCandidate, setArchiveCandidate] = useState<{ id: string; name: string } | null>(null);
     const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; name: string; isArchived: boolean } | null>(null);
 
@@ -267,7 +282,7 @@ export const AdminPassengers: React.FC = () => {
                                                     <button
                                                         className="p-2 text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                                                         title="Ver detalles"
-                                                        onClick={() => alert(`Ver detalles de ${fullName} - Próximamente`)}
+                                                        onClick={() => setViewingPassenger(passenger)}
                                                     >
                                                         <span className="material-symbols-outlined text-lg">visibility</span>
                                                     </button>
@@ -361,6 +376,30 @@ export const AdminPassengers: React.FC = () => {
                 isOpen={!!deleteCandidate}
                 onConfirm={confirmPermanentDelete}
                 onCancel={() => setDeleteCandidate(null)}
+            />
+
+            {/* Passenger Details Modal */}
+            <PassengerDetailsModal
+                passenger={viewingPassenger}
+                isOpen={!!viewingPassenger}
+                onClose={() => setViewingPassenger(null)}
+                onEdit={() => {
+                    if (viewingPassenger) {
+                        setEditingPassenger(viewingPassenger);
+                        setViewingPassenger(null);
+                    }
+                }}
+                onArchive={() => {
+                    if (viewingPassenger) {
+                        const fullName = `${viewingPassenger.first_name} ${viewingPassenger.last_name}`;
+                        if (viewingPassenger.archived_at) {
+                            handleRestore(viewingPassenger.id);
+                        } else {
+                            handleArchive(viewingPassenger.id, fullName);
+                        }
+                        setViewingPassenger(null);
+                    }
+                }}
             />
         </div>
     );

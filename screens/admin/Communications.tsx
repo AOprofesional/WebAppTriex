@@ -1,20 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAdminNotifications } from '../../hooks/useAdminNotifications';
+import { useAutoNotificationSettings } from '../../hooks/useAutoNotificationSettings';
 import { CreateNotificationModal } from '../../components/admin/CreateNotificationModal';
-
-// Auto notification config (keep as mock for now since it's configuration management)
-const autoNotifications = [
-    { event: 'Nuevo pasajero registrado', trigger: 'Al crear pasajero', enabled: true },
-    { event: 'Documento cargado', trigger: 'Al subir archivo', enabled: true },
-    { event: 'Documento aprobado', trigger: 'Al aprobar documento', enabled: true },
-    { event: 'Viaje confirmado', trigger: 'Al confirmar viaje', enabled: true },
-    { event: 'Recordatorio de documentos', trigger: '7 días antes del viaje', enabled: false },
-    { event: 'Puntos acreditados', trigger: 'Al asignar puntos', enabled: true },
-];
 
 export const AdminCommunications: React.FC = () => {
     const { notifications, loading, fetchAllNotifications } = useAdminNotifications();
+    const { settings: autoSettings, loading: settingsLoading, updateSetting } = useAutoNotificationSettings();
     const [filter, setFilter] = useState('all');
     const [showConfig, setShowConfig] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -146,17 +138,30 @@ export const AdminCommunications: React.FC = () => {
                         <h2 className="text-base font-bold text-zinc-800 dark:text-white">Notificaciones Automáticas</h2>
                     </div>
                     <div className="p-4 space-y-3">
-                        {autoNotifications.map((auto, i) => (
-                            <div key={i} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
-                                <div>
-                                    <p className="text-sm font-medium text-zinc-800 dark:text-white">{auto.event}</p>
-                                    <p className="text-xs text-zinc-500">{auto.trigger}</p>
-                                </div>
-                                <button className={`w-10 h-6 rounded-full transition-colors relative ${auto.enabled ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-600'}`}>
-                                    <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${auto.enabled ? 'left-5' : 'left-1'}`}></span>
-                                </button>
+                        {settingsLoading ? (
+                            <div className="py-8 text-center text-zinc-500 text-sm">
+                                Cargando configuraciones...
                             </div>
-                        ))}
+                        ) : autoSettings.length === 0 ? (
+                            <div className="py-8 text-center text-zinc-500 text-sm">
+                                No hay configuraciones disponibles
+                            </div>
+                        ) : (
+                            autoSettings.map((setting) => (
+                                <div key={setting.id} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl">
+                                    <div>
+                                        <p className="text-sm font-medium text-zinc-800 dark:text-white">{setting.event_name}</p>
+                                        <p className="text-xs text-zinc-500">{setting.trigger_description}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => updateSetting(setting.id, !setting.is_enabled)}
+                                        className={`w-10 h-6 rounded-full transition-colors relative ${setting.is_enabled ? 'bg-primary' : 'bg-zinc-300 dark:bg-zinc-600'}`}
+                                    >
+                                        <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${setting.is_enabled ? 'left-5' : 'left-1'}`}></span>
+                                    </button>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             </div>

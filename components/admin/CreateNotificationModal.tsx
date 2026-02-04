@@ -137,8 +137,8 @@ export const CreateNotificationModal: React.FC<CreateNotificationModalProps> = (
                                 type="button"
                                 onClick={() => setTarget('specific')}
                                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${target === 'specific'
-                                        ? 'bg-primary text-white'
-                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                                    ? 'bg-primary text-white'
+                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
                                     }`}
                             >
                                 Pasajero
@@ -147,8 +147,8 @@ export const CreateNotificationModal: React.FC<CreateNotificationModalProps> = (
                                 type="button"
                                 onClick={() => setTarget('trip')}
                                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${target === 'trip'
-                                        ? 'bg-primary text-white'
-                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                                    ? 'bg-primary text-white'
+                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
                                     }`}
                             >
                                 Viaje
@@ -157,8 +157,8 @@ export const CreateNotificationModal: React.FC<CreateNotificationModalProps> = (
                                 type="button"
                                 onClick={() => setTarget('all')}
                                 className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${target === 'all'
-                                        ? 'bg-primary text-white'
-                                        : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
+                                    ? 'bg-primary text-white'
+                                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'
                                     }`}
                             >
                                 Todos

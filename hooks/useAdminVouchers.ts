@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { uploadVoucher, getSignedUrl, deleteFile } from '../utils/storage';
+import { checkNotificationEnabled } from './useAutoNotificationSettings';
 
 export interface VoucherType {
     id: string;
@@ -305,6 +306,12 @@ export const useAdminVouchers = () => {
 
     const createVoucherNotifications = async (voucher: any) => {
         try {
+            // Check if voucher notifications are enabled
+            const isEnabled = await checkNotificationEnabled('voucher_available');
+            if (!isEnabled) {
+                return; // Skip notification creation if disabled
+            }
+
             let passengerIds: string[] = [];
 
             if (voucher.visibility === 'all_trip_passengers' && voucher.trip_id) {

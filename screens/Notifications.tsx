@@ -5,12 +5,16 @@ import { LOGO_URL } from '../constants';
 import { useNotifications } from '../hooks/useNotifications';
 import { PageLoading } from '../components/PageLoading';
 
+import { NotificationDetailsModal } from '../components/NotificationDetailsModal';
+
 export const Notifications: React.FC = () => {
   const navigate = useNavigate();
   const { notifications, loading, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const [selectedNotification, setSelectedNotification] = React.useState<any | null>(null);
 
   // Group notifications by date
   const groupedNotifications = React.useMemo(() => {
+    // ... existing grouping logic ...
     const groups: { title: string; items: any[] }[] = [];
     const today = new Date();
     const yesterday = new Date(today);
@@ -35,6 +39,7 @@ export const Notifications: React.FC = () => {
         icon: getIconForType(notification.type),
         iconBg: getBgForType(notification.type),
         iconColor: getColorForType(notification.type),
+        type: notification.type, // Added type property
         unread: !notification.is_read,
         fullDate: notifDate,
       };
@@ -69,9 +74,10 @@ export const Notifications: React.FC = () => {
     return groups;
   }, [notifications]);
 
-  const handleNotificationClick = (notificationId: string, isRead: boolean) => {
-    if (!isRead) {
-      markAsRead(notificationId);
+  const handleNotificationClick = (notification: any) => {
+    setSelectedNotification(notification);
+    if (notification.unread) {
+      markAsRead(notification.id);
     }
   };
 
@@ -130,7 +136,7 @@ export const Notifications: React.FC = () => {
                 {section.items.map((item) => (
                   <div
                     key={item.id}
-                    onClick={() => handleNotificationClick(item.id, !item.unread)}
+                    onClick={() => handleNotificationClick(item)}
                     className="bg-white dark:bg-zinc-900 rounded-[24px] p-5 shadow-sm border border-zinc-100 dark:border-zinc-800/50 flex gap-5 relative group active:scale-[0.98] transition-all cursor-pointer"
                   >
                     <div className={`w-14 h-14 ${item.iconBg} dark:bg-zinc-800 rounded-2xl flex items-center justify-center ${item.iconColor} shrink-0`}>
@@ -138,7 +144,7 @@ export const Notifications: React.FC = () => {
                     </div>
                     <div className="flex-1 pr-4">
                       <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-[16px]">{item.title}</h3>
-                      <p className="text-zinc-500 dark:text-zinc-400 text-[13px] mt-1 leading-snug">
+                      <p className="text-zinc-500 dark:text-zinc-400 text-[13px] mt-1 leading-snug line-clamp-2">
                         {item.description}
                       </p>
                       <p className="text-zinc-300 dark:text-zinc-600 text-[11px] font-bold mt-3 uppercase tracking-wider">
@@ -157,12 +163,18 @@ export const Notifications: React.FC = () => {
       )}
 
       {/* Coordinator Contact */}
-      <div className="px-5 mt-12">
-        <button className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all mb-8">
+      <div className="px-5 mt-12 mb-8">
+        <button className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all">
           <span className="material-symbols-outlined text-2xl">support_agent</span>
           Contactar coordinador
         </button>
       </div>
+
+      <NotificationDetailsModal
+        isOpen={!!selectedNotification}
+        onClose={() => setSelectedNotification(null)}
+        notification={selectedNotification}
+      />
     </div>
   );
 };
