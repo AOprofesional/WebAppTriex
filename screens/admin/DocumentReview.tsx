@@ -3,13 +3,14 @@ import { useDocuments } from '../../hooks/useDocuments';
 import { useTrips } from '../../hooks/useTrips';
 
 export const AdminDocumentReview: React.FC = () => {
-    const { passengerDocuments, fetchPassengerDocuments, reviewDocument, getDocumentSignedUrl, loading } = useDocuments();
+    const { passengerDocuments, fetchPassengerDocuments, reviewDocument, deleteDocument, getDocumentSignedUrl, loading } = useDocuments();
     const { trips } = useTrips();
     const [filterTripId, setFilterTripId] = useState('');
-    const [filterStatus, setFilterStatus] = useState('uploaded');
+    const [filterStatus, setFilterStatus] = useState('');
     const [selectedDoc, setSelectedDoc] = useState<any>(null);
     const [signedUrl, setSignedUrl] = useState<string | null>(null);
     const [reviewComment, setReviewComment] = useState('');
+    const [deleteFileOnReject, setDeleteFileOnReject] = useState(true);
 
     useEffect(() => {
         loadDocuments();
@@ -23,9 +24,26 @@ export const AdminDocumentReview: React.FC = () => {
     };
 
     const handleViewDocument = async (doc: any) => {
+        if (!doc.file_path) return;
         setSelectedDoc(doc);
-        const { url } = await getDocumentSignedUrl(doc.file_url);
+        const { url } = await getDocumentSignedUrl(doc.file_path);
         setSignedUrl(url);
+    };
+
+    /**
+     * Completely delete document (file + database record)
+     */
+    const handleDeleteDocument = async (doc: any) => {
+        if (!confirm('¿Estás seguro de eliminar este documento? Se eliminará el archivo del servidor Y el registro de la base de datos. Esta acción no se puede deshacer.')) {
+            return;
+        }
+        const { error } = await deleteDocument(doc.id, doc.file_path);
+        if (error) {
+            alert('Error al eliminar documento: ' + error);
+        } else {
+            alert('Documento eliminado correctamente');
+            loadDocuments();
+        }
     };
 
     const handleReview = async (status: 'approved' | 'rejected') => {
@@ -37,13 +55,20 @@ export const AdminDocumentReview: React.FC = () => {
         }
 
         const { error } = await reviewDocument(selectedDoc.id, status, reviewComment);
+
         if (error) {
             alert('Error al revisar documento: ' + error);
         } else {
+            // Delete the entire document record if rejected and option is enabled
+            if (status === 'rejected' && deleteFileOnReject) {
+                await deleteDocument(selectedDoc.id, selectedDoc.file_path);
+            }
+
             alert(`Documento ${status === 'approved' ? 'aprobado' : 'rechazado'} correctamente`);
             setSelectedDoc(null);
             setSignedUrl(null);
             setReviewComment('');
+            setDeleteFileOnReject(true);
             loadDocuments();
         }
     };
@@ -137,17 +162,40 @@ export const AdminDocumentReview: React.FC = () => {
                                                 }`}>
                                                 {doc.status === 'approved' ? 'Aprobado' : doc.status === 'rejected' ? 'Rechazado' : 'En revisión'}
                                             </span>
+                                            {!doc.file_path && (
+                                                <div className="text-[10px] text-zinc-400 mt-1 flex items-center">
+                                                    <span className="material-symbols-outlined text-[12px] mr-1">delete_forever</span>
+                                                    Archivo borrado
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-zinc-600 dark:text-zinc-400">
                                             {doc.uploaded_at ? new Date(doc.uploaded_at).toLocaleDateString('es-AR') : '-'}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button
-                                                onClick={() => handleViewDocument(doc)}
-                                                className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
-                                            >
-                                                Ver
-                                            </button>
+                                            <div className="flex items-center justify-end gap-2">
+                                                {doc.file_path ? (
+                                                    <>
+                                                        {(doc.status === 'approved' || doc.status === 'rejected') && (
+                                                            <button
+                                                                onClick={() => handleDeleteDocument(doc)}
+                                                                title="Eliminar documento completo (archivo + registro)"
+                                                                className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                            >
+                                                                <span className="material-symbols-outlined text-lg">delete</span>
+                                                            </button>
+                                                        )}
+                                                        <button
+                                                            onClick={() => handleViewDocument(doc)}
+                                                            className="px-3 py-1.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+                                                        >
+                                                            Ver
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <span className="text-xs text-zinc-400 italic px-2">Sin archivo</span>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -206,6 +254,20 @@ export const AdminDocumentReview: React.FC = () => {
                                     className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                                     placeholder="Escribe un comentario sobre el documento..."
                                 />
+                            </div>
+
+                            {/* Delete File Checkbox */}
+                            <div className="flex items-center">
+                                <input
+                                    id="delete-file"
+                                    type="checkbox"
+                                    checked={deleteFileOnReject}
+                                    onChange={(e) => setDeleteFileOnReject(e.target.checked)}
+                                    className="w-4 h-4 text-primary bg-zinc-100 border-zinc-300 rounded focus:ring-primary focus:ring-2"
+                                />
+                                <label htmlFor="delete-file" className="ml-2 text-sm text-zinc-600 dark:text-zinc-400">
+                                    Eliminar archivo del servidor si es rechazado (Ahorrar espacio)
+                                </label>
                             </div>
 
                             {/* Action Buttons */}

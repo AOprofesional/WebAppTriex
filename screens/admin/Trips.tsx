@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTrips } from '../../hooks/useTrips';
 import { TripStatusBadge } from '../../components/TripStatusBadge';
+import { calculateTripStatus } from '../../utils/dateUtils';
 
 export const AdminTrips: React.FC = () => {
     const navigate = useNavigate();
@@ -384,7 +385,7 @@ export const AdminTrips: React.FC = () => {
                                             </span>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <TripStatusBadge status={trip.status_operational || 'PREVIO'} size="sm" />
+                                            <TripStatusBadge status={calculateTripStatus(trip.start_date, trip.end_date)} size="sm" />
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${trip.status_commercial === 'CON_CUPO'
@@ -463,7 +464,7 @@ export const AdminTrips: React.FC = () => {
                                     <div className="w-12 h-12 bg-orange-50 dark:bg-orange-900/20 rounded-2xl flex items-center justify-center text-orange-500 shadow-sm">
                                         <span className="material-symbols-outlined text-2xl">flight_takeoff</span>
                                     </div>
-                                    <TripStatusBadge status={trip.status_operational || 'PREVIO'} size="sm" />
+                                    <TripStatusBadge status={calculateTripStatus(trip.start_date, trip.end_date)} size="sm" />
                                 </div>
 
                                 {/* Title & Location */}

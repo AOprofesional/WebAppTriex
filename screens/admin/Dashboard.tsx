@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useDashboardData } from '../../hooks/useDashboardData';
 
 // Stat Card Component
 const StatCard: React.FC<{
@@ -9,7 +10,8 @@ const StatCard: React.FC<{
     icon: string;
     trend?: { value: string; positive: boolean };
     color?: string;
-}> = ({ title, value, icon, trend, color = 'primary' }) => {
+    loading?: boolean;
+}> = ({ title, value, icon, trend, color = 'primary', loading = false }) => {
     const colorClasses: Record<string, string> = {
         primary: 'bg-primary/10 text-primary',
         blue: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
@@ -23,8 +25,12 @@ const StatCard: React.FC<{
             <div className="flex items-start justify-between">
                 <div>
                     <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{title}</p>
-                    <p className="text-3xl font-bold text-zinc-800 dark:text-white mt-2">{value}</p>
-                    {trend && (
+                    {loading ? (
+                        <div className="h-9 w-16 bg-zinc-100 dark:bg-zinc-800 rounded animate-pulse mt-2"></div>
+                    ) : (
+                        <p className="text-3xl font-bold text-zinc-800 dark:text-white mt-2">{value}</p>
+                    )}
+                    {trend && !loading && (
                         <p className={`text-xs font-medium mt-2 ${trend.positive ? 'text-green-600' : 'text-red-500'}`}>
                             {trend.positive ? '↑' : '↓'} {trend.value}
                         </p>
@@ -76,33 +82,30 @@ const ActivityItem: React.FC<{
 import { CreatePassengerModal } from '../../components/CreatePassengerModal';
 import { VoucherFormModal } from '../../components/modals/VoucherFormModal';
 
-// ... (StatCard, QuickAction, ActivityItem components remain unchanged)
-
 export const AdminDashboard: React.FC = () => {
     const navigate = useNavigate();
     const [isPassengerModalOpen, setIsPassengerModalOpen] = useState(false);
     const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
 
-    // Mock data
-    const stats = [
-        { title: 'Viajes Activos', value: 12, icon: 'flight_takeoff', color: 'primary' },
-        { title: 'Próximos Viajes', value: 8, icon: 'calendar_month', color: 'blue' },
-        { title: 'Docs Pendientes', value: 23, icon: 'pending_actions', color: 'amber' },
-        { title: 'Puntos Acreditados', value: '4.5K', icon: 'stars', color: 'purple', trend: { value: '+12% este mes', positive: true } },
-    ];
+    const { stats, upcomingTrips, recentActivity, loading } = useDashboardData();
 
-    const recentActivity = [
-        { title: 'Documento aprobado', description: 'Seguro de viaje - María González', time: 'Hace 5 min', icon: 'check_circle', iconBg: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
-        { title: 'Nuevo pasajero', description: 'Juan Pérez agregado a Viaje Bariloche', time: 'Hace 15 min', icon: 'person_add', iconBg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' },
-        { title: 'Voucher cargado', description: 'Hotel Hilton - Viaje Buenos Aires', time: 'Hace 1 hora', icon: 'upload_file', iconBg: 'bg-primary/10 text-primary' },
-        { title: 'Puntos asignados', description: '+500 pts a Carlos Rodríguez', time: 'Hace 2 horas', icon: 'stars', iconBg: 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' },
-    ];
+    // Format total points for display
+    const formatPoints = (points: number) => {
+        if (points >= 1000) {
+            return `${(points / 1000).toFixed(1)}K`;
+        }
+        return points.toString();
+    };
 
-    const upcomingTrips = [
-        { id: 1, name: 'Viaje a Bariloche', destination: 'Bariloche, Argentina', date: '15 - 22 Oct', passengers: 45, status: 'confirmado' },
-        { id: 2, name: 'Egresados 2024', destination: 'Cancún, México', date: '01 - 08 Nov', passengers: 120, status: 'en_proceso' },
-        { id: 3, name: 'Viaje Corporativo', destination: 'Miami, USA', date: '10 - 15 Nov', passengers: 25, status: 'confirmado' },
-    ];
+    // Format date range
+    const formatDateRange = (startDate: string, endDate: string) => {
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        const startDay = start.getDate();
+        const endDay = end.getDate();
+        const month = start.toLocaleDateString('es-AR', { month: 'short' });
+        return `${startDay} - ${endDay} ${month}`;
+    };
 
     return (
         <div className="space-y-8">
@@ -115,9 +118,34 @@ export const AdminDashboard: React.FC = () => {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {stats.map((stat, i) => (
-                    <StatCard key={i} {...stat} />
-                ))}
+                <StatCard
+                    title="Viajes En Curso"
+                    value={stats.activeTrips}
+                    icon="flight_takeoff"
+                    color="primary"
+                    loading={loading}
+                />
+                <StatCard
+                    title="Próximos Viajes"
+                    value={stats.upcomingTrips}
+                    icon="calendar_month"
+                    color="blue"
+                    loading={loading}
+                />
+                <StatCard
+                    title="Docs Pendientes"
+                    value={stats.pendingDocuments}
+                    icon="pending_actions"
+                    color="amber"
+                    loading={loading}
+                />
+                <StatCard
+                    title="Puntos Acreditados"
+                    value={formatPoints(stats.totalPoints)}
+                    icon="stars"
+                    color="purple"
+                    loading={loading}
+                />
             </div>
 
             {/* Main Content Grid */}
@@ -134,29 +162,47 @@ export const AdminDashboard: React.FC = () => {
                         </button>
                     </div>
                     <div className="divide-y divide-zinc-50 dark:divide-zinc-800">
-                        {upcomingTrips.map((trip) => (
-                            <div key={trip.id} className="px-6 py-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                                        <span className="material-symbols-outlined">flight_takeoff</span>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-semibold text-zinc-800 dark:text-white">{trip.name}</p>
-                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{trip.destination}</p>
+                        {loading ? (
+                            // Loading skeleton
+                            [...Array(3)].map((_, i) => (
+                                <div key={i} className="px-6 py-4 flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 animate-pulse"></div>
+                                    <div className="flex-1 space-y-2">
+                                        <div className="h-4 bg-zinc-100 dark:bg-zinc-800 rounded w-1/2 animate-pulse"></div>
+                                        <div className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded w-1/3 animate-pulse"></div>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-sm font-medium text-zinc-800 dark:text-white">{trip.date}</p>
-                                    <p className="text-xs text-zinc-400">{trip.passengers} pasajeros</p>
-                                </div>
-                                <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${trip.status === 'confirmado'
-                                    ? 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                                    : 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
-                                    }`}>
-                                    {trip.status === 'confirmado' ? 'Confirmado' : 'En proceso'}
-                                </span>
+                            ))
+                        ) : upcomingTrips.length === 0 ? (
+                            <div className="px-6 py-12 text-center">
+                                <span className="material-symbols-outlined text-4xl text-zinc-300 dark:text-zinc-700">flight_takeoff</span>
+                                <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2">No hay próximos viajes programados</p>
                             </div>
-                        ))}
+                        ) : (
+                            upcomingTrips.map((trip) => (
+                                <div
+                                    key={trip.id}
+                                    onClick={() => navigate(`/admin/trips/${trip.id}`)}
+                                    className="px-6 py-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
+                                >
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                                            <span className="material-symbols-outlined">flight_takeoff</span>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold text-zinc-800 dark:text-white">{trip.name}</p>
+                                            <p className="text-xs text-zinc-500 dark:text-zinc-400">{trip.destination}</p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-sm font-medium text-zinc-800 dark:text-white">
+                                            {formatDateRange(trip.start_date, trip.end_date)}
+                                        </p>
+                                        <p className="text-xs text-zinc-400">{trip.passenger_count} pasajeros</p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
 
@@ -166,31 +212,55 @@ export const AdminDashboard: React.FC = () => {
                         <h2 className="text-base font-bold text-zinc-800 dark:text-white">Actividad Reciente</h2>
                     </div>
                     <div className="px-6">
-                        {recentActivity.map((activity, i) => (
-                            <ActivityItem key={i} {...activity} />
-                        ))}
+                        {loading ? (
+                            // Loading skeleton
+                            [...Array(4)].map((_, i) => (
+                                <div key={i} className="py-4 border-b border-zinc-50 dark:border-zinc-800 last:border-0">
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-10 h-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 animate-pulse"></div>
+                                        <div className="flex-1 space-y-2">
+                                            <div className="h-3 bg-zinc-100 dark:bg-zinc-800 rounded w-3/4 animate-pulse"></div>
+                                            <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded w-1/2 animate-pulse"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        ) : recentActivity.length === 0 ? (
+                            <div className="py-12 text-center">
+                                <span className="material-symbols-outlined text-4xl text-zinc-300 dark:text-zinc-700">notifications</span>
+                                <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2">No hay actividad reciente</p>
+                            </div>
+                        ) : (
+                            recentActivity.map((activity) => (
+                                <ActivityItem key={activity.id} {...activity} />
+                            ))
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Pending Documents Alert */}
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400">
-                        <span className="material-symbols-outlined text-2xl">warning</span>
+            {stats.pendingDocuments > 0 && !loading && (
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                            <span className="material-symbols-outlined text-2xl">warning</span>
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-amber-800 dark:text-amber-200">
+                                {stats.pendingDocuments} documento{stats.pendingDocuments !== 1 ? 's' : ''} pendiente{stats.pendingDocuments !== 1 ? 's' : ''} de revisión
+                            </p>
+                            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">Revisar antes de las próximas salidas</p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-sm font-bold text-amber-800 dark:text-amber-200">23 documentos pendientes de revisión</p>
-                        <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">Revisar antes de las próximas salidas</p>
-                    </div>
+                    <button
+                        onClick={() => navigate('/admin/documents?tab=review')}
+                        className="px-4 py-2 bg-amber-600 text-white rounded-xl text-sm font-semibold hover:bg-amber-700 transition-colors"
+                    >
+                        Revisar ahora
+                    </button>
                 </div>
-                <button
-                    onClick={() => navigate('/admin/vouchers?status=pending')}
-                    className="px-4 py-2 bg-amber-600 text-white rounded-xl text-sm font-semibold hover:bg-amber-700 transition-colors"
-                >
-                    Revisar ahora
-                </button>
-            </div>
+            )}
 
             {/* Modals */}
             <CreatePassengerModal

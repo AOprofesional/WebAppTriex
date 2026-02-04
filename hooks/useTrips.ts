@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Tables, TablesInsert, TablesUpdate } from '../types/database.types';
+import { calculateTripStatus } from '../utils/dateUtils';
 
 type Trip = Tables<'trips'>;
 type TripInsert = TablesInsert<'trips'>;
@@ -44,9 +45,9 @@ export const useTrips = () => {
             // 'all' includes both (no filter on archived_at)
 
             if (filters) {
-                if (filters.statusOperational && filters.statusOperational !== 'all') {
-                    query = query.eq('status_operational', filters.statusOperational);
-                }
+                // REMOVED: status_operational database filter
+                // We'll filter by calculated status after fetching
+
                 if (filters.statusCommercial && filters.statusCommercial !== 'all') {
                     query = query.eq('status_commercial', filters.statusCommercial);
                 }
@@ -68,7 +69,16 @@ export const useTrips = () => {
 
             if (fetchError) throw fetchError;
 
-            setTrips(data || []);
+            // Filter by calculated status (client-side)
+            let filteredData = data || [];
+            if (filters?.statusOperational && filters.statusOperational !== 'all') {
+                filteredData = filteredData.filter(trip => {
+                    const calculatedStatus = calculateTripStatus(trip.start_date, trip.end_date);
+                    return calculatedStatus === filters.statusOperational;
+                });
+            }
+
+            setTrips(filteredData);
         } catch (err: any) {
             setError(err.message);
             console.error('Error fetching trips:', err);

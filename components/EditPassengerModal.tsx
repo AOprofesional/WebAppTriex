@@ -1,11 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Database } from '../types/database.types';
 
-type PassengerListView = Database['public']['Views']['v_admin_passengers_list']['Row'];
+interface PassengerData {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    passenger_email: string | null;
+    phone: string | null;
+    document_type: string | null;
+    document_number: string | null;
+    type_code: string | null;  // From view
+    passenger_type_id: number | null;  // For updates
+    is_recurrent: boolean | null;
+}
 
 interface EditPassengerModalProps {
-    passenger: PassengerListView | null;
+    passenger: PassengerData | null;
     isOpen: boolean;
     onClose: () => void;
     onSave: () => void;
@@ -20,11 +30,11 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
-        passenger_email: '',
+        email: '',
         phone: '',
         document_type: 'DNI',
         document_number: '',
-        type_code: 'regular',
+        passenger_type_id: 1 as number,  // 1 = regular
         is_recurrent: false,
     });
     const [isLoading, setIsLoading] = useState(false);
@@ -32,14 +42,22 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
 
     useEffect(() => {
         if (passenger) {
+            // Map type_code to passenger_type_id
+            const typeCodeToId: { [key: string]: number } = {
+                'regular': 1,
+                'vip': 2,
+                'corporate': 3,
+                'other': 4
+            };
+
             setFormData({
                 first_name: passenger.first_name || '',
                 last_name: passenger.last_name || '',
-                passenger_email: passenger.passenger_email || '',
+                email: passenger.passenger_email || '',
                 phone: passenger.phone || '',
                 document_type: passenger.document_type || 'DNI',
                 document_number: passenger.document_number || '',
-                type_code: passenger.type_code || 'regular',
+                passenger_type_id: typeCodeToId[passenger.type_code || 'regular'] || 1,
                 is_recurrent: passenger.is_recurrent || false,
             });
         }
@@ -58,11 +76,11 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                 .update({
                     first_name: formData.first_name,
                     last_name: formData.last_name,
-                    passenger_email: formData.passenger_email,
+                    email: formData.email,
                     phone: formData.phone || null,
                     document_type: formData.document_type,
                     document_number: formData.document_number || null,
-                    type_code: formData.type_code,
+                    passenger_type_id: formData.passenger_type_id,
                     is_recurrent: formData.is_recurrent,
                 })
                 .eq('id', passenger.id);
@@ -139,8 +157,8 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                         </label>
                         <input
                             type="email"
-                            value={formData.passenger_email}
-                            onChange={(e) => setFormData({ ...formData, passenger_email: e.target.value })}
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                             className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                             required
                         />
@@ -195,14 +213,14 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                             Tipo de Pasajero
                         </label>
                         <select
-                            value={formData.type_code}
-                            onChange={(e) => setFormData({ ...formData, type_code: e.target.value })}
+                            value={formData.passenger_type_id}
+                            onChange={(e) => setFormData({ ...formData, passenger_type_id: parseInt(e.target.value) })}
                             className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                         >
-                            <option value="regular">Regular</option>
-                            <option value="vip">VIP</option>
-                            <option value="corporate">Corporativo</option>
-                            <option value="other">Otro</option>
+                            <option value="1">Regular</option>
+                            <option value="2">VIP</option>
+                            <option value="3">Corporativo</option>
+                            <option value="4">Otro</option>
                         </select>
                     </div>
 

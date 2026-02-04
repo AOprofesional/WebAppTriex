@@ -4,7 +4,7 @@ import { LOGO_URL } from '../constants';
 import { usePassengerTrips } from '../hooks/usePassengerTrips';
 import { useDocuments, RequiredDocument, PassengerDocument } from '../hooks/useDocuments';
 
-type FlowStep = 'list' | 'camera' | 'review' | 'success';
+type FlowStep = 'list' | 'method_selection' | 'camera' | 'review' | 'success';
 
 export const UploadDocument: React.FC = () => {
   const navigate = useNavigate();
@@ -17,10 +17,16 @@ export const UploadDocument: React.FC = () => {
     uploadPassengerDocument
   } = useDocuments();
 
+  const isDni = (req: RequiredDocument) => {
+    const name = req.document_types?.name.toLowerCase() || '';
+    return name.includes('dni') || name.includes('identidad') || name.includes('passport') || name.includes('pasaporte');
+  };
+
   const [step, setStep] = useState<FlowStep>('list');
   const [selectedReq, setSelectedReq] = useState<RequiredDocument | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -94,16 +100,37 @@ export const UploadDocument: React.FC = () => {
     }
   };
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setCapturedFile(file);
+
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setCapturedImage(reader.result as string);
+          setStep('review');
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setCapturedImage(null); // No preview for non-images
+        setStep('review');
+      }
+    }
+  };
+
   const handleUpload = async () => {
     if (!capturedFile || !selectedReq || !primaryTrip || !passenger) return;
 
     setUploading(true);
     try {
+      const format = capturedFile.type === 'application/pdf' ? 'pdf' : 'image';
+
       const { error } = await uploadPassengerDocument({
         trip_id: primaryTrip.id,
         passenger_id: passenger.id,
         required_document_id: selectedReq.id,
-        format: 'image'
+        format: format
       }, capturedFile);
 
       if (error) throw new Error(error);
@@ -117,8 +144,34 @@ export const UploadDocument: React.FC = () => {
     }
   };
 
-  const getDocStatus = (reqId: string) => {
-    const doc = passengerDocuments.find(d => d.required_document_id === reqId);
+  const getDocFiles = (reqId: string) => {
+    // Files are ordered by created_at DESC from the hook
+    return passengerDocuments.filter(d => d.required_document_id === reqId);
+  };
+
+  const getDocStatus = (reqId: string, req?: RequiredDocument) => {
+    const allFiles = getDocFiles(reqId);
+
+    // Logic for DNI (requires 2 files)
+    if (req && isDni(req)) {
+      // Consider ONLY the latest 2 files for status
+      // Since files are DESC, taking first 2 gives us the most recent attempts
+      const latestFiles = allFiles.slice(0, 2);
+
+      if (latestFiles.length === 0) return 'missing';
+      if (latestFiles.length === 1) return 'partial';
+
+      // With 2 files (or more, but evaluating latest 2)
+      // If any of the LATEST 2 is rejected, overall is rejected
+      if (latestFiles.some(f => f.status === 'rejected')) return 'rejected';
+      // If all approved
+      if (latestFiles.every(f => f.status === 'approved')) return 'approved';
+      return 'uploaded';
+    }
+
+    // Default logic (1 file)
+    if (allFiles.length === 0) return 'missing';
+    const doc = allFiles[0]; // Latest file
     return doc?.status || 'missing';
   };
 
@@ -146,6 +199,78 @@ export const UploadDocument: React.FC = () => {
         >
           Volver a mis documentos
         </button>
+      </div>
+    );
+  }
+
+  if (step === 'method_selection') {
+    return (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+        <div className="bg-white w-full max-w-sm sm:rounded-[32px] rounded-t-[32px] p-6 animate-in slide-in-from-bottom duration-200">
+          <div className="w-12 h-1.5 bg-zinc-200 rounded-full mx-auto mb-8 sm:hidden"></div>
+
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-primary text-3xl">upload_file</span>
+            </div>
+            <h3 className="text-xl font-bold text-zinc-900">Subir Documento</h3>
+            <p className="text-zinc-500 text-sm mt-2">
+              Para {selectedReq?.document_types?.name}
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={() => setStep('camera')}
+              className="w-full flex items-center justify-between p-4 bg-zinc-50 hover:bg-zinc-100 rounded-2xl transition-colors group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-zinc-600 group-hover:text-primary transition-colors">
+                  <span className="material-symbols-outlined">photo_camera</span>
+                </div>
+                <div className="text-left">
+                  <span className="block font-bold text-zinc-800">Usar Cámara</span>
+                  <span className="text-xs text-zinc-400">Tomar una foto ahora</span>
+                </div>
+              </div>
+              <span className="material-symbols-outlined text-zinc-300">chevron_right</span>
+            </button>
+
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full flex items-center justify-between p-4 bg-zinc-50 hover:bg-zinc-100 rounded-2xl transition-colors group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm text-zinc-600 group-hover:text-primary transition-colors">
+                  <span className="material-symbols-outlined">folder_open</span>
+                </div>
+                <div className="text-left">
+                  <span className="block font-bold text-zinc-800">Subir Archivo</span>
+                  <span className="text-xs text-zinc-400">PDF o Imagen de galería</span>
+                </div>
+              </div>
+              <span className="material-symbols-outlined text-zinc-300">chevron_right</span>
+            </button>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*,application/pdf"
+              onChange={handleFileSelect}
+            />
+          </div>
+
+          <button
+            onClick={() => {
+              setStep('list');
+              setSelectedReq(null);
+            }}
+            className="w-full py-4 mt-6 text-zinc-400 font-bold text-sm hover:text-zinc-600 transition-colors"
+          >
+            Cancelar
+          </button>
+        </div>
       </div>
     );
   }
@@ -200,13 +325,23 @@ export const UploadDocument: React.FC = () => {
           <div className="w-6"></div>
         </header>
         <main className="flex-1 p-6">
-          <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-zinc-200 mb-6">
-            <img src={capturedImage!} alt="Review" className="w-full h-auto" />
+          <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-zinc-200 mb-6 flex items-center justify-center min-h-[300px] bg-zinc-100">
+            {capturedImage ? (
+              <img src={capturedImage} alt="Review" className="w-full h-auto object-contain" />
+            ) : (
+              <div className="text-center p-8">
+                <span className="material-symbols-outlined text-6xl text-red-500 mb-4 block">picture_as_pdf</span>
+                <p className="font-bold text-zinc-800 text-lg mb-1">{capturedFile?.name}</p>
+                <p className="text-zinc-500 text-sm">{(capturedFile?.size ? (capturedFile.size / 1024 / 1024).toFixed(2) : 0)} MB</p>
+              </div>
+            )}
           </div>
           <div className="space-y-3">
             <div className="flex items-center gap-3 p-4 bg-white rounded-2xl border border-zinc-200">
               <span className="material-symbols-outlined text-green-500">check_circle</span>
-              <p className="text-sm font-medium text-zinc-600">Buena iluminación detectada</p>
+              <p className="text-sm font-medium text-zinc-600">
+                {capturedImage ? 'Buena iluminación detectada' : 'Archivo listo para subir'}
+              </p>
             </div>
           </div>
         </main>
@@ -272,20 +407,20 @@ export const UploadDocument: React.FC = () => {
                   onClick={() => {
                     if (status === 'missing' || status === 'rejected') {
                       setSelectedReq(req);
-                      setStep('camera');
+                      setStep('method_selection');
                     }
                   }}
                   className={`p-5 rounded-[24px] border transition-all ${status === 'missing' || status === 'rejected'
-                      ? 'bg-white border-zinc-200 shadow-sm cursor-pointer hover:border-primary active:scale-[0.98]'
-                      : 'bg-zinc-50 border-zinc-100 opacity-90'
+                    ? 'bg-white border-zinc-200 shadow-sm cursor-pointer hover:border-primary active:scale-[0.98]'
+                    : 'bg-zinc-50 border-zinc-100 opacity-90'
                     }`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${status === 'approved' ? 'bg-green-100 text-green-600' :
-                          status === 'uploaded' ? 'bg-amber-100 text-amber-600' :
-                            status === 'rejected' ? 'bg-red-100 text-red-600' :
-                              'bg-zinc-100 text-zinc-400'
+                        status === 'uploaded' ? 'bg-amber-100 text-amber-600' :
+                          status === 'rejected' ? 'bg-red-100 text-red-600' :
+                            'bg-zinc-100 text-zinc-400'
                         }`}>
                         <span className="material-symbols-outlined">
                           {status === 'approved' ? 'check_circle' :
@@ -296,9 +431,9 @@ export const UploadDocument: React.FC = () => {
                       <div>
                         <h3 className="font-bold text-triex-grey text-lg">{req.document_types?.name}</h3>
                         <p className={`text-sm font-medium ${status === 'approved' ? 'text-green-600' :
-                            status === 'uploaded' ? 'text-amber-600' :
-                              status === 'rejected' ? 'text-red-600' :
-                                'text-zinc-400'
+                          status === 'uploaded' ? 'text-amber-600' :
+                            status === 'rejected' ? 'text-red-600' :
+                              'text-zinc-400'
                           }`}>
                           {status === 'approved' ? 'Aprobado' :
                             status === 'uploaded' ? 'En revisión' :

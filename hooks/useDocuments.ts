@@ -162,50 +162,120 @@ export const useDocuments = () => {
         try {
             setLoading(true);
 
-            // Create document record
-            const { data: doc, error: insertError } = await supabase
-                .from('passenger_documents')
-                .insert([{
-                    ...data,
-                    status: 'uploaded',
-                    uploaded_at: new Date().toISOString(),
-                    bucket: 'triex-documents',
-                    file_path: null,
-                    mime_type: null,
-                    size: null
-                }])
-                .select()
-                .single();
+            // Generate ID client-side
+            const docId = crypto.randomUUID();
 
-            if (insertError) throw insertError;
-
-            // Upload file using imported utility
+            // Upload file using imported utility first
             const uploadResult = await uploadDocument(
                 file,
                 data.trip_id,
                 data.passenger_id,
-                doc.id
+                docId
             );
 
             if (uploadResult.error) throw new Error(uploadResult.error);
 
-            // Update document with file metadata
-            const { error: updateError } = await supabase
+            // Create document record with full data
+            const { data: doc, error: insertError } = await supabase
                 .from('passenger_documents')
-                .update({
+                .insert([{
+                    id: docId,
+                    ...data,
+                    status: 'uploaded', // Pending review
+                    uploaded_at: new Date().toISOString(),
                     bucket: uploadResult.bucket,
                     file_path: uploadResult.filePath,
                     mime_type: uploadResult.mimeType,
                     size: uploadResult.size
-                })
-                .eq('id', doc.id);
+                }])
+                .select()
+                .single();
 
-            if (updateError) throw updateError;
+            if (insertError) {
+                // If insert fails, we should technically clean up the file, but for now throwing is safer
+                console.error('Insert failed after upload', insertError);
+                throw insertError;
+            }
 
             return { data: doc, error: null };
         } catch (err: any) {
             console.error('Error uploading document:', err);
             return { data: null, error: err.message };
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const deleteDocumentFile = async (id: string, filePath: string) => {
+        try {
+            setLoading(true);
+
+            // 1. Delete from Storage
+            const { error: storageError } = await supabase.storage
+                .from('triex-documents')
+                .remove([filePath]);
+
+            if (storageError) {
+                // We log but continue to try to update DB if it was just a "file not found" or similar
+                console.error('Error deleting file from storage:', storageError);
+            }
+
+            // 2. Clear file metadata in DB
+            const { error: dbError } = await supabase
+                .from('passenger_documents')
+                .update({
+                    bucket: null,
+                    file_path: null,
+                    mime_type: null,
+                    size: null
+                })
+                .eq('id', id);
+
+            if (dbError) throw dbError;
+
+            await fetchPassengerDocuments();
+            return { error: null };
+        } catch (err: any) {
+            console.error('Error deleting document file:', err);
+            return { error: err.message };
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    /**
+     * Completely deletes a document (file + database record)
+     * Unlike deleteDocumentFile which keeps the record
+     */
+    const deleteDocument = async (id: string, filePath: string | null) => {
+        try {
+            setLoading(true);
+
+            // 1. Delete file from storage if exists
+            if (filePath) {
+                const { error: storageError } = await supabase.storage
+                    .from('triex-documents')
+                    .remove([filePath]);
+
+                if (storageError) {
+                    console.error('Error deleting file from storage:', storageError);
+                    // Continue anyway - file might not exist
+                }
+            }
+
+            // 2. Delete database record completely
+            const { error: dbError } = await supabase
+                .from('passenger_documents')
+                .delete()
+                .eq('id', id);
+
+            if (dbError) throw dbError;
+
+            await fetchPassengerDocuments();
+            return { error: null };
+        } catch (err: any) {
+            console.error('Error deleting document:', err);
+            return { error: err.message };
         } finally {
             setLoading(false);
         }
@@ -285,6 +355,8 @@ export const useDocuments = () => {
         fetchPassengerDocuments,
         uploadPassengerDocument,
         reviewDocument,
+        deleteDocumentFile,
+        deleteDocument,
         getDocumentSignedUrl,
     };
 };
