@@ -154,8 +154,42 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false })
                         )}
                     </div>
 
-                    {/* Rest of menu items: Puntos, Comunicaciones, Usuarios, Configuración */}
-                    {menuItems.slice(3).map((item) => {
+                    {/* Puntos, Comunicaciones */}
+                    {menuItems.slice(3, 5).map((item) => {
+                        const active = isActive(item.path);
+                        return (
+                            <button
+                                key={item.path}
+                                onClick={() => navigate(item.path)}
+                                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-all"
+                                style={{
+                                    backgroundColor: active ? '#E07A2F' : 'transparent',
+                                    color: active ? '#ffffff' : '#b0b0b0',
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (!active) {
+                                        e.currentTarget.style.backgroundColor = '#2a2a2a';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (!active) {
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                    }
+                                }}
+                            >
+                                <span className={`material-symbols-outlined text-xl ${active ? 'font-fill' : ''}`}>
+                                    {item.icon}
+                                </span>
+                                <span className="text-sm font-medium">{item.label}</span>
+                            </button>
+                        );
+                    })}
+
+                    {/* Divider */}
+                    <div className="my-2 mx-4 border-t" style={{ borderColor: '#2a2a2a' }}></div>
+
+                    {/* Usuarios, Configuración */}
+                    {menuItems.slice(5).map((item) => {
                         const active = isActive(item.path);
                         return (
                             <button
