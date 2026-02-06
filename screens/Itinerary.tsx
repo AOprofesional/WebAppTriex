@@ -66,7 +66,7 @@ export const Itinerary: React.FC = () => {
                 <button
                   key={day.id}
                   onClick={() => setSelectedDayId(day.id)}
-                  className={`flex-shrink-0 px-6 py-2.5 rounded-full font-bold text-sm transition-all whitespace-nowrap ${selectedDayId === day.id ? 'bg-[#F97316] text-white shadow-md' : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-zinc-100 dark:border-zinc-800'}`}
+                  className={`flex-shrink-0 px-4 py-2 md:px-6 md:py-2.5 rounded-full font-bold text-sm transition-all whitespace-nowrap ${selectedDayId === day.id ? 'bg-[#F97316] text-white shadow-md' : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-zinc-100 dark:border-zinc-800'}`}
                 >
                   Día {day.day_number}
                   {day.date && <span className="ml-1 opacity-75 font-normal">| {new Date(day.date).getDate()}/{new Date(day.date).getMonth() + 1}</span>}
@@ -82,13 +82,13 @@ export const Itinerary: React.FC = () => {
               </div>
             ) : activities.length > 0 ? (
               <div className="relative">
-                <div className="absolute left-[19px] top-4 bottom-4 w-[2px] bg-zinc-200 dark:bg-zinc-800"></div>
+                <div className="absolute left-[15px] top-4 bottom-4 w-[2px] bg-zinc-200 dark:bg-zinc-800"></div>
 
                 {activities.map((act) => (
                   <div
                     key={act.id}
                     ref={act.status === 'in_course' ? activeItemRef : null}
-                    className="relative flex gap-6 mb-8"
+                    className="relative flex gap-4 md:gap-6 mb-8"
                   >
                     <div className={`z-10 rounded-full p-1 ring-4 h-fit ${act.status === 'approved' ? 'bg-zinc-100 ring-white dark:ring-zinc-950' : act.status === 'in_course' ? 'bg-[#F97316] ring-[#F97316]/20 animate-pulse-subtle' : 'bg-white ring-zinc-100 dark:bg-zinc-900 dark:ring-zinc-800'}`}>
                       <span className={`material-symbols-outlined text-[24px] ${act.status === 'approved' ? 'text-zinc-400' : act.status === 'in_course' ? 'text-white' : 'text-zinc-400'}`}>
