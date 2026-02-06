@@ -125,14 +125,36 @@ export const PassengerDetailsModal: React.FC<PassengerDetailsModalProps> = ({
                 review_comment: doc.review_comment
             })) || []);
 
-            // Fetch vouchers - get vouchers directly assigned to this passenger
-            const { data: vouchersData } = await supabase
-                .from('vouchers')
-                .select('id, title, provider, service_date, format, type, visibility, trip_id')
-                .eq('passenger_id', passenger.id)
-                .is('archived_at', null);
+            // Fetch vouchers - get vouchers assigned to this passenger AND vouchers from their trips
+            // First, get the trip IDs for this passenger
+            const tripIds = tripsData?.map((tp: any) => tp.trip_id).filter(Boolean) || [];
 
-            setVouchers(vouchersData || []);
+            // Build OR filter: passenger_id matches OR trip_id is in passenger's trips (with passenger_id null for trip-wide vouchers)
+            let voucherQuery = supabase
+                .from('vouchers')
+                .select('id, title, provider_name, service_date, format, type_id, visibility, trip_id, passenger_id, status')
+                .eq('status', 'active');
+
+            if (tripIds.length > 0) {
+                // Vouchers directly assigned to passenger OR trip-level vouchers for passenger's trips
+                voucherQuery = voucherQuery.or(
+                    `passenger_id.eq.${passenger.id},and(trip_id.in.(${tripIds.join(',')}),visibility.eq.all_trip_passengers)`
+                );
+            } else {
+                // Only personal vouchers if no trips
+                voucherQuery = voucherQuery.eq('passenger_id', passenger.id);
+            }
+
+            const { data: vouchersData } = await voucherQuery;
+
+            setVouchers(vouchersData?.map((v: any) => ({
+                id: v.id,
+                title: v.title,
+                provider: v.provider_name || 'Sin proveedor',
+                service_date: v.service_date,
+                format: v.format,
+                type: v.type_id || 'general',
+            })) || []);
         } catch (error) {
             console.error('Error fetching related data:', error);
         } finally {

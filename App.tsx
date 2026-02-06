@@ -16,6 +16,9 @@ import { ResetPassword } from './screens/ResetPassword';
 import { UpdatePassword } from './screens/UpdatePassword';
 import { AuthCallback } from './screens/AuthCallback';
 import { Pending } from './screens/Pending';
+import { EditPersonalInfo } from './screens/EditPersonalInfo';
+import { SecuritySettings } from './screens/SecuritySettings';
+import { NotificationSettings } from './screens/NotificationSettings';
 import { Header } from './components/Header';
 import { BottomNav } from './components/BottomNav';
 import { Sidebar } from './components/Sidebar';
@@ -227,6 +230,21 @@ const App: React.FC = () => {
               <Route path="/profile" element={
                 <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
                   <Profile />
+                </ProtectedRoute>
+              } />
+              <Route path="/edit-personal-info" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <EditPersonalInfo />
+                </ProtectedRoute>
+              } />
+              <Route path="/security-settings" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <SecuritySettings />
+                </ProtectedRoute>
+              } />
+              <Route path="/notification-settings" element={
+                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                  <NotificationSettings />
                 </ProtectedRoute>
               } />
               <Route path="/upload" element={

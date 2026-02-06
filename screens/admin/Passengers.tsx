@@ -23,6 +23,7 @@ type PassengerListView = {
     profile_id: string | null;
     is_recurrent: boolean | null;
     archived_at: string | null;
+    avatar_url: string | null;
 };
 
 
@@ -238,8 +239,14 @@ export const AdminPassengers: React.FC = () => {
                                         <tr key={passenger.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-                                                        {initials}
+                                                    <div className="w-10 h-10 rounded-full overflow-hidden bg-primary/10 flex-shrink-0">
+                                                        {passenger.avatar_url ? (
+                                                            <img src={passenger.avatar_url} alt={initials} className="w-full h-full object-cover" />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-primary font-bold text-sm">
+                                                                {initials}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <div>
                                                         <p className="text-sm font-semibold text-zinc-800 dark:text-white">{fullName}</p>

@@ -69,7 +69,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         {/* User Profile Mini Section */}
         <div className="p-6 flex items-center gap-4 bg-zinc-50/50 dark:bg-zinc-800/30">
           <div className="w-12 h-12 rounded-2xl overflow-hidden border-2 border-white dark:border-zinc-800 shadow-sm">
-            <img src={AVATAR_URL} alt="Avatar de Camila" className="w-full h-full object-cover" />
+            {passenger?.avatar_url ? (
+              <img src={passenger.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full bg-primary/20 flex items-center justify-center text-primary font-bold text-sm">
+                {passenger ? `${passenger.first_name[0]}${passenger.last_name[0]}` : '?'}
+              </div>
+            )}
           </div>
           <div>
             <div>
