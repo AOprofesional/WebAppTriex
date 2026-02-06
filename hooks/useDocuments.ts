@@ -88,11 +88,30 @@ export const useDocuments = () => {
         try {
             setLoading(true);
 
+            // Get existing required_documents IDs before deletion
+            const { data: existingReqs } = await supabase
+                .from('required_documents')
+                .select('id')
+                .eq('trip_id', tripId);
+
+            const existingReqIds = existingReqs?.map(r => r.id) || [];
+
             // Delete existing requirements
             await supabase
                 .from('required_documents')
                 .delete()
                 .eq('trip_id', tripId);
+
+            // Delete passenger_documents that referenced the deleted requirements
+            // This prevents duplicates when re-saving requirements
+            if (existingReqIds.length > 0) {
+                await supabase
+                    .from('passenger_documents')
+                    .delete()
+                    .in('required_document_id', existingReqIds)
+                    .eq('trip_id', tripId);
+            }
+
 
             // Insert new requirements
             if (requirements.length > 0) {

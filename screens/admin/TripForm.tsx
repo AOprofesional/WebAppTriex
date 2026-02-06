@@ -8,6 +8,7 @@ import { useDocuments } from '../../hooks/useDocuments';
 import { supabase } from '../../lib/supabase';
 import { NextStepCard } from '../../components/NextStepCard';
 import { ActivityModal } from '../../components/ActivityModal';
+import { uploadTripBanner, deleteTripBanner, validateImageFile } from '../../utils/imageUpload';
 
 interface TripFormData {
     name: string;
@@ -54,6 +55,11 @@ export const TripForm: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
+
+    // Banner image state
+    const [currentBannerUrl, setCurrentBannerUrl] = useState<string | null>(null);
+    const [bannerFile, setBannerFile] = useState<File | null>(null);
+    const [bannerPreview, setBannerPreview] = useState<string | null>(null);
 
     // All passengers for selection
     const [allPassengers, setAllPassengers] = useState<Passenger[]>([]);
@@ -148,6 +154,11 @@ export const TripForm: React.FC = () => {
                 next_step_cta_route_override: data.next_step_cta_route_override || '',
             });
 
+            // Load banner image
+            if (data.banner_image_url) {
+                setCurrentBannerUrl(data.banner_image_url);
+            }
+
             // Load assigned passengers
             const { data: tripPassengers } = await supabase
                 .from('trip_passengers')
@@ -236,6 +247,22 @@ export const TripForm: React.FC = () => {
                 tripId = data.id;
             }
 
+            // Handle banner image upload
+            if (bannerFile) {
+                // Delete old banner if exists
+                if (currentBannerUrl) {
+                    try {
+                        await deleteTripBanner(currentBannerUrl);
+                    } catch (err) {
+                        console.warn('Could not delete old banner:', err);
+                    }
+                }
+
+                // Upload new banner
+                const bannerUrl = await uploadTripBanner(bannerFile, tripId);
+                await supabase.from('trips').update({ banner_image_url: bannerUrl }).eq('id', tripId);
+            }
+
             // Assign passengers
             if (selectedPassengers.length > 0) {
                 const { error: assignError } = await assignPassengers(tripId, selectedPassengers);
@@ -267,6 +294,31 @@ export const TripForm: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         await saveTrip(true);
+    };
+
+    const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const validation = validateImageFile(file);
+        if (!validation.valid) {
+            alert(validation.error);
+            return;
+        }
+
+        setBannerFile(file);
+        // Create preview URL
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setBannerPreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemoveBanner = () => {
+        setBannerFile(null);
+        setBannerPreview(null);
+        setCurrentBannerUrl(null);
     };
 
     const calculateAutoStatus = (): string => {
@@ -498,6 +550,59 @@ export const TripForm: React.FC = () => {
                         </select>
                     </div>
                 </div>
+            </div>
+
+            {/* Section A.5: Banner del Viaje */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6">
+                <h2 className="text-lg font-bold text-triex-grey dark:text-white mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary">image</span>
+                    Banner del Viaje (Opcional)
+                </h2>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+                    Imagen horizontal que se mostrará en la app del pasajero. Recomendado: 1200x675px (ratio 16:9).
+                </p>
+
+                {/* Preview */}
+                {(bannerPreview || currentBannerUrl) && (
+                    <div className="relative mb-4 rounded-xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 aspect-[16/9]">
+                        <img
+                            src={bannerPreview || currentBannerUrl || ''}
+                            alt="Banner preview"
+                            className="w-full h-full object-cover"
+                        />
+                        <button
+                            type="button"
+                            onClick={handleRemoveBanner}
+                            className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors shadow-lg"
+                            title="Quitar banner"
+                        >
+                            <span className="material-symbols-outlined">delete</span>
+                        </button>
+                    </div>
+                )}
+
+                {/* Upload */}
+                {!bannerPreview && !currentBannerUrl && (
+                    <label className="block cursor-pointer">
+                        <input
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                            onChange={handleBannerFileChange}
+                            className="hidden"
+                        />
+                        <div className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-xl p-8 text-center hover:border-primary dark:hover:border-primary hover:bg-primary/5 transition-all aspect-[16/9] flex flex-col items-center justify-center">
+                            <span className="material-symbols-outlined text-5xl text-zinc-400 dark:text-zinc-600 mb-3">
+                                add_photo_alternate
+                            </span>
+                            <p className="font-semibold text-zinc-700 dark:text-zinc-300 mb-1">
+                                Arrastrá la imagen aquí o hacé clic para seleccionar
+                            </p>
+                            <p className="text-sm text-zinc-500">
+                                JPG, PNG o WebP - Máximo 5MB
+                            </p>
+                        </div>
+                    </label>
+                )}
             </div>
 
             {/* Section B: Estados */}

@@ -30,7 +30,8 @@ export const Home: React.FC = () => {
   const pendingDocsCount = requiredDocuments.filter(req => {
     if (!req.is_required) return false;
     const doc = passengerDocuments.find(d => d.required_document_id === req.id);
-    return !doc || doc.status === 'rejected'; // Missing or rejected
+    // Match checkPendingDocuments logic: missing, pending, or rejected
+    return !doc || doc.status === 'pending' || doc.status === 'rejected';
   }).length;
 
   const loading = loadingTrips || loadingPassenger;
@@ -85,35 +86,50 @@ export const Home: React.FC = () => {
           </div>
 
           {primaryTrip ? (
-            <div className="bg-white dark:bg-zinc-900 rounded-[32px] shadow-sm border border-zinc-100 dark:border-zinc-800 p-6">
-              <div className="flex items-start justify-between">
-                <div className="space-y-1.5 flex-1">
-                  <h3 className="text-[22px] font-extrabold text-triex-grey dark:text-white">
-                    {primaryTrip.name}
-                  </h3>
-                  <div className="flex items-center text-zinc-400 text-[14px] gap-2">
-                    <span className="material-symbols-outlined text-[18px]">location_on</span>
-                    <span className="font-semibold tracking-tight">{primaryTrip.destination}</span>
-                  </div>
-                  <div className="flex items-center text-zinc-400 text-[14px] gap-2">
-                    <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-                    <span className="font-semibold tracking-tight">
-                      {formatDateRange(primaryTrip.start_date, primaryTrip.end_date)}
-                    </span>
-                  </div>
+            <div className="bg-white dark:bg-zinc-900 rounded-[32px] shadow-sm border border-zinc-100 dark:border-zinc-800 overflow-hidden">
+              {/* Banner Image */}
+              {primaryTrip.banner_image_url && (
+                <div className="relative h-48 overflow-hidden">
+                  <img
+                    src={primaryTrip.banner_image_url}
+                    alt={primaryTrip.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
                 </div>
-                <div className="w-12 h-12 bg-[#F0F2F5] dark:bg-zinc-800 rounded-2xl flex items-center justify-center text-triex-grey dark:text-zinc-300">
-                  <span className="material-symbols-outlined text-[26px] font-fill">flight_takeoff</span>
-                </div>
-              </div>
+              )}
 
-              <button
-                onClick={() => navigate('/mytrip')}
-                className="w-full mt-8 bg-[#3D3935] hover:bg-black/90 text-white py-[18px] rounded-[20px] font-bold flex items-center justify-center gap-2 transition-all active:scale-[0.98] shadow-sm text-[16px]"
-              >
-                Ver detalles del viaje
-                <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-              </button>
+              {/* Trip Info */}
+              <div className="p-6">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1.5 flex-1">
+                    <h3 className="text-[22px] font-extrabold text-triex-grey dark:text-white">
+                      {primaryTrip.name}
+                    </h3>
+                    <div className="flex items-center text-zinc-400 text-[14px] gap-2">
+                      {primaryTrip.destination && (
+                        <>
+                          <span className="material-symbols-outlined text-[18px]">location_on</span>
+                          <span>{primaryTrip.destination}</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="flex items-center text-zinc-500 text-[14px] gap-2 pt-0.5">
+                      <span className="material-symbols-outlined text-[18px]">calendar_today</span>
+                      <span>{formatDateRange(primaryTrip.start_date, primaryTrip.end_date)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => navigate('/my-trip')}
+                  className="mt-6 w-full bg-triex-grey dark:bg-white text-white dark:text-triex-grey py-3.5 rounded-2xl font-bold text-[15px] active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
+                >
+                  Ver detalles del viaje
+                  <span className="material-symbols-outlined">arrow_forward</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="bg-white dark:bg-zinc-900 rounded-[32px] shadow-sm border border-zinc-100 dark:border-zinc-800 p-8 text-center">
@@ -142,7 +158,7 @@ export const Home: React.FC = () => {
               detail={nextStep.detail}
               ctaLabel={nextStep.ctaLabel}
               ctaRoute={nextStep.ctaRoute}
-              onCtaClick={() => navigate(nextStep.ctaRoute)}
+              onCtaClick={nextStep.ctaRoute ? () => navigate(nextStep.ctaRoute!) : undefined}
             />
           ) : (
             <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-7 border border-zinc-100 dark:border-zinc-800">

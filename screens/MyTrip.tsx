@@ -84,10 +84,11 @@ export const MyTrip: React.FC = () => {
           <div className="relative h-48">
             <img
               // Use trip icon/image or default placeholder
-              src={trip.image_url || "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800"}
+              src={trip.banner_image_url || trip.image_url || "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800"}
               alt={trip.destination}
               className="w-full h-full object-cover"
             />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
             <div className="absolute top-4 right-4">
               <TripStatusBadge status={(trip.status_operational || 'PREVIO') as any} />
             </div>

@@ -1,24 +1,21 @@
 
 import React from 'react';
 
-type NextStepType = 'DOCS' | 'PAGO' | 'CHECKIN' | 'AEROPUERTO' | 'INFO' | 'NONE';
+type NextStepType = 'DOCS' | 'INFO' | 'NONE';
 
 type NextStepCardProps = {
     type: NextStepType;
     title: string;
     detail: string;
-    ctaLabel: string;
-    ctaRoute: string;
-    onCtaClick: () => void;
+    ctaLabel: string | null;
+    ctaRoute: string | null;
+    onCtaClick?: () => void;
 };
 
 const iconMap: Record<NextStepType, string> = {
     DOCS: 'description',
-    PAGO: 'payments',
-    CHECKIN: 'check_circle',
-    AEROPUERTO: 'flight_takeoff',
     INFO: 'info',
-    NONE: 'info',
+    NONE: 'check_circle',
 };
 
 export const NextStepCard: React.FC<NextStepCardProps> = ({
@@ -43,12 +40,14 @@ export const NextStepCard: React.FC<NextStepCardProps> = ({
                     )}
                 </div>
             </div>
-            <button
-                onClick={onCtaClick}
-                className="w-full py-[18px] bg-[#E0592A] hover:bg-[#F06A3B] text-white rounded-[20px] font-bold shadow-lg shadow-black/20 transition-all active:scale-[0.98] text-[17px] tracking-tight"
-            >
-                {ctaLabel}
-            </button>
+            {ctaLabel && onCtaClick && (
+                <button
+                    onClick={onCtaClick}
+                    className="w-full py-[18px] bg-[#E0592A] hover:bg-[#F06A3B] text-white rounded-[20px] font-bold shadow-lg shadow-black/20 transition-all active:scale-[0.98] text-[17px] tracking-tight"
+                >
+                    {ctaLabel}
+                </button>
+            )}
         </div>
     );
 };

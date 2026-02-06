@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Tables } from '../types/database.types';
+import { selectPrimaryTrip } from '../utils/tripSelection';
 
 type Trip = Tables<'trips'>;
 type Voucher = Tables<'vouchers'>;
@@ -61,8 +62,7 @@ export const useTripDetails = (tripId?: string) => {
 
             const tripIds = tripPassengers.map(tp => tp.trip_id);
 
-            // Fetch active or next trip
-            const today = new Date().toISOString().split('T')[0];
+            // Fetch all trips for this passenger
             const { data: trips } = await supabase
                 .from('trips')
                 .select('*')
@@ -75,12 +75,14 @@ export const useTripDetails = (tripId?: string) => {
                 return;
             }
 
-            // Find active trip or next future trip
-            const activeTrip = trips.find(
-                t => t.start_date <= today && t.end_date >= today
-            ) || trips.find(t => t.start_date > today) || trips[0];
+            // Use selectPrimaryTrip for consistent selection across Home and MyTrip
+            const primaryTrip = selectPrimaryTrip(trips);
 
-            await fetchTripDetails(activeTrip.id);
+            if (primaryTrip) {
+                await fetchTripDetails(primaryTrip.id);
+            } else {
+                setLoading(false);
+            }
         } catch (err: any) {
             setError(err.message);
             console.error('Error fetching active trip:', err);
