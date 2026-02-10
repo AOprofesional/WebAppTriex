@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Database } from '../../types/database.types';
+import { useOrangePass } from '../../hooks/useOrangePass';
 
 type PassengerListView = {
     id: string;
@@ -59,17 +60,41 @@ export const PassengerDetailsModal: React.FC<PassengerDetailsModalProps> = ({
     onEdit,
     onArchive
 }) => {
-    const [activeTab, setActiveTab] = useState<'info' | 'trips' | 'documents' | 'vouchers'>('info');
+    const [activeTab, setActiveTab] = useState<'info' | 'trips' | 'documents' | 'vouchers' | 'orange_pass'>('info');
     const [trips, setTrips] = useState<Trip[]>([]);
     const [documents, setDocuments] = useState<Document[]>([]);
     const [vouchers, setVouchers] = useState<Voucher[]>([]);
     const [loading, setLoading] = useState(false);
+    const [fullPassengerData, setFullPassengerData] = useState<any>(null);
+
+    // Orange Pass Hook
+    const {
+        balance,
+        pointsHistory,
+        referredPassengers,
+        loading: orangePassLoading,
+        refetch: refetchOrangePass
+    } = useOrangePass(passenger?.id);
 
     useEffect(() => {
         if (isOpen && passenger) {
             fetchRelatedData();
+            fetchFullPassengerData();
         }
     }, [isOpen, passenger]);
+
+    const fetchFullPassengerData = async () => {
+        if (!passenger) return;
+        const { data, error } = await supabase
+            .from('passengers')
+            .select('*, referred_by_passenger:referred_by_passenger_id(first_name, last_name, orange_referral_code)')
+            .eq('id', passenger.id)
+            .single();
+
+        if (!error && data) {
+            setFullPassengerData(data);
+        }
+    };
 
     const fetchRelatedData = async () => {
         if (!passenger) return;
@@ -125,23 +150,18 @@ export const PassengerDetailsModal: React.FC<PassengerDetailsModalProps> = ({
                 review_comment: doc.review_comment
             })) || []);
 
-            // Fetch vouchers - get vouchers assigned to this passenger AND vouchers from their trips
-            // First, get the trip IDs for this passenger
+            // Fetch vouchers
             const tripIds = tripsData?.map((tp: any) => tp.trip_id).filter(Boolean) || [];
-
-            // Build OR filter: passenger_id matches OR trip_id is in passenger's trips (with passenger_id null for trip-wide vouchers)
             let voucherQuery = supabase
                 .from('vouchers')
                 .select('id, title, provider_name, service_date, format, type_id, visibility, trip_id, passenger_id, status')
                 .eq('status', 'active');
 
             if (tripIds.length > 0) {
-                // Vouchers directly assigned to passenger OR trip-level vouchers for passenger's trips
                 voucherQuery = voucherQuery.or(
                     `passenger_id.eq.${passenger.id},and(trip_id.in.(${tripIds.join(',')}),visibility.eq.all_trip_passengers)`
                 );
             } else {
-                // Only personal vouchers if no trips
                 voucherQuery = voucherQuery.eq('passenger_id', passenger.id);
             }
 
@@ -168,7 +188,8 @@ export const PassengerDetailsModal: React.FC<PassengerDetailsModalProps> = ({
     const initials = `${passenger.first_name[0]}${passenger.last_name[0]}`;
 
     const tabs = [
-        { key: 'info' as const, label: 'Información Personal', icon: 'person' },
+        { key: 'info' as const, label: 'Información', icon: 'person' },
+        { key: 'orange_pass' as const, label: 'Orange Pass', icon: 'card_giftcard' },
         { key: 'trips' as const, label: 'Viajes', icon: 'flight_takeoff', count: trips.length },
         { key: 'documents' as const, label: 'Documentos', icon: 'description', count: documents.length },
         { key: 'vouchers' as const, label: 'Vouchers', icon: 'confirmation_number', count: vouchers.length },
@@ -204,9 +225,9 @@ export const PassengerDetailsModal: React.FC<PassengerDetailsModalProps> = ({
                                     <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-primary/10 text-primary">
                                         {passenger.type_name || 'Sin tipo'}
                                     </span>
-                                    {passenger.is_recurrent && (
-                                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
-                                            Recurrente
+                                    {fullPassengerData?.is_orange_member && (
+                                        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
+                                            Orange Member
                                         </span>
                                     )}
                                 </div>
@@ -312,6 +333,154 @@ export const PassengerDetailsModal: React.FC<PassengerDetailsModalProps> = ({
                                                     <span className="text-zinc-500">Sin vincular</span>
                                                 )}
                                             </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Orange Pass Tab */}
+                            {activeTab === 'orange_pass' && (
+                                <div className="space-y-8">
+                                    {/* Membership Info */}
+                                    <div className="bg-gradient-to-br from-orange-500 to-red-500 rounded-xl p-6 text-white text-center sm:text-left sm:flex items-center justify-between">
+                                        <div>
+                                            <div className="flex items-center justify-center sm:justify-start gap-2 mb-2">
+                                                <span className="material-symbols-outlined">card_membership</span>
+                                                <h3 className="font-bold text-lg">Membresía Orange Pass</h3>
+                                            </div>
+                                            {fullPassengerData?.is_orange_member ? (
+                                                <>
+                                                    <p className="opacity-90">Miembro Activo</p>
+                                                    <div className="mt-2 flex flex-col sm:flex-row gap-4">
+                                                        <div>
+                                                            <span className="text-xs uppercase opacity-75 block">N° Socio</span>
+                                                            <span className="font-mono font-bold text-xl">{fullPassengerData.orange_member_number}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-xs uppercase opacity-75 block">Código Referido</span>
+                                                            <span className="font-mono font-bold text-xl">{fullPassengerData.orange_referral_code}</span>
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div>
+                                                    <p className="opacity-90">Este pasajero aún no es miembro activo.</p>
+                                                    <p className="text-sm opacity-75 mt-1">Se activará automáticamente tras su primera compra confirmada.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="mt-6 sm:mt-0 bg-white/10 rounded-lg p-4 backdrop-blur-sm text-center min-w-[150px]">
+                                            <span className="text-xs uppercase opacity-75 block mb-1">Puntos Totales</span>
+                                            <span className="text-4xl font-black">{balance.total}</span>
+                                            <div className="flex justify-center gap-4 mt-2 text-xs">
+                                                <span title="Activos">{balance.active} activos</span>
+                                                <span className="opacity-60" title="Vencidos">{balance.expired} vencidos</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                        {/* Referrals */}
+                                        <div className="space-y-4">
+                                            <h4 className="font-bold text-zinc-800 dark:text-white flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-primary">group_add</span>
+                                                Referidos ({referredPassengers.length})
+                                            </h4>
+
+                                            {referredPassengers.length === 0 ? (
+                                                <div className="text-center py-8 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">
+                                                    <p className="text-sm text-zinc-500">No ha referido a nadie aún</p>
+                                                </div>
+                                            ) : (
+                                                <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl overflow-hidden">
+                                                    <div className="max-h-[300px] overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800">
+                                                        {referredPassengers.map((ref) => (
+                                                            <div key={ref.id} className="p-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                                                                <div>
+                                                                    <p className="font-semibold text-zinc-800 dark:text-white">{ref.first_name} {ref.last_name}</p>
+                                                                    <p className="text-xs text-zinc-500">{ref.email}</p>
+                                                                </div>
+                                                                <div className="flex flex-col items-end gap-1">
+                                                                    {ref.points_awarded ? (
+                                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                                            Puntos Acreditados
+                                                                        </span>
+                                                                    ) : ref.has_confirmed_purchase ? (
+                                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                                                            Compra Confirmada
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                                                                            Asociado
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Referred By Section */}
+                                            {fullPassengerData?.referred_by_passenger && (
+                                                <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/10 rounded-xl border border-green-100 dark:border-green-900/30">
+                                                    <p className="text-xs font-bold text-green-800 dark:text-green-400 uppercase mb-2 flex items-center gap-1">
+                                                        <span className="material-symbols-outlined text-sm">handshake</span>
+                                                        Referido Por
+                                                    </p>
+                                                    <div>
+                                                        <p className="font-bold text-zinc-800 dark:text-white">
+                                                            {fullPassengerData.referred_by_passenger.first_name} {fullPassengerData.referred_by_passenger.last_name}
+                                                        </p>
+                                                        <p className="text-xs text-zinc-500 mt-1">
+                                                            Código usado: <span className="font-mono font-medium">{fullPassengerData.referred_by_code_raw}</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Points History */}
+                                        <div className="space-y-4">
+                                            <h4 className="font-bold text-zinc-800 dark:text-white flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-primary">history</span>
+                                                Historial de Puntos
+                                            </h4>
+
+                                            {pointsHistory.length === 0 ? (
+                                                <div className="text-center py-8 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700">
+                                                    <p className="text-sm text-zinc-500">No hay movimientos de puntos</p>
+                                                </div>
+                                            ) : (
+                                                <div className="bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 rounded-xl overflow-hidden">
+                                                    <div className="max-h-[300px] overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-800">
+                                                        {pointsHistory.map((entry) => (
+                                                            <div key={entry.id} className="p-4 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
+                                                                <div className="flex items-start justify-between mb-1">
+                                                                    <span className="font-semibold text-zinc-800 dark:text-white flex items-center gap-1">
+                                                                        +{entry.points}
+                                                                        <span className="text-[10px] bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400 px-1.5 rounded">PTS</span>
+                                                                    </span>
+                                                                    <span className="text-xs text-zinc-500">
+                                                                        {new Date(entry.credited_at).toLocaleDateString()}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                                                                    Referido: {entry.source_passenger?.first_name} {entry.source_passenger?.last_name}
+                                                                </p>
+                                                                <div className="flex items-center justify-between mt-2">
+                                                                    <span className="text-xs text-zinc-400 capitalize bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded">
+                                                                        {entry.trip_category?.toLowerCase().replace('_', ' ')}
+                                                                    </span>
+                                                                    {entry.status === 'EXPIRED' && (
+                                                                        <span className="text-[10px] font-bold text-red-500">VENCIDOS</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

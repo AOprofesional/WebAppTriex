@@ -1,99 +1,219 @@
-
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MOCK_USER, AVATAR_URL } from '../constants';
+import { usePassenger } from '../hooks/usePassenger';
+import { useOrangePass } from '../hooks/useOrangePass';
+import { formatPoints, getExpirationMessage, getCategoryLabel } from '../utils/orangePassHelpers';
+import { PageLoading } from '../components/PageLoading';
 
 export const Points: React.FC = () => {
-  const navigate = useNavigate();
+  const { passenger, loading: passengerLoading } = usePassenger();
+  const {
+    loading,
+    balance,
+    pointsHistory,
+    referredPassengers,
+  } = useOrangePass(passenger?.id);
 
-  const movements = [
-    { id: 1, title: 'Viaje a Bariloche', subtitle: '12 Oct 2023 • ID: 8291', pts: '+800', type: 'MILLAS', icon: 'flight_takeoff', positive: true },
-    { id: 2, title: 'Evento Anual TrieX', subtitle: '05 Oct 2023 • Presencial', pts: '+300', type: 'MILLAS', icon: 'confirmation_number', positive: true },
-    { id: 3, title: 'Referido confirmado', subtitle: '28 Sep 2023 • Invitación', pts: '+150', type: 'MILLAS', icon: 'card_giftcard', positive: true },
-    { id: 4, title: 'Canje Gift Card', subtitle: '15 Sep 2023 • E-shop', pts: '-200', type: 'MILLAS', icon: 'shopping_cart', positive: false },
-  ];
+  if (passengerLoading || loading) return <PageLoading />;
+  if (!passenger) return null;
+
+  const isMember = passenger.is_orange_member;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-zinc-950 pb-20 lg:pb-8">
-      {/* Top Navigation Bar - Hidden on desktop */}
-      <div className="px-5 py-4 flex items-center justify-between border-b border-zinc-50 dark:border-zinc-900 bg-white dark:bg-zinc-950 sticky top-0 z-50 lg:hidden">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="p-1 -ml-1 text-zinc-500 dark:text-zinc-400">
-            <span className="material-symbols-outlined text-[28px]">chevron_left</span>
-          </button>
-          <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center overflow-hidden border border-zinc-200 dark:border-zinc-700">
-            <img src={AVATAR_URL} alt="Avatar de Camila" className="w-full h-full object-cover" />
+    <div className="min-h-screen pb-20 px-4 pt-4">
+      <div className="max-w-4xl mx-auto space-y-5">
+        {/* Header */}
+        <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="material-symbols-outlined text-4xl">card_giftcard</span>
+            <div>
+              <h1 className="text-2xl font-bold">Orange Pass</h1>
+              <p className="text-orange-100 text-sm">Programa de Referidos y Puntos</p>
+            </div>
           </div>
-        </div>
-        <span className="text-[11px] font-extrabold text-[#7E8CA0] dark:text-zinc-500 uppercase tracking-widest">Mis Puntos</span>
-      </div>
 
-      <div className="px-5 pt-6">
-        {/* Main Balance Card */}
-        <div className="bg-[#2D333D] dark:bg-zinc-900 rounded-[42px] pt-12 pb-10 px-6 shadow-2xl text-center flex flex-col items-center">
-          <span className="text-zinc-400 text-[10px] font-bold uppercase tracking-[0.25em] mb-4">Saldo Disponible</span>
-          <div className="flex items-baseline gap-2 mb-10">
-            <span className="text-7xl font-extrabold text-white tracking-tighter">1.250</span>
-            <span className="text-xl font-medium text-zinc-400">pts</span>
-          </div>
-          <div className="flex gap-4 w-full">
-            <button className="flex-1 bg-primary text-white py-4 rounded-2xl text-[15px] font-bold shadow-lg shadow-primary/20 active:scale-95 transition-all">
-              Canjear
-            </button>
-            <button className="flex-1 bg-[#3F4753] dark:bg-zinc-800/50 text-white py-4 rounded-2xl text-[15px] font-bold active:scale-95 transition-all border border-white/5">
-              Historial
-            </button>
-          </div>
+          {isMember ? (
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+              <p className="text-xs text-orange-100 mb-1">Número de Miembro</p>
+              <p className="text-2xl font-bold tracking-wide">{passenger.orange_member_number}</p>
+            </div>
+          ) : (
+            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
+              <p className="text-sm">
+                🎉 ¡Se activa automáticamente cuando te asignan a un viaje!
+              </p>
+            </div>
+          )}
         </div>
 
-        {/* Recent Movements Section */}
-        <section className="mt-12">
-          <div className="flex items-center justify-between mb-6 px-1">
-            <h2 className="text-[18px] font-extrabold text-triex-grey dark:text-white">Movimientos recientes</h2>
-            <button className="text-primary text-sm font-bold active:opacity-70">Ver todos</button>
-          </div>
-          <div className="space-y-4">
-            {movements.map((move) => (
-              <div key={move.id} className="bg-white dark:bg-zinc-900 p-4 rounded-[24px] flex items-center justify-between shadow-sm border border-zinc-100 dark:border-zinc-800/50">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-[18px] bg-[#F0F2F5] dark:bg-zinc-800 flex items-center justify-center text-zinc-500 dark:text-zinc-400">
-                    <span className="material-symbols-outlined text-2xl">{move.icon}</span>
-                  </div>
-                  <div>
-                    <p className="font-bold text-triex-grey dark:text-zinc-100 text-[15px] leading-tight">{move.title}</p>
-                    <p className="text-[11px] font-medium text-zinc-400 mt-1 tracking-tight">{move.subtitle}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className={`font-black text-[15px] ${move.positive ? 'text-triex-grey dark:text-white' : 'text-zinc-400'}`}>
-                    {move.pts}
-                  </p>
-                  <p className={`text-[9px] font-black tracking-wider mt-0.5 ${move.positive ? 'text-primary' : 'text-zinc-500'}`}>
-                    {move.type}
-                  </p>
-                </div>
+        {/* Points Balance - Only show if member */}
+        {isMember && (
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-zinc-800 dark:text-white mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-orange-500">stars</span>
+              Mis Puntos
+            </h2>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center p-4 bg-orange-50 dark:bg-orange-900/20 rounded-xl">
+                <p className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                  {formatPoints(balance.active)}
+                </p>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">Activos</p>
               </div>
-            ))}
+              <div className="text-center p-4 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
+                <p className="text-3xl font-bold text-zinc-700 dark:text-zinc-300">
+                  {formatPoints(balance.total)}
+                </p>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">Total Acumulado</p>
+              </div>
+              <div className="text-center p-4 bg-zinc-50 dark:bg-zinc-800 rounded-xl">
+                <p className="text-3xl font-bold text-zinc-500">
+                  {formatPoints(balance.expired)}
+                </p>
+                <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">Expirados</p>
+              </div>
+            </div>
           </div>
-        </section>
+        )}
 
-        {/* Coordinator Contact */}
-        <div className="mt-12 mb-8">
-          <button className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all">
-            <span className="material-symbols-outlined text-2xl">support_agent</span>
-            Contactar coordinador
-          </button>
-        </div>
-      </div>
+        {/* Referral Code */}
+        {isMember && passenger.orange_referral_code && (
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-zinc-800 dark:text-white mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-orange-500">share</span>
+              Tu Código de Referido
+            </h2>
+            <div className="flex items-center gap-4">
+              <div className="flex-1 bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4 border-2 border-dashed border-orange-300 dark:border-orange-700">
+                <p className="text-3xl font-bold text-center text-orange-600 dark:text-orange-400 tracking-widest font-mono">
+                  {passenger.orange_referral_code}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(passenger.orange_referral_code || '');
+                  alert('Código copiado al portapapeles');
+                }}
+                className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold transition-colors flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined">content_copy</span>
+                Copiar
+              </button>
+            </div>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-4">
+              Comparte este código con tus amigos. Cuando realicen una compra confirmada, ¡recibirás puntos!
+            </p>
+          </div>
+        )}
 
-      {/* Floating Dark Mode Toggle */}
-      <div className="fixed bottom-24 right-6 z-[100]">
-        <button
-          onClick={() => document.documentElement.classList.toggle('dark')}
-          className="w-12 h-12 bg-[#2D333D] dark:bg-white text-white dark:text-triex-grey rounded-full shadow-2xl flex items-center justify-center active:scale-90 transition-all border-4 border-white dark:border-zinc-950"
-        >
-          <span className="material-symbols-outlined text-xl">dark_mode</span>
-        </button>
+        {/* Referred Passengers */}
+        {referredPassengers.length > 0 && (
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-zinc-800 dark:text-white mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-orange-500">group</span>
+              Personas Referidas ({referredPassengers.length})
+            </h2>
+            <div className="space-y-3">
+              {referredPassengers.map((referred) => (
+                <div
+                  key={referred.id}
+                  className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-xl"
+                >
+                  <div>
+                    <p className="font-semibold text-zinc-800 dark:text-white">
+                      {referred.first_name} {referred.last_name}
+                    </p>
+                    <p className="text-xs text-zinc-500">{referred.email}</p>
+                  </div>
+                  <div className="text-right">
+                    {referred.points_awarded ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs font-semibold">
+                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                        Puntos Acreditados
+                      </span>
+                    ) : referred.has_confirmed_purchase ? (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-semibold">
+                        <span className="material-symbols-outlined text-sm">pending</span>
+                        Compra Confirmada
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-semibold">
+                        <span className="material-symbols-outlined text-sm">airplane_ticket</span>
+                        Viaje Asignado
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Points History */}
+        {isMember && pointsHistory.length > 0 && (
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-zinc-800 dark:text-white mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-orange-500">history</span>
+              Historial de Puntos
+            </h2>
+            <div className="space-y-3">
+              {pointsHistory.map((entry: any) => (
+                <div
+                  key={entry.id}
+                  className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-xl"
+                >
+                  <div className="flex-1">
+                    <p className="font-semibold text-zinc-800 dark:text-white">
+                      +{entry.points} puntos
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      {entry.source_passenger?.first_name} {entry.source_passenger?.last_name}
+                    </p>
+                    {entry.trip && (
+                      <p className="text-xs text-zinc-500 mt-1">
+                        {entry.trip.name} • {getCategoryLabel(entry.trip_category)}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-zinc-500">
+                      {new Date(entry.credited_at).toLocaleDateString('es-AR')}
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      {getExpirationMessage(entry.expires_at)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Info for non-members */}
+        {!isMember && (
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-zinc-800 dark:text-white mb-4">
+              ¿Cómo funciona Orange Pass?
+            </h2>
+            <div className="space-y-4 text-sm text-zinc-600 dark:text-zinc-400">
+              <div className="flex gap-3">
+                <span className="material-symbols-outlined text-orange-500">looks_one</span>
+                <p><strong>Activa tu membresía:</strong> Automáticamente al tener tu primer viaje asignado</p>
+              </div>
+              <div className="flex gap-3">
+                <span className="material-symbols-outlined text-orange-500">looks_two</span>
+                <p><strong>Recibe tu código:</strong> Te asignaremos un código único para compartir</p>
+              </div>
+              <div className="flex gap-3">
+                <span className="material-symbols-outlined text-orange-500">looks_3</span>
+                <p><strong>Refiere amigos:</strong> Comparte tu código con amigos y familiares</p>
+              </div>
+              <div className="flex gap-3">
+                <span className="material-symbols-outlined text-orange-500">looks_4</span>
+                <p><strong>Acumula puntos:</strong> Gana entre 10-40 puntos por cada amigo que viaje</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

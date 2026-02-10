@@ -32,6 +32,7 @@ interface TripFormData {
     next_step_detail_override: string;
     next_step_cta_label_override: string;
     next_step_cta_route_override: string;
+    trip_category: string;
 }
 
 interface Passenger {
@@ -98,6 +99,7 @@ export const TripForm: React.FC = () => {
         next_step_detail_override: '',
         next_step_cta_label_override: '',
         next_step_cta_route_override: '',
+        trip_category: 'OTRO',
     });
 
     // Load trip data if editing
@@ -640,6 +642,48 @@ export const TripForm: React.FC = () => {
                         <p className="mt-2 text-xs text-zinc-500">
                             Se calcula automáticamente según las fechas del viaje
                         </p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Section Orange Pass */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6">
+                <h2 className="text-lg font-bold text-triex-grey dark:text-white mb-4 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary">card_giftcard</span>
+                    Orange Pass - Referidos y Puntos
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
+                            Categoría del Viaje
+                        </label>
+                        <select
+                            value={formData.trip_category}
+                            onChange={(e) => handleInputChange('trip_category', e.target.value)}
+                            className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        >
+                            <option value="OTRO">Otro (no acumula puntos)</option>
+                            <option value="BRASIL_ANDINOS">Brasil y Andinos (10 puntos)</option>
+                            <option value="CARIBE">Caribe (20 puntos)</option>
+                            <option value="USA_CANADA">Estados Unidos y Canadá (30 puntos)</option>
+                            <option value="EUROPA">Europa (40 puntos)</option>
+                            <option value="EXOTICOS">Destinos Exóticos (40 puntos)</option>
+                        </select>
+                        <p className="mt-2 text-xs text-zinc-500">
+                            Los puntos se acreditan automáticamente al referidor cuando asignas un pasajero referido a este viaje
+                        </p>
+                    </div>
+
+                    <div className="flex items-center justify-center">
+                        <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4 border border-orange-200 dark:border-orange-800">
+                            <div className="flex items-start gap-3">
+                                <span className="material-symbols-outlined text-orange-500 text-xl">info</span>
+                                <div className="text-xs text-zinc-700 dark:text-zinc-300">
+                                    <p className="font-semibold mb-1">Activación Automática</p>
+                                    <p>Al asignar pasajeros a este viaje, se activarán automáticamente como miembros Orange Pass y recibirán su código de referido.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { useOrangePass } from '../hooks/useOrangePass';
 
 interface PassengerData {
     id: string;
@@ -12,6 +13,7 @@ interface PassengerData {
     type_code: string | null;  // From view
     passenger_type_id: number | null;  // For updates
     is_recurrent: boolean | null;
+    referred_by_passenger_id?: string | null; // Optional, might need fetching
 }
 
 interface EditPassengerModalProps {
@@ -27,6 +29,7 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
     onClose,
     onSave
 }) => {
+    const { validateReferralCode } = useOrangePass();
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
@@ -36,8 +39,13 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
         document_number: '',
         passenger_type_id: 1 as number,  // 1 = regular
         is_recurrent: false,
+        referral_code: '',
+        referred_by_passenger_id: null as string | null,
     });
     const [isLoading, setIsLoading] = useState(false);
+    const [referralCodeValid, setReferralCodeValid] = useState<boolean | null>(null);
+    const [validatingCode, setValidatingCode] = useState(false);
+    const [referrerName, setReferrerName] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -50,6 +58,42 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                 'other': 4
             };
 
+            // Fetch current referral info if missing
+            const fetchReferralInfo = async () => {
+                const { data } = await supabase
+                    .from('passengers')
+                    .select('referred_by_passenger_id, referred_by_code_raw')
+                    .eq('id', passenger.id)
+                    .single();
+
+                if (data?.referred_by_passenger_id) {
+                    setFormData(prev => ({
+                        ...prev,
+                        referred_by_passenger_id: data.referred_by_passenger_id,
+                        // Ideally trigger a lookup for the code/name if needed, but for now just ID
+                    }));
+                    // Fetch referrer name for display
+                    const { data: referrer } = await supabase
+                        .from('passengers')
+                        .select('first_name, last_name, orange_referral_code')
+                        .eq('id', data.referred_by_passenger_id)
+                        .single();
+
+                    if (referrer) {
+                        setReferrerName(`${referrer.first_name} ${referrer.last_name}`);
+                        setFormData(prev => ({
+                            ...prev,
+                            referral_code: referrer.orange_referral_code || ''
+                        }));
+                        setReferralCodeValid(true);
+                    }
+                } else if (data?.referred_by_code_raw) {
+                    setFormData(prev => ({ ...prev, referral_code: data.referred_by_code_raw || '' }));
+                }
+            };
+
+            fetchReferralInfo();
+
             setFormData({
                 first_name: passenger.first_name || '',
                 last_name: passenger.last_name || '',
@@ -59,9 +103,45 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                 document_number: passenger.document_number || '',
                 passenger_type_id: typeCodeToId[passenger.type_code || 'regular'] || 1,
                 is_recurrent: passenger.is_recurrent || false,
+                referral_code: '', // Will be populated by fetchReferralInfo
+                referred_by_passenger_id: null,
             });
+            setReferrerName(null);
+            setReferralCodeValid(null);
         }
     }, [passenger]);
+
+    const handleReferralCodeBlur = async () => {
+        if (!formData.referral_code) {
+            setReferralCodeValid(null);
+            setReferrerName(null);
+            setFormData(prev => ({ ...prev, referred_by_passenger_id: null }));
+            return;
+        }
+
+        setValidatingCode(true);
+        const referrer = await validateReferralCode(formData.referral_code);
+        setValidatingCode(false);
+
+        if (referrer) {
+            // Prevent self-referral
+            if (referrer.id === passenger?.id) {
+                setReferralCodeValid(false);
+                setReferrerName(null);
+                setFormData(prev => ({ ...prev, referred_by_passenger_id: null }));
+                setError("No se puede autoreferir");
+                return;
+            }
+            setReferralCodeValid(true);
+            setReferrerName(`${referrer.first_name} ${referrer.last_name}`);
+            setFormData(prev => ({ ...prev, referred_by_passenger_id: referrer.id }));
+            setError(null);
+        } else {
+            setReferralCodeValid(false);
+            setReferrerName(null);
+            setFormData(prev => ({ ...prev, referred_by_passenger_id: null }));
+        }
+    };
 
     if (!isOpen || !passenger) return null;
 
@@ -71,18 +151,36 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
         setIsLoading(true);
 
         try {
+            const updates: any = {
+                first_name: formData.first_name,
+                last_name: formData.last_name,
+                email: formData.email,
+                phone: formData.phone || null,
+                document_type: formData.document_type,
+                document_number: formData.document_number || null,
+                passenger_type_id: formData.passenger_type_id,
+                is_recurrent: formData.is_recurrent,
+                referred_by_code_raw: formData.referral_code || null,
+            };
+
+            // Only update referral link if valid code is present and different
+            if (formData.referred_by_passenger_id) {
+                updates.referred_by_passenger_id = formData.referred_by_passenger_id;
+                // We might want to set referral_linked_at if it wasn't set before
+                if (referralCodeValid) {
+                    updates.referral_linked_at = new Date().toISOString();
+                }
+            } else if (!formData.referral_code) {
+                // Clear referral if code is cleared? Strategy decision:
+                // Usually we don't clear deep links unless explicitly requested.
+                // But here if they clear the code, maybe we should clear the link.
+                updates.referred_by_passenger_id = null;
+                updates.referral_linked_at = null;
+            }
+
             const { error: updateError } = await supabase
                 .from('passengers')
-                .update({
-                    first_name: formData.first_name,
-                    last_name: formData.last_name,
-                    email: formData.email,
-                    phone: formData.phone || null,
-                    document_type: formData.document_type,
-                    document_number: formData.document_number || null,
-                    passenger_type_id: formData.passenger_type_id,
-                    is_recurrent: formData.is_recurrent,
-                })
+                .update(updates)
                 .eq('id', passenger.id);
 
             if (updateError) throw updateError;
@@ -222,6 +320,50 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                             <option value="3">Corporativo</option>
                             <option value="4">Otro</option>
                         </select>
+                    </div>
+
+                    {/* Referral Code (Orange Pass) */}
+                    <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">
+                            Código de Referido (Orange Pass)
+                        </label>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={formData.referral_code}
+                                onChange={(e) => setFormData({ ...formData, referral_code: e.target.value.toUpperCase() })}
+                                onBlur={handleReferralCodeBlur}
+                                className={`w-full px-4 py-2.5 pr-10 bg-zinc-50 dark:bg-zinc-900 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 uppercase ${referralCodeValid === true ? 'border-green-500' :
+                                        referralCodeValid === false ? 'border-red-500' :
+                                            'border-zinc-200 dark:border-zinc-700'
+                                    } focus:border-primary`}
+                                placeholder="Ingresa código de referido"
+                                maxLength={8}
+                                disabled={validatingCode}
+                            />
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
+                                {validatingCode && (
+                                    <span className="material-symbols-outlined animate-spin text-zinc-400">refresh</span>
+                                )}
+                                {!validatingCode && referralCodeValid === true && (
+                                    <span className="material-symbols-outlined text-green-500">check_circle</span>
+                                )}
+                                {!validatingCode && referralCodeValid === false && (
+                                    <span className="material-symbols-outlined text-red-500">error</span>
+                                )}
+                            </div>
+                        </div>
+                        {referrerName && (
+                            <p className="mt-1 text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">handshake</span>
+                                Referido por: {referrerName}
+                            </p>
+                        )}
+                        {!referrerName && referralCodeValid === false && (
+                            <p className="mt-1 text-xs text-red-500 font-medium">
+                                Código inválido o no encontrado
+                            </p>
+                        )}
                     </div>
 
                     {/* Recurrent Checkbox */}

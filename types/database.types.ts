@@ -49,6 +49,9 @@ export interface Database {
                     next_step_cta_label_override: string | null
                     next_step_cta_route_override: string | null
                     image_url: string | null
+                    trip_category: string | null
+                    purchase_confirmed: boolean | null
+                    purchase_confirmed_at: string | null
                 }
                 Insert: {
                     id?: string
@@ -89,6 +92,9 @@ export interface Database {
                     next_step_cta_label_override?: string | null
                     next_step_cta_route_override?: string | null
                     image_url?: string | null
+                    trip_category?: string | null
+                    purchase_confirmed?: boolean | null
+                    purchase_confirmed_at?: string | null
                 }
                 Update: {
                     id?: string
@@ -129,6 +135,9 @@ export interface Database {
                     next_step_cta_label_override?: string | null
                     next_step_cta_route_override?: string | null
                     image_url?: string | null
+                    trip_category?: string | null
+                    purchase_confirmed?: boolean | null
+                    purchase_confirmed_at?: string | null
                 }
             }
             passengers: {
@@ -146,6 +155,12 @@ export interface Database {
                     created_by: string | null
                     updated_by: string | null
                     archived_at: string | null
+                    orange_member_number: string | null
+                    orange_referral_code: string | null
+                    referred_by_passenger_id: string | null
+                    referred_by_code_raw: string | null
+                    referral_linked_at: string | null
+                    is_orange_member: boolean | null
                 }
                 Insert: {
                     id?: string
@@ -161,6 +176,12 @@ export interface Database {
                     created_by?: string | null
                     updated_by?: string | null
                     archived_at?: string | null
+                    orange_member_number?: string | null
+                    orange_referral_code?: string | null
+                    referred_by_passenger_id?: string | null
+                    referred_by_code_raw?: string | null
+                    referral_linked_at?: string | null
+                    is_orange_member?: boolean | null
                 }
                 Update: {
                     id?: string
@@ -176,6 +197,12 @@ export interface Database {
                     created_by?: string | null
                     updated_by?: string | null
                     archived_at?: string | null
+                    orange_member_number?: string | null
+                    orange_referral_code?: string | null
+                    referred_by_passenger_id?: string | null
+                    referred_by_code_raw?: string | null
+                    referral_linked_at?: string | null
+                    is_orange_member?: boolean | null
                 }
             }
             vouchers: {
@@ -392,6 +419,79 @@ export interface Database {
                     id?: string
                     is_active?: boolean | null
                     name?: string
+                    updated_at?: string | null
+                }
+            }
+            trip_passengers: {
+                Row: {
+                    id: string
+                    trip_id: string
+                    passenger_id: string
+                    created_at: string | null
+                    updated_at: string | null
+                    referral_points_awarded: boolean | null
+                    referral_points_awarded_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    trip_id: string
+                    passenger_id: string
+                    created_at?: string | null
+                    updated_at?: string | null
+                    referral_points_awarded?: boolean | null
+                    referral_points_awarded_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    trip_id?: string
+                    passenger_id?: string
+                    created_at?: string | null
+                    updated_at?: string | null
+                    referral_points_awarded?: boolean | null
+                    referral_points_awarded_at?: string | null
+                }
+            }
+            orange_points_ledger: {
+                Row: {
+                    id: string
+                    passenger_id: string
+                    source_passenger_id: string
+                    trip_id: string | null
+                    points: number
+                    reason: string
+                    trip_category: string | null
+                    credited_at: string
+                    expires_at: string
+                    status: string
+                    created_at: string | null
+                    updated_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    passenger_id: string
+                    source_passenger_id: string
+                    trip_id?: string | null
+                    points: number
+                    reason: string
+                    trip_category?: string | null
+                    credited_at?: string
+                    expires_at: string
+                    status?: string
+                    created_at?: string | null
+                    updated_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    passenger_id?: string
+                    source_passenger_id?: string
+                    trip_id?: string | null
+                    points?: number
+                    reason?: string
+                    trip_category?: string | null
+                    credited_at?: string
+                    expires_at?: string
+                    status?: string
+                    created_at?: string | null
                     updated_at?: string | null
                 }
             }

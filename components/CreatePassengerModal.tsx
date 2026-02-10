@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCreatePassengerWithInvite } from '../hooks/useCreatePassengerWithInvite';
 import { usePassengers } from '../hooks/usePassengers';
+import { useOrangePass } from '../hooks/useOrangePass';
 import { supabase } from '../lib/supabase';
 
 interface CreatePassengerModalProps {
@@ -11,6 +12,7 @@ interface CreatePassengerModalProps {
 export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOpen, onClose }) => {
     const { createAndInvite, creating } = useCreatePassengerWithInvite();
     const { refetch } = usePassengers(); // This might refetch the main passenger list
+    const { validateReferralCode } = useOrangePass();
 
     const [formData, setFormData] = useState({
         first_name: '',
@@ -22,11 +24,17 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
         cuil: '',
         document_type: '' as 'DNI' | 'Pasaporte' | 'Otro' | '',
         document_number: '',
-        trip_id: '' // New field for optional trip linking
+        trip_id: '', // New field for optional trip linking
+        referral_code: '' // Orange Pass referral code
     });
 
     const [availableTrips, setAvailableTrips] = useState<{ id: string; name: string }[]>([]);
     const [loadingTrips, setLoadingTrips] = useState(false);
+
+    // Referral code validation
+    const [referralCodeValid, setReferralCodeValid] = useState<boolean | null>(null);
+    const [validatingCode, setValidatingCode] = useState(false);
+    const [referrerId, setReferrerId] = useState<string | null>(null);
 
     // Fetch trips when modal opens
     useEffect(() => {
@@ -53,6 +61,28 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
         }
     };
 
+    // Validate referral code when user types
+    const handleReferralCodeBlur = async () => {
+        const code = formData.referral_code.trim();
+        if (!code) {
+            setReferralCodeValid(null);
+            setReferrerId(null);
+            return;
+        }
+
+        setValidatingCode(true);
+        const referrer = await validateReferralCode(code);
+
+        if (referrer) {
+            setReferralCodeValid(true);
+            setReferrerId(referrer.id);
+        } else {
+            setReferralCodeValid(false);
+            setReferrerId(null);
+        }
+        setValidatingCode(false);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -69,6 +99,27 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
         });
 
         if (result.success && result.passenger) {
+            // Link referrer if code was valid
+            if (referrerId && formData.referral_code.trim()) {
+                try {
+                    const { error: referralError } = await supabase
+                        .from('passengers')
+                        .update({
+                            referred_by_passenger_id: referrerId,
+                            referred_by_code_raw: formData.referral_code.trim().toUpperCase(),
+                            referral_linked_at: new Date().toISOString()
+                        })
+                        .eq('id', result.passenger.id);
+
+                    if (referralError) {
+                        console.error('Error linking referral:', referralError);
+                        alert(`Pasajero creado, pero error al vincular código de referido: ${referralError.message}`);
+                    }
+                } catch (refErr: any) {
+                    console.error('Error linking referral:', refErr);
+                }
+            }
+
             // Link to trip if selected
             if (formData.trip_id) {
                 try {
@@ -103,7 +154,8 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                 cuil: '',
                 document_type: '',
                 document_number: '',
-                trip_id: ''
+                trip_id: '',
+                referral_code: ''
             });
         } else {
             alert(result.message);
@@ -294,6 +346,73 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                                     placeholder="12345678"
                                 />
                             </div>
+                        </div>
+
+                        {/* Orange Pass section */}
+                        <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl border border-orange-200 dark:border-orange-800 mt-4">
+                            <div className="flex items-start gap-2 mb-3">
+                                <span className="material-symbols-outlined text-orange-600 dark:text-orange-400 text-[20px] mt-0.5">info</span>
+                                <div>
+                                    <label className="block text-sm font-bold text-orange-800 dark:text-orange-300 mb-1 flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[18px]">stars</span>
+                                        Código de Referido (Orange Pass)
+                                    </label>
+                                    <p className="text-xs text-orange-700 dark:text-orange-400 font-medium">
+                                        ⚠️ Asegúrate de verificar con el pasajero si fue referido por alguien antes de crearlo
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={formData.referral_code}
+                                    onChange={(e) => setFormData({ ...formData, referral_code: e.target.value.toUpperCase() })}
+                                    onBlur={handleReferralCodeBlur}
+                                    className={`w-full px-4 py-2.5 pr-10 bg-white dark:bg-zinc-800 border rounded-xl text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/30 uppercase ${referralCodeValid === true ? 'border-green-500 bg-green-50 dark:bg-green-900/20' :
+                                        referralCodeValid === false ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
+                                            'border-orange-300 dark:border-orange-700'
+                                        } focus:border-orange-500`}
+                                    placeholder="ABC123XY"
+                                    maxLength={8}
+                                    disabled={validatingCode}
+                                />
+                                {validatingCode && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-orange-500 border-t-transparent"></div>
+                                    </div>
+                                )}
+                                {referralCodeValid === true && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <span className="material-symbols-outlined text-green-600 text-xl">check_circle</span>
+                                    </div>
+                                )}
+                                {referralCodeValid === false && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <span className="material-symbols-outlined text-red-600 text-xl">cancel</span>
+                                    </div>
+                                )}
+                            </div>
+                            {referralCodeValid === true && (
+                                <div className="mt-2 p-2 bg-green-100 dark:bg-green-900/30 rounded-lg border border-green-300 dark:border-green-700">
+                                    <p className="text-xs text-green-700 dark:text-green-300 font-semibold flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                                        Código válido - Este pasajero será referido y el referidor recibirá puntos cuando confirme su primer viaje
+                                    </p>
+                                </div>
+                            )}
+                            {referralCodeValid === false && (
+                                <div className="mt-2 p-2 bg-red-100 dark:bg-red-900/30 rounded-lg border border-red-300 dark:border-red-700">
+                                    <p className="text-xs text-red-700 dark:text-red-300 font-semibold flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-[16px]">cancel</span>
+                                        Código inválido - El pasajero se creará sin referido
+                                    </p>
+                                </div>
+                            )}
+                            {!formData.referral_code && (
+                                <p className="mt-2 text-xs text-orange-600 dark:text-orange-400">
+                                    Si fue referido por otro pasajero, ingresa el código de 8 caracteres aquí
+                                </p>
+                            )}
                         </div>
                     </div>
 

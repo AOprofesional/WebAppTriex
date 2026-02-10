@@ -90,21 +90,28 @@ export const Profile: React.FC = () => {
         </p>
       </div>
 
-      {/* Ver Puntos Action (Mockup) */}
+      {/* Orange Pass Banner */}
       <button
         onClick={() => navigate('/points')}
-        className="w-full mb-8 py-4 px-6 bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm flex items-center justify-between active:scale-[0.98] transition-all relative group"
+        className="w-full mb-8 overflow-hidden relative group rounded-2xl shadow-lg transition-transform active:scale-[0.98]"
       >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-            <span className="material-symbols-outlined font-fill">stars</span>
+        <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-orange-600"></div>
+        <div className="relative p-5 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-white border border-white/30">
+              <span className="material-symbols-outlined text-2xl">card_giftcard</span>
+            </div>
+            <div className="text-left">
+              <h3 className="text-white font-bold text-lg leading-tight">Orange Pass</h3>
+              <p className="text-orange-100 text-xs font-medium mt-0.5">
+                ¡Gana puntos refiriendo amigos!
+              </p>
+            </div>
           </div>
-          <div className="text-left">
-            <p className="text-[13px] font-bold text-triex-grey dark:text-white uppercase tracking-tight">Ver mis puntos</p>
-            <p className="text-[11px] text-zinc-400 font-bold">Próximamente</p>
+          <div className="bg-white text-orange-600 px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm">
+            Ver más
           </div>
         </div>
-        <span className="material-symbols-outlined text-zinc-300 dark:text-zinc-600">chevron_right</span>
       </button>
 
       {/* Settings List */}
