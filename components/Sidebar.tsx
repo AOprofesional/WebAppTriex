@@ -124,10 +124,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
         {/* Footer actions */}
         <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 space-y-4">
-          <button className="w-full flex items-center gap-4 px-4 text-zinc-500 dark:text-zinc-400 font-bold text-sm">
-            <span className="material-symbols-outlined">settings</span>
-            Ajustes
-          </button>
+
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-4 px-4 text-red-500 font-bold text-sm"

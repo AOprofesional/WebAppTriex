@@ -154,6 +154,7 @@ export const TripForm: React.FC = () => {
                 next_step_detail_override: data.next_step_detail_override || '',
                 next_step_cta_label_override: data.next_step_cta_label_override || '',
                 next_step_cta_route_override: data.next_step_cta_route_override || '',
+                trip_category: data.trip_category || 'OTRO',
             });
 
             // Load banner image

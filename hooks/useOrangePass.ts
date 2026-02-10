@@ -10,6 +10,7 @@ interface PointsBalance {
     total: number;
     active: number;
     expired: number;
+    locked?: number; // Points blocked in pending redemptions
 }
 
 interface ReferredPassenger {
@@ -55,19 +56,31 @@ export const useOrangePass = (passengerId?: string) => {
      */
     const fetchPointsBalance = async (pId: string) => {
         try {
-            const { data, error } = await supabase
+            // 1. Get Active Points from Ledger
+            const { data: ledgerData, error: ledgerError } = await supabase
                 .from('orange_points_ledger')
                 .select('*')
                 .eq('passenger_id', pId)
                 .eq('status', 'ACTIVE');
 
-            if (error) throw error;
+            if (ledgerError) throw ledgerError;
+
+            // 2. Get Pending Redemption Requests
+            const { data: pendingRequests, error: requestsError } = await supabase
+                .from('redemption_requests')
+                .select('points_amount')
+                .eq('passenger_id', pId)
+                .eq('status', 'PENDING');
+
+            if (requestsError) throw requestsError;
 
             const now = new Date();
             let active = 0;
             let expired = 0;
+            let locked = 0;
 
-            data?.forEach((entry) => {
+            // Calculate Ledger Points
+            ledgerData?.forEach((entry) => {
                 const expiresAt = new Date(entry.expires_at);
                 if (expiresAt > now) {
                     active += entry.points;
@@ -76,13 +89,34 @@ export const useOrangePass = (passengerId?: string) => {
                 }
             });
 
-            const total = active + expired;
-            setBalance({ total, active, expired });
+            // Calculate Locked Points (Pending Redemptions)
+            pendingRequests?.forEach((req) => {
+                locked += req.points_amount;
+            });
 
-            return { total, active, expired };
+            // Formatted Total: Active - Locked (Available to spend)
+            const available = Math.max(0, active - locked);
+
+            // We update state with the AVAILABLE points, but keeping track of total active
+            // for display purposes if needed. For now, matching the interface:
+            // total = available
+            // active = active (raw)
+            // expired = expired
+
+            // NOTE: To avoid UI confusion, 'total' will be what the user can SPEND.
+            const balanceState = {
+                total: available,
+                active: active,
+                expired: expired,
+                locked: locked // Optional: we could add this to the interface if we want to show it
+            };
+
+            setBalance(balanceState);
+
+            return balanceState;
         } catch (error) {
             console.error('Error fetching points balance:', error);
-            return { total: 0, active: 0, expired: 0 };
+            return { total: 0, active: 0, expired: 0, locked: 0 };
         }
     };
 

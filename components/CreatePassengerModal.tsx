@@ -86,6 +86,39 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        // 1. Validate referral code to get reliable referrerId
+        let finalReferrerId: string | null = null;
+        let finalReferralCode: string | null = null;
+
+        if (formData.referral_code.trim()) {
+            const referrer = await validateReferralCode(formData.referral_code.trim());
+            if (referrer) {
+                finalReferrerId = referrer.id;
+                finalReferralCode = formData.referral_code.trim().toUpperCase();
+            } else {
+                // If code is invalid, ask user if they want to proceed without it?
+                // For now, we'll just ignore it or alert? 
+                // The UI shows "Invalid", so user likely knows. We'll proceed without it.
+            }
+        }
+
+        // 2. Check if a User Profile already exists for this email
+        let existingProfileId: string | undefined = undefined;
+        try {
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('email', formData.email.trim())
+                .single();
+
+            if (profile) {
+                existingProfileId = profile.id;
+            }
+        } catch (err) {
+            // Ignore error if not found, just means user doesn't exist
+        }
+
+        // 3. Create Passenger (Atomic)
         const result = await createAndInvite({
             first_name: formData.first_name,
             last_name: formData.last_name,
@@ -95,31 +128,15 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
             birth_date: formData.birth_date || undefined,
             cuil: formData.cuil || undefined,
             document_type: formData.document_type || undefined,
-            document_number: formData.document_number || undefined
+            document_number: formData.document_number || undefined,
+            // Extended fields
+            profile_id: existingProfileId,
+            referred_by_passenger_id: finalReferrerId || undefined,
+            referred_by_code_raw: finalReferralCode || undefined,
+            referral_linked_at: finalReferralCode ? new Date().toISOString() : undefined
         });
 
         if (result.success && result.passenger) {
-            // Link referrer if code was valid
-            if (referrerId && formData.referral_code.trim()) {
-                try {
-                    const { error: referralError } = await supabase
-                        .from('passengers')
-                        .update({
-                            referred_by_passenger_id: referrerId,
-                            referred_by_code_raw: formData.referral_code.trim().toUpperCase(),
-                            referral_linked_at: new Date().toISOString()
-                        })
-                        .eq('id', result.passenger.id);
-
-                    if (referralError) {
-                        console.error('Error linking referral:', referralError);
-                        alert(`Pasajero creado, pero error al vincular código de referido: ${referralError.message}`);
-                    }
-                } catch (refErr: any) {
-                    console.error('Error linking referral:', refErr);
-                }
-            }
-
             // Link to trip if selected
             if (formData.trip_id) {
                 try {
@@ -157,6 +174,8 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                 trip_id: '',
                 referral_code: ''
             });
+            setReferrerId(null);
+            setReferralCodeValid(null);
         } else {
             alert(result.message);
         }

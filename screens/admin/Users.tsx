@@ -28,7 +28,7 @@ const formatLastLogin = (timestamp: string | null) => {
 };
 
 export const AdminUsers: React.FC = () => {
-    const { users, loading, createUser, updateUser, toggleUserStatus } = useUsers();
+    const { users, loading, createUser, updateUser, deleteUser } = useUsers();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -54,21 +54,18 @@ export const AdminUsers: React.FC = () => {
         return result;
     };
 
-    const handleToggleStatus = async (user: any) => {
-        // Check if user is active by checking if they have a ban
-        // For simplicity, we'll use a confirm dialog
-        const isCurrentlyActive = true; // Assume active unless we know otherwise
-        const action = isCurrentlyActive ? 'desactivar' : 'activar';
+    const handleDelete = async (user: any) => {
+        const confirmMessage = `⚠️ ADVERTENCIA: Esta acción es PERMANENTE\n\n¿Estás seguro de que deseas eliminar completamente a ${user.full_name}?\n\nEsta acción eliminará:\n- El usuario de la base de datos\n- Su perfil y toda la información asociada\n- NO puede ser revertida\n\n¿Deseas continuar?`;
 
-        if (!confirm(`¿Estás seguro de que deseas ${action} a ${user.full_name}?`)) {
+        if (!confirm(confirmMessage)) {
             return;
         }
 
-        const result = await toggleUserStatus(user.id, !isCurrentlyActive);
+        const result = await deleteUser(user.id);
         if (!result.error) {
-            alert(`Usuario ${action === 'desactivar' ? 'desactivado' : 'activado'} exitosamente`);
+            alert('Usuario eliminado exitosamente');
         } else {
-            alert('Error: ' + result.error);
+            alert('Error al eliminar usuario: ' + result.error);
         }
     };
 
@@ -152,10 +149,10 @@ export const AdminUsers: React.FC = () => {
                                     Editar
                                 </button>
                                 <button
-                                    onClick={() => handleToggleStatus(user)}
+                                    onClick={() => handleDelete(user)}
                                     className="flex-1 py-2 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
                                 >
-                                    Desactivar
+                                    Eliminar
                                 </button>
                             </div>
                         </div>

@@ -116,18 +116,19 @@ export const useDashboardData = () => {
 
             if (docsError) console.error('Error fetching documents:', docsError);
 
-            // Get total points - try different approaches
+            // Get total points (Current System Liability - All Active Points)
             let totalPoints = 0;
             try {
-                const { data: voucherData, error: vouchersError } = await supabase
-                    .from('vouchers')
-                    .select('points');
+                const { data: ledgerData, error: ledgerError } = await supabase
+                    .from('orange_points_ledger')
+                    .select('points')
+                    .eq('status', 'ACTIVE');
 
-                if (!vouchersError && voucherData) {
-                    totalPoints = voucherData.reduce((sum, v) => sum + (v.points || 0), 0);
+                if (!ledgerError && ledgerData) {
+                    totalPoints = ledgerData.reduce((sum, entry) => sum + (entry.points || 0), 0);
                 }
             } catch (err) {
-                console.error('Error fetching voucher points:', err);
+                console.error('Error fetching ledger points:', err);
                 totalPoints = 0;
             }
 

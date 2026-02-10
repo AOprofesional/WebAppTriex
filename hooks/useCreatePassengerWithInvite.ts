@@ -11,6 +11,10 @@ interface CreatePassengerData {
     cuil?: string;
     document_type?: 'DNI' | 'Pasaporte' | 'Otro';
     document_number?: string;
+    profile_id?: string;
+    referred_by_passenger_id?: string;
+    referred_by_code_raw?: string;
+    referral_linked_at?: string;
 }
 
 export const useCreatePassengerWithInvite = () => {

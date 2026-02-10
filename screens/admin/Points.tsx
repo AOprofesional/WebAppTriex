@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { Redemptions } from './Redemptions';
 
 // Types
 interface Member {
@@ -27,7 +28,7 @@ interface Transaction {
 }
 
 export const AdminPoints: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<'members' | 'transactions'>('members');
+    const [activeTab, setActiveTab] = useState<'members' | 'transactions' | 'redemptions'>('members');
     const [searchTerm, setSearchTerm] = useState('');
     const [members, setMembers] = useState<Member[]>([]);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -48,30 +49,73 @@ export const AdminPoints: React.FC = () => {
             // 1. Fetch Members (Passengers with Orange Pass)
             const { data: membersData, error: membersError } = await supabase
                 .from('passengers')
-                .select(`
-                    id, first_name, last_name, passenger_email,
-                    orange_member_number, orange_referral_code, is_orange_member,
-                    orange_points_ledger!orange_points_ledger_passenger_id_fkey ( points, status )
-                `)
+                .select('id, first_name, last_name, email, orange_member_number, orange_referral_code, is_orange_member')
                 .eq('is_orange_member', true);
 
             if (membersError) throw membersError;
 
+            // 1a. Fetch ALL Points Ledger entries for Orange members
+            const memberIds = membersData?.map((m: any) => m.id) || [];
+            let ledgerMap: Record<string, any[]> = {};
+
+            if (memberIds.length > 0) {
+                const { data: allLedgerData, error: ledgerFetchError } = await supabase
+                    .from('orange_points_ledger')
+                    .select('passenger_id, points, status')
+                    .in('passenger_id', memberIds);
+
+                if (!ledgerFetchError && allLedgerData) {
+                    // Group ledger entries by passenger_id
+                    ledgerMap = allLedgerData.reduce((acc: Record<string, any[]>, entry: any) => {
+                        if (!acc[entry.passenger_id]) {
+                            acc[entry.passenger_id] = [];
+                        }
+                        acc[entry.passenger_id].push(entry);
+                        return acc;
+                    }, {});
+                } else if (ledgerFetchError) {
+                    console.error('Error fetching ledger:', ledgerFetchError);
+                }
+            }
+
+            // 1b. Fetch Referral Counts (Separate query to avoid 400 error with complex embeddings)
+            let referralCountsMap: Record<string, number> = {};
+
+            if (memberIds.length > 0) {
+                const { data: referralsData, error: referralsError } = await supabase
+                    .from('passengers')
+                    .select('referred_by_passenger_id')
+                    .in('referred_by_passenger_id', memberIds);
+
+                if (!referralsError && referralsData) {
+                    referralCountsMap = referralsData.reduce((acc: Record<string, number>, curr: any) => {
+                        const referrerId = curr.referred_by_passenger_id;
+                        if (referrerId) {
+                            acc[referrerId] = (acc[referrerId] || 0) + 1;
+                        }
+                        return acc;
+                    }, {});
+                } else if (referralsError) {
+                    console.error('Error fetching referrals:', referralsError);
+                }
+            }
+
             // Process members and calculate balances
             const processedMembers = membersData?.map((m: any) => {
-                const activePoints = m.orange_points_ledger
-                    ?.filter((l: any) => l.status === 'ACTIVE')
-                    .reduce((sum: number, l: any) => sum + l.points, 0) || 0;
+                const memberLedger = ledgerMap[m.id] || [];
+                const activePoints = memberLedger
+                    .filter((l: any) => l.status === 'ACTIVE')
+                    .reduce((sum: number, l: any) => sum + l.points, 0);
 
                 return {
                     id: m.id,
                     first_name: m.first_name,
                     last_name: m.last_name,
-                    email: m.passenger_email,
+                    email: m.email,
                     orange_member_number: m.orange_member_number,
                     orange_referral_code: m.orange_referral_code,
                     points_balance: activePoints,
-                    referred_count: 0 // We'll calculate this if needed, or query separately
+                    referred_count: referralCountsMap[m.id] || 0
                 };
             }) || [];
 
@@ -86,7 +130,7 @@ export const AdminPoints: React.FC = () => {
                 .from('orange_points_ledger')
                 .select(`
                     id, points, reason, trip_category, status, created_at, expires_at,
-                    passengers!orange_points_ledger_passenger_id_fkey ( first_name, last_name, passenger_email ),
+                    passengers!orange_points_ledger_passenger_id_fkey ( first_name, last_name, email ),
                     source_passenger:passengers!orange_points_ledger_source_passenger_id_fkey ( first_name, last_name )
                 `)
                 .order('created_at', { ascending: false })
@@ -99,7 +143,7 @@ export const AdminPoints: React.FC = () => {
                 passenger: {
                     first_name: t.passengers?.first_name || 'Desconocido',
                     last_name: t.passengers?.last_name || '',
-                    email: t.passengers?.passenger_email || ''
+                    email: t.passengers?.email || ''
                 },
                 source_passenger: t.source_passenger ? {
                     first_name: t.source_passenger.first_name,
@@ -216,6 +260,15 @@ export const AdminPoints: React.FC = () => {
                         >
                             Transacciones
                         </button>
+                        <button
+                            onClick={() => setActiveTab('redemptions')}
+                            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'redemptions'
+                                ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm'
+                                : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                                }`}
+                        >
+                            Solicitudes de Canje
+                        </button>
                     </div>
 
                     {activeTab === 'members' && (
@@ -280,6 +333,10 @@ export const AdminPoints: React.FC = () => {
                                         ))}
                                     </tbody>
                                 </table>
+                            ) : activeTab === 'redemptions' ? (
+                                <div className="p-6">
+                                    <Redemptions />
+                                </div>
                             ) : (
                                 <table className="w-full">
                                     <thead>

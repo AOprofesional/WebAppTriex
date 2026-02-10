@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 
 interface User {
     id: string;
@@ -74,52 +74,35 @@ export const useUsers = () => {
         try {
             setLoading(true);
 
-            // Verify current user's role before creating superadmin
-            if (userData.role === 'superadmin') {
-                const { data: currentUser } = await supabase.auth.getUser();
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('role')
-                    .eq('id', currentUser.user?.id)
-                    .single();
+            // Get current session token
+            const { data: { session } } = await supabase.auth.getSession();
 
-                if (profile?.role !== 'superadmin') {
-                    throw new Error('Solo un Super Administrador puede crear otros Super Administradores');
-                }
+            if (!session) {
+                throw new Error('No active session');
             }
 
-            // Create user via Supabase Auth Admin API
-            const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-                email: userData.email,
-                email_confirm: true,
-                user_metadata: {
-                    full_name: userData.full_name
+            // Call Edge Function to create user
+            const response = await fetch(
+                `${supabaseUrl}/functions/v1/create-user`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'apikey': supabaseAnonKey,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(userData),
                 }
-            });
+            );
 
-            if (authError) throw authError;
+            const data = await response.json();
 
-            // Update profile with role and full_name
-            const { error: profileError } = await supabase
-                .from('profiles')
-                .update({
-                    full_name: userData.full_name,
-                    role: userData.role,
-                    email: userData.email
-                })
-                .eq('id', authData.user.id);
-
-            if (profileError) throw profileError;
-
-            // Send invitation email if requested
-            if (userData.sendInvite !== false) {
-                await supabase.auth.resetPasswordForEmail(userData.email, {
-                    redirectTo: `${window.location.origin}/update-password`
-                });
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to create user');
             }
 
             await fetchUsers();
-            return { data: authData.user, error: null };
+            return { data: data.user, error: null };
         } catch (err: any) {
             console.error('Error creating user:', err);
             return { data: null, error: err.message };
@@ -224,11 +207,32 @@ export const useUsers = () => {
         try {
             setLoading(true);
 
-            // Soft delete by setting role to a disabled state or using ban
-            // Or hard delete via admin API
-            const { error } = await supabase.auth.admin.deleteUser(userId);
+            // Get current session token
+            const { data: { session } } = await supabase.auth.getSession();
 
-            if (error) throw error;
+            if (!session) {
+                throw new Error('No active session');
+            }
+
+            // Call Edge Function to delete user
+            const response = await fetch(
+                `${supabaseUrl}/functions/v1/delete-user`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'apikey': supabaseAnonKey,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ userId }),
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to delete user');
+            }
 
             await fetchUsers();
             return { error: null };
