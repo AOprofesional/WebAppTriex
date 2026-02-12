@@ -8,7 +8,10 @@ import { EditPassengerModal } from '../../components/EditPassengerModal';
 import { ConfirmArchiveModal } from '../../components/ConfirmArchiveModal';
 import { ConfirmDeleteModal } from '../../components/ConfirmDeleteModal';
 import { PassengerDetailsModal } from '../../components/admin/PassengerDetailsModal';
+import { Pagination } from '../../components/Pagination';
 import { Database } from '../../types/database.types';
+import toast from 'react-hot-toast';
+import { supabase } from '../../lib/supabase';
 
 type PassengerListView = {
     id: string;
@@ -60,25 +63,58 @@ export const AdminPassengers: React.FC = () => {
     const [filterType, setFilterType] = useState('all');
     const [showArchived, setShowArchived] = useState(false);
 
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 20;
+
+    // Passenger types
+    const [passengerTypes, setPassengerTypes] = useState<Array<{ id: number; code: string; name: string }>>([]);
+
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingPassenger, setEditingPassenger] = useState<PassengerListView | null>(null);
     const [viewingPassenger, setViewingPassenger] = useState<PassengerListView | null>(null);
     const [archiveCandidate, setArchiveCandidate] = useState<{ id: string; name: string } | null>(null);
     const [deleteCandidate, setDeleteCandidate] = useState<{ id: string; name: string; isArchived: boolean } | null>(null);
 
+    // Fetch passenger types on mount
+    useEffect(() => {
+        const fetchPassengerTypes = async () => {
+            const { data } = await supabase
+                .from('passenger_types')
+                .select('id, code, name')
+                .order('name');
+
+            if (data) {
+                setPassengerTypes(data);
+            }
+        };
+
+        fetchPassengerTypes();
+    }, []);
+
     // Refetch passengers when showArchived toggle changes
     useEffect(() => {
         refetch(showArchived);
     }, [showArchived]);
 
+    // Reset pagination when search or filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, filterType]);
 
     const filteredPassengers = passengers.filter(p => {
         const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
         const matchesSearch = fullName.includes(searchTerm.toLowerCase()) ||
-            p.passenger_email?.toLowerCase().includes(searchTerm.toLowerCase());
+            (p.passenger_email?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
         const matchesType = filterType === 'all' || p.type_code?.toLowerCase() === filterType.toLowerCase();
         return matchesSearch && matchesType;
     });
+
+    // Pagination calculations
+    const totalPages = Math.ceil(filteredPassengers.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const paginatedPassengers = filteredPassengers.slice(startIndex, endIndex);
 
     const handleEdit = (passenger: PassengerListView) => {
         setEditingPassenger(passenger);
@@ -92,7 +128,9 @@ export const AdminPassengers: React.FC = () => {
         if (!archiveCandidate) return;
         const { error } = await archivePassenger(archiveCandidate.id);
         if (error) {
-            alert(`Error al archivar: ${error}`);
+            toast.error(`Error al archivar: ${error}`);
+        } else {
+            toast.success('Pasajero archivado exitosamente');
         }
         setArchiveCandidate(null);
     };
@@ -100,7 +138,9 @@ export const AdminPassengers: React.FC = () => {
     const handleRestore = async (id: string) => {
         const { error } = await restorePassenger(id);
         if (error) {
-            alert(`Error al restaurar: ${error}`);
+            toast.error(`Error al restaurar: ${error}`);
+        } else {
+            toast.success('Pasajero restaurado exitosamente');
         }
     };
 
@@ -112,7 +152,9 @@ export const AdminPassengers: React.FC = () => {
         if (!deleteCandidate) return;
         const { error } = await permanentDeletePassenger(deleteCandidate.id);
         if (error) {
-            alert(`Error al eliminar: ${error}`);
+            toast.error(`Error al eliminar: ${error}`);
+        } else {
+            toast.success('Pasajero eliminado permanentemente');
         }
         setDeleteCandidate(null);
     };
@@ -407,6 +449,14 @@ export const AdminPassengers: React.FC = () => {
                         setViewingPassenger(null);
                     }
                 }}
+            />
+
+            {/* Pagination */}
+            <Pagination
+                totalItems={filteredPassengers.length}
+                itemsPerPage={ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
             />
         </div>
     );

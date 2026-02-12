@@ -206,7 +206,7 @@ async function checkPendingDocuments(tripId: string, passengerId: string): Promi
     try {
         // Get required documents for this trip
         const { data: requirements } = await supabase
-            .from('required_documents')
+            .from('trip_documents_requirements')
             .select('id')
             .eq('trip_id', tripId)
             .eq('is_required', true);

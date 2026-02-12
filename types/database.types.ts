@@ -495,6 +495,44 @@ export interface Database {
                     updated_at?: string | null
                 }
             }
+            redemption_requests: {
+                Row: {
+                    id: string
+                    passenger_id: string
+                    type: string
+                    points_amount: number
+                    comment: string | null
+                    admin_comment: string | null
+                    status: string
+                    created_at: string | null
+                    updated_at: string | null
+                    processed_at: string | null
+                }
+                Insert: {
+                    id?: string
+                    passenger_id: string
+                    type: string
+                    points_amount: number
+                    comment?: string | null
+                    admin_comment?: string | null
+                    status?: string
+                    created_at?: string | null
+                    updated_at?: string | null
+                    processed_at?: string | null
+                }
+                Update: {
+                    id?: string
+                    passenger_id?: string
+                    type?: string
+                    points_amount?: number
+                    comment?: string | null
+                    admin_comment?: string | null
+                    status?: string
+                    created_at?: string | null
+                    updated_at?: string | null
+                    processed_at?: string | null
+                }
+            }
         }
         Enums: {
             [_ in never]: never

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Database } from '../types/database.types';
+import toast from 'react-hot-toast';
 
 type PassengerListView = Database['public']['Views']['v_admin_passengers_list']['Row'];
 type PassengerInsert = Database['public']['Tables']['passengers']['Insert'];

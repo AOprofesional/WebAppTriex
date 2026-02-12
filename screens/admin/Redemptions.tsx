@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { PageLoading } from '../../components/PageLoading';
+import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 
 interface RedemptionRequest {
     id: string;
@@ -25,6 +27,8 @@ export const Redemptions: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'COMPLETED' | 'REJECTED'>('PENDING');
     const [processingId, setProcessingId] = useState<string | null>(null);
+    const toast = useToast();
+    const confirm = useConfirm();
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -52,7 +56,7 @@ export const Redemptions: React.FC = () => {
             setRequests(data || []);
         } catch (error) {
             console.error('Error fetching redemption requests:', error);
-            alert('Error al cargar solicitudes');
+            toast.error('Error al cargar', 'No se pudieron cargar las solicitudes de canje.');
         } finally {
             setLoading(false);
         }
@@ -63,9 +67,14 @@ export const Redemptions: React.FC = () => {
     }, [filter]);
 
     const handleProcessRequest = async (id: string, status: 'COMPLETED' | 'REJECTED', adminComment?: string) => {
-        if (!window.confirm(`¿Estás seguro de que deseas marcar esta solicitud como ${status === 'COMPLETED' ? 'APROBADA' : 'RECHAZADA'}?`)) {
-            return;
-        }
+        const confirmed = await confirm.confirm({
+            title: `¿Confirmar ${status === 'COMPLETED' ? 'aprobación' : 'rechazo'}?`,
+            message: `Estás a punto de ${status === 'COMPLETED' ? 'aprobar' : 'rechazar'} esta solicitud de canje. Esta acción no se puede deshacer.`,
+            confirmText: status === 'COMPLETED' ? 'Aprobar' : 'Rechazar',
+            confirmVariant: status === 'COMPLETED' ? 'success' : 'danger'
+        });
+
+        if (!confirmed) return;
 
         setProcessingId(id);
         try {
@@ -77,11 +86,14 @@ export const Redemptions: React.FC = () => {
 
             if (error) throw error;
 
-            alert(`Solicitud ${status === 'COMPLETED' ? 'aprobada' : 'rechazada'} correctamente.`);
+            toast.success(
+                `Solicitud ${status === 'COMPLETED' ? 'aprobada' : 'rechazada'}`,
+                'La solicitud ha sido procesada correctamente.'
+            );
             fetchRequests(); // Refresh list
         } catch (error: any) {
             console.error('Error processing request:', error);
-            alert('Error al procesar la solicitud: ' + (error.message || 'Error desconocido'));
+            toast.error('Error al procesar', error.message || 'No se pudo procesar la solicitud.');
         } finally {
             setProcessingId(null);
         }

@@ -45,6 +45,31 @@ export const VouchersAndDocs: React.FC = () => {
         }
     };
 
+    const handleDownload = async (voucher: any) => {
+        if (voucher.external_url) {
+            window.open(voucher.external_url, '_blank');
+        } else if (voucher.file_path) {
+            const { url, error } = await getSignedUrl(
+                voucher.bucket || 'triex-vouchers',
+                voucher.file_path
+            );
+
+            if (url) {
+                // Force download if possible, otherwise open
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', voucher.title || 'voucher'); // This might differ depending on CORS
+                link.setAttribute('target', '_blank');
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } else if (error) {
+                console.error('Error downloading voucher:', error);
+                alert('No se pudo descargar el voucher. Por favor intente nuevamente.');
+            }
+        }
+    };
+
     const getDocStatus = (reqId: string) => {
         const doc = passengerDocuments.find(d => d.required_document_id === reqId);
         return doc ? doc.status || 'uploaded' : 'missing'; // Default to uploaded if exists but no status, or missing
@@ -108,7 +133,9 @@ export const VouchersAndDocs: React.FC = () => {
                                             <span className="material-symbols-outlined text-lg">visibility</span>
                                             Ver
                                         </button>
-                                        <button className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#E5E7EB] rounded-xl text-[#374151] font-medium hover:bg-zinc-50 transition-colors">
+                                        <button
+                                            onClick={() => handleDownload(voucher)}
+                                            className="flex-1 flex items-center justify-center gap-2 py-3 border border-[#E5E7EB] rounded-xl text-[#374151] font-medium hover:bg-zinc-50 transition-colors">
                                             <span className="material-symbols-outlined text-lg">download</span>
                                             Descargar
                                         </button>
@@ -136,7 +163,7 @@ export const VouchersAndDocs: React.FC = () => {
                             return (
                                 <div
                                     key={req.id}
-                                    onClick={() => navigate('/upload')} // Or detailed view
+                                    onClick={() => navigate('/upload', { state: { selectedDocId: req.id } })} // Pass doc ID in state
                                     className={`flex items-center justify-between p-5 cursor-pointer transition-all ${(status === 'missing' || status === 'rejected')
                                         ? 'bg-red-50 hover:bg-red-100 border-l-4 border-l-red-500'
                                         : 'hover:bg-zinc-50 border-l-4 border-l-transparent'

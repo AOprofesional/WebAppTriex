@@ -1,7 +1,8 @@
 
-import React from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AdminSidebar } from '../../components/admin/AdminSidebar';
+import { SupportModal } from '../../components/admin/SupportModal';
 
 const pageTitles: Record<string, string> = {
     '/admin': 'Dashboard',
@@ -16,6 +17,8 @@ const pageTitles: Record<string, string> = {
 
 export const AdminLayout: React.FC = () => {
     const location = useLocation();
+    const navigate = useNavigate();
+    const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
 
     const getPageTitle = () => {
         // Check for exact match first
@@ -43,11 +46,19 @@ export const AdminLayout: React.FC = () => {
                         <h1 className="text-xl font-bold text-zinc-800 dark:text-white">{getPageTitle()}</h1>
                     </div>
                     <div className="flex items-center gap-4">
-                        <button className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 relative">
+                        <button
+                            onClick={() => navigate('/admin/communications')}
+                            className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 relative transition-colors"
+                            title="Notificaciones"
+                        >
                             <span className="material-symbols-outlined">notifications</span>
                             <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
                         </button>
-                        <button className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300">
+                        <button
+                            onClick={() => setIsSupportModalOpen(true)}
+                            className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                            title="Ayuda y Soporte"
+                        >
                             <span className="material-symbols-outlined">help_outline</span>
                         </button>
                     </div>
@@ -58,6 +69,12 @@ export const AdminLayout: React.FC = () => {
                     <Outlet />
                 </main>
             </div>
+
+            {/* Global Modals */}
+            <SupportModal
+                isOpen={isSupportModalOpen}
+                onClose={() => setIsSupportModalOpen(false)}
+            />
         </div>
     );
 };

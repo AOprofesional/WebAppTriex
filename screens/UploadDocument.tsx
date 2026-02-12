@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
 import { usePassengerTrips } from '../hooks/usePassengerTrips';
 import { useDocuments, RequiredDocument, PassengerDocument } from '../hooks/useDocuments';
@@ -8,6 +8,7 @@ type FlowStep = 'list' | 'method_selection' | 'camera' | 'review' | 'success';
 
 export const UploadDocument: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { primaryTrip, passenger } = usePassengerTrips();
   const {
     requiredDocuments,
@@ -36,6 +37,24 @@ export const UploadDocument: React.FC = () => {
       loadData();
     }
   }, [primaryTrip, passenger]);
+
+  // Auto-select document from navigation state
+  useEffect(() => {
+    const state = location.state as { selectedDocId?: string };
+    if (state?.selectedDocId && requiredDocuments.length > 0 && step === 'list') {
+      const req = requiredDocuments.find(r => r.id === state.selectedDocId);
+      if (req) {
+        const status = getDocStatus(req.id, req);
+        // Only auto-open if missing or rejected to avoid annoyance
+        if (status === 'missing' || status === 'rejected') {
+          setSelectedReq(req);
+          setStep('method_selection');
+        }
+      }
+      // Clear state to prevent re-opening on back navigation
+      window.history.replaceState({}, document.title);
+    }
+  }, [requiredDocuments, location.state]);
 
   const loadData = async () => {
     if (!primaryTrip || !passenger) return;
@@ -145,8 +164,10 @@ export const UploadDocument: React.FC = () => {
   };
 
   const getDocFiles = (reqId: string) => {
-    // Files are ordered by created_at DESC from the hook
-    return passengerDocuments.filter(d => d.required_document_id === reqId);
+    // Files are ordered by created_at DESC from the hook, but ensure it here to be safe
+    return passengerDocuments
+      .filter(d => d.required_document_id === reqId)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   };
 
   const getDocStatus = (reqId: string, req?: RequiredDocument) => {

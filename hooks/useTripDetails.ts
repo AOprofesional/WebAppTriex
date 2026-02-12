@@ -104,13 +104,33 @@ export const useTripDetails = (tripId?: string) => {
 
             if (tripError) throw tripError;
 
-            // Fetch vouchers
-            const { data: vouchers, error: vouchersError } = await supabase
+            // Get current user (to filter vouchers)
+            const { data: { user } } = await supabase.auth.getUser();
+            let passengerId: string | null = null;
+
+            if (user) {
+                const { data: passenger } = await supabase
+                    .from('passengers')
+                    .select('id')
+                    .eq('profile_id', user.id)
+                    .single();
+                passengerId = passenger?.id || null;
+            }
+
+            // Fetch vouchers (Filtered by passenger if available)
+            let vouchersQuery = supabase
                 .from('vouchers')
                 .select('*')
                 .eq('trip_id', id)
                 .is('archived_at', null)
                 .order('created_at', { ascending: false });
+
+            if (passengerId) {
+                // IMPORTANT: Filter by passenger to avoid leaking other pax vouchers
+                vouchersQuery = vouchersQuery.or(`passenger_id.eq.${passengerId},passenger_id.is.null,visibility.eq.all_trip_passengers`);
+            }
+
+            const { data: vouchers, error: vouchersError } = await vouchersQuery;
 
             if (vouchersError) throw vouchersError;
 

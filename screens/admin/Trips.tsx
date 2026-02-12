@@ -1,9 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTrips } from '../../hooks/useTrips';
+import { useAuth } from '../../contexts/AuthContext';
+import { useConfirm } from '../../components/ConfirmDialog';
 import { TripStatusBadge } from '../../components/TripStatusBadge';
 import { calculateTripStatus } from '../../utils/dateUtils';
+import { supabase } from '../../lib/supabase';
+import toast from 'react-hot-toast';
 
 export const AdminTrips: React.FC = () => {
     const navigate = useNavigate();
@@ -44,47 +47,61 @@ export const AdminTrips: React.FC = () => {
         filters.status = filterStatus;
 
         fetchTrips(Object.keys(filters).length > 0 ? filters : { status: filterStatus });
-    }, [searchTerm, filterStatusCommercial, filterStatusOperational, filterBrandSub, filterStartDate, filterEndDate, filterStatus]);
+    }, [searchTerm, filterStatusCommercial, filterStatusOperational, filterBrandSub, filterStartDate, filterEndDate, filterStatus, fetchTrips]);
+
+    const { confirm } = useConfirm();
 
     const handleArchive = async (id: string, tripName: string) => {
-        if (!confirm(`¿Archivar el viaje "${tripName}"?\n\nEl viaje no se eliminará, solo se moverá a la lista de archivados.`)) {
-            return;
-        }
+        const confirmed = await confirm({
+            title: 'Archivar Viaje',
+            message: `¿Archivar el viaje "${tripName}"?\n\nEl viaje no se eliminará, solo se moverá a la lista de archivados.`,
+            confirmText: 'Archivar',
+            confirmVariant: 'primary'
+        });
+
+        if (!confirmed) return;
 
         const { error } = await archiveTrip(id);
         if (error) {
-            alert('Error al archivar viaje: ' + error);
+            toast.error('Error al archivar viaje: ' + error);
         } else {
-            // fetchTrips will be called automatically by the hook
+            toast.success('Viaje archivado exitosamente');
         }
     };
 
     const handleRestore = async (id: string, tripName: string) => {
-        if (!confirm(`¿Restaurar el viaje "${tripName}"?\n\nVolverá a aparecer en la lista principal.`)) {
-            return;
-        }
+        const confirmed = await confirm({
+            title: 'Restaurar Viaje',
+            message: `¿Restaurar el viaje "${tripName}"?\n\nVolverá a aparecer en la lista principal.`,
+            confirmText: 'Restaurar',
+            confirmVariant: 'success'
+        });
+
+        if (!confirmed) return;
 
         const { error } = await restoreTrip(id);
         if (error) {
-            alert('Error al restaurar viaje: ' + error);
+            toast.error('Error al restaurar viaje: ' + error);
+        } else {
+            toast.success('Viaje restaurado exitosamente');
         }
     };
 
     const handleDelete = async (id: string, tripName: string) => {
-        if (!confirm(`⚠ ¿ELIMINAR PERMANENTEMENTE "${tripName}"?\n\nEsta acción NO SE PUEDE DESHACER. Se borrarán todos los datos asociados (pasajeros, documentos, vouchers, etc).`)) {
-            return;
-        }
+        const confirmed = await confirm({
+            title: '⚠ Eliminar Permanentemente',
+            message: `¿ELIMINAR PERMANENTEMENTE "${tripName}"?\n\nEsta acción NO SE PUEDE DESHACER. Se borrarán todos los datos asociados (pasajeros, documentos, vouchers, etc).\n\nPara confirmar, escribe el nombre del viaje exactamente: "${tripName}"`,
+            confirmText: 'Eliminar Permanentemente',
+            confirmVariant: 'danger'
+        });
 
-        // Double check
-        const confirmName = prompt(`Para confirmar, escribe el nombre del viaje: "${tripName}"`);
-        if (confirmName !== tripName) {
-            alert('El nombre no coincide. Eliminación cancelada.');
-            return;
-        }
+        if (!confirmed) return;
 
         const { error } = await deleteTrip(id);
         if (error) {
-            alert('Error al eliminar viaje: ' + error);
+            toast.error('Error al eliminar viaje: ' + error);
+        } else {
+            toast.success('Viaje eliminado permanentemente');
         }
     };
 

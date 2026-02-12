@@ -4,12 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
 import { useNotifications } from '../hooks/useNotifications';
 import { PageLoading } from '../components/PageLoading';
+import { usePassenger } from '../hooks/usePassenger';
+import { useOrangePass } from '../hooks/useOrangePass';
+import { formatPoints } from '../utils/orangePassHelpers';
 
 import { NotificationDetailsModal } from '../components/NotificationDetailsModal';
 
 export const Notifications: React.FC = () => {
   const navigate = useNavigate();
   const { notifications, loading, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { passenger } = usePassenger();
+  const { redemptionHistory, pointsHistory } = useOrangePass(passenger?.id);
   const [selectedNotification, setSelectedNotification] = React.useState<any | null>(null);
 
   // Group notifications by date
@@ -27,37 +32,82 @@ export const Notifications: React.FC = () => {
     const yesterdayItems: any[] = [];
     const olderGroups: Map<string, any[]> = new Map();
 
-    notifications.forEach(notification => {
-      const notifDate = new Date(notification.created_at || '');
-      const notifDateStr = notifDate.toISOString().split('T')[0];
+    const allItems = [
+      ...notifications.map(n => ({ ...n, source: 'notification', sortDate: new Date(n.created_at || '') })),
+      ...redemptionHistory.map(r => ({ ...r, source: 'redemption', sortDate: new Date(r.created_at || '') })),
+      ...pointsHistory.map(p => ({ ...p, source: 'points', sortDate: new Date(p.created_at || '') }))
+    ].sort((a, b) => b.sortDate.getTime() - a.sortDate.getTime());
 
-      const item = {
-        id: notification.id,
-        title: notification.title,
-        description: notification.message,
-        time: notifDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
-        icon: getIconForType(notification.type),
-        iconBg: getBgForType(notification.type),
-        iconColor: getColorForType(notification.type),
-        type: notification.type, // Added type property
-        unread: !notification.is_read,
-        fullDate: notifDate,
-      };
+    allItems.forEach(item => {
+      const itemDate = item.sortDate;
+      const itemDateStr = itemDate.toISOString().split('T')[0];
 
-      if (notifDateStr === todayStr) {
-        todayItems.push(item);
-      } else if (notifDateStr === yesterdayStr) {
-        yesterdayItems.push(item);
-      } else {
-        const daysAgo = Math.floor((today.getTime() - notifDate.getTime()) / (1000 * 60 * 60 * 24));
-        const label = daysAgo < 7
-          ? `HACE ${daysAgo} DÍA${daysAgo > 1 ? 'S' : ''}`
-          : notifDate.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' }).toUpperCase();
+      let displayItem;
 
-        if (!olderGroups.has(label)) {
-          olderGroups.set(label, []);
+      if (item.source === 'notification') {
+        const n = item as any;
+        displayItem = {
+          id: n.id,
+          title: n.title,
+          description: n.message,
+          time: itemDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+          icon: getIconForType(n.type),
+          iconBg: getBgForType(n.type),
+          iconColor: getColorForType(n.type),
+          type: n.type,
+          unread: !n.is_read,
+          fullDate: itemDate,
+          source: 'notification'
+        };
+      } else if (item.source === 'redemption') {
+        const r = item as any;
+        const isPending = r.status === 'PENDING';
+        displayItem = {
+          id: r.id,
+          title: 'Solicitud de Canje',
+          description: `Canje de ${formatPoints(r.points_amount)} puntos por ${r.type === 'NEXT_TRIP' ? 'descuento' : 'efectivo'}. Estado: ${r.status === 'PENDING' ? 'Pendiente' : r.status === 'APPROVED' ? 'Aprobado' : 'Rechazado'}`,
+          time: itemDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+          icon: 'redeem',
+          iconBg: isPending ? 'bg-orange-50' : (r.status === 'APPROVED' ? 'bg-green-50' : 'bg-red-50'),
+          iconColor: isPending ? 'text-orange-500' : (r.status === 'APPROVED' ? 'text-green-600' : 'text-red-500'),
+          type: 'redemption',
+          unread: false,
+          fullDate: itemDate,
+          source: 'redemption'
+        };
+      } else if (item.source === 'points') {
+        const p = item as any;
+        displayItem = {
+          id: p.id,
+          title: p.points > 0 ? 'Puntos Acreditados' : 'Puntos Debitados',
+          description: `${p.points > 0 ? '+' : ''}${formatPoints(p.points)} puntos. ${p.reason === 'REFERRAL_PURCHASE' ? 'Por referido' : p.reason}`,
+          time: itemDate.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+          icon: 'stars',
+          iconBg: 'bg-orange-50',
+          iconColor: 'text-orange-500',
+          type: 'points',
+          unread: false,
+          fullDate: itemDate,
+          source: 'points'
+        };
+      }
+
+      if (displayItem) {
+        if (itemDateStr === todayStr) {
+          todayItems.push(displayItem);
+        } else if (itemDateStr === yesterdayStr) {
+          yesterdayItems.push(displayItem);
+        } else {
+          const daysAgo = Math.floor((today.getTime() - itemDate.getTime()) / (1000 * 60 * 60 * 24));
+          const label = daysAgo < 7
+            ? `HACE ${daysAgo} DÍA${daysAgo > 1 ? 'S' : ''}`
+            : itemDate.toLocaleDateString('es-AR', { day: 'numeric', month: 'long' }).toUpperCase();
+
+          if (!olderGroups.has(label)) {
+            olderGroups.set(label, []);
+          }
+          olderGroups.get(label)!.push(displayItem);
         }
-        olderGroups.get(label)!.push(item);
       }
     });
 
@@ -72,12 +122,14 @@ export const Notifications: React.FC = () => {
     });
 
     return groups;
-  }, [notifications]);
+  }, [notifications, redemptionHistory, pointsHistory]);
 
   const handleNotificationClick = (notification: any) => {
-    setSelectedNotification(notification);
-    if (notification.unread) {
+    if (notification.source === 'notification' && notification.unread) {
       markAsRead(notification.id);
+    }
+    if (notification.source === 'notification') {
+      setSelectedNotification(notification);
     }
   };
 

@@ -5,6 +5,7 @@ import { calculatePointsForCategory, calculateExpirationDate } from '../utils/or
 
 type OrangePointsLedger = Tables<'orange_points_ledger'>;
 type Passenger = Tables<'passengers'>;
+type RedemptionRequest = Tables<'redemption_requests'>;
 
 interface PointsBalance {
     total: number;
@@ -28,6 +29,7 @@ export const useOrangePass = (passengerId?: string) => {
     const [loading, setLoading] = useState(false);
     const [balance, setBalance] = useState<PointsBalance>({ total: 0, active: 0, expired: 0 });
     const [pointsHistory, setPointsHistory] = useState<OrangePointsLedger[]>([]);
+    const [redemptionHistory, setRedemptionHistory] = useState<RedemptionRequest[]>([]);
     const [referredPassengers, setReferredPassengers] = useState<ReferredPassenger[]>([]);
 
     /**
@@ -158,6 +160,30 @@ export const useOrangePass = (passengerId?: string) => {
     };
 
     /**
+     * Get redemption history
+     */
+    const fetchRedemptionHistory = async (pId: string) => {
+        try {
+            setLoading(true);
+            const { data, error } = await supabase
+                .from('redemption_requests')
+                .select('*')
+                .eq('passenger_id', pId)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            setRedemptionHistory(data || []);
+            return data || [];
+        } catch (error) {
+            console.error('Error fetching redemption history:', error);
+            return [];
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    /**
      * Get list of passengers referred by this passenger
      */
     const fetchReferredPassengers = async (pId: string) => {
@@ -178,35 +204,59 @@ export const useOrangePass = (passengerId?: string) => {
 
             if (error) throw error;
 
-            // For each referred passenger, check if they have confirmed purchases and points awarded
-            const enrichedReferrals: ReferredPassenger[] = [];
-
-            for (const referred of referredData || []) {
-                // Check if any trip has been confirmed
-                const { data: tripPassengers } = await supabase
-                    .from('trip_passengers')
-                    .select(`
-                        referral_points_awarded,
-                        trip:trips (
-                            purchase_confirmed
-                        )
-                    `)
-                    .eq('passenger_id', referred.id);
-
-                const hasConfirmedPurchase = tripPassengers?.some((tp: any) =>
-                    tp.trip?.purchase_confirmed === true
-                ) || false;
-
-                const pointsAwarded = tripPassengers?.some((tp: any) =>
-                    tp.referral_points_awarded === true
-                ) || false;
-
-                enrichedReferrals.push({
-                    ...referred,
-                    has_confirmed_purchase: hasConfirmedPurchase,
-                    points_awarded: pointsAwarded,
-                });
+            if (!referredData || referredData.length === 0) {
+                setReferredPassengers([]);
+                return [];
             }
+
+            // Optimized: Single query for all referred passengers instead of N+1
+            const referredIds = referredData.map((r: any) => r.id);
+            const { data: tripPassengersData, error: tripError } = await supabase
+                .from('trip_passengers')
+                .select(`
+                    passenger_id,
+                    referral_points_awarded,
+                    trip:trips (
+                        purchase_confirmed
+                    )
+                `)
+                .in('passenger_id', referredIds);
+
+            if (tripError) throw tripError;
+
+            // Build a map for quick lookup
+            const tripDataMap: Record<string, { hasConfirmedPurchase: boolean; pointsAwarded: boolean }> = {};
+
+            tripPassengersData?.forEach((tp: any) => {
+                if (!tripDataMap[tp.passenger_id]) {
+                    tripDataMap[tp.passenger_id] = {
+                        hasConfirmedPurchase: false,
+                        pointsAwarded: false
+                    };
+                }
+
+                if (tp.trip?.purchase_confirmed === true) {
+                    tripDataMap[tp.passenger_id].hasConfirmedPurchase = true;
+                }
+
+                if (tp.referral_points_awarded === true) {
+                    tripDataMap[tp.passenger_id].pointsAwarded = true;
+                }
+            });
+
+            // Enrich referrals with trip data
+            const enrichedReferrals: ReferredPassenger[] = referredData.map((referred: any) => {
+                const tripData = tripDataMap[referred.id] || {
+                    hasConfirmedPurchase: false,
+                    pointsAwarded: false
+                };
+
+                return {
+                    ...referred,
+                    has_confirmed_purchase: tripData.hasConfirmedPurchase,
+                    points_awarded: tripData.pointsAwarded,
+                };
+            });
 
             setReferredPassengers(enrichedReferrals);
             return enrichedReferrals;
@@ -279,6 +329,7 @@ export const useOrangePass = (passengerId?: string) => {
         if (passengerId) {
             fetchPointsBalance(passengerId);
             fetchPointsHistory(passengerId);
+            fetchRedemptionHistory(passengerId);
             fetchReferredPassengers(passengerId);
         }
     }, [passengerId]);
@@ -287,6 +338,7 @@ export const useOrangePass = (passengerId?: string) => {
         loading,
         balance,
         pointsHistory,
+        redemptionHistory,
         referredPassengers,
         validateReferralCode,
         fetchPointsBalance,
@@ -299,6 +351,7 @@ export const useOrangePass = (passengerId?: string) => {
             if (passengerId) {
                 fetchPointsBalance(passengerId);
                 fetchPointsHistory(passengerId);
+                fetchRedemptionHistory(passengerId);
                 fetchReferredPassengers(passengerId);
             }
         },

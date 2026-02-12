@@ -1,16 +1,21 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePassenger } from '../hooks/usePassenger';
 import { ProfilePhotoModal } from '../components/ProfilePhotoModal';
 import { PageLoading } from '../components/PageLoading';
 import { supabase } from '../lib/supabase';
+import { useToast } from '../components/Toast';
+import { useConfirm } from '../components/ConfirmDialog';
+import { ContactCoordinatorModal } from '../components/ContactCoordinatorModal';
 
 export const Profile: React.FC = () => {
   const navigate = useNavigate();
+  const toast = useToast();
+  const confirm = useConfirm();
   const { passenger, loading, uploadAvatar, removeAvatar } = usePassenger();
   const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'));
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
 
   const toggleDarkMode = () => {
     const newMode = !isDarkMode;
@@ -25,8 +30,19 @@ export const Profile: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
+    const confirmed = await confirm({
+      title: 'Cerrar sesión',
+      message: '¿Estás seguro que querés salir?',
+      confirmText: 'Cerrar sesión',
+      cancelText: 'Cancelar',
+      confirmVariant: 'danger'
+    });
+
+    if (confirmed) {
+      await supabase.auth.signOut();
+      toast.success('Sesión cerrada', 'Hasta pronto!');
+      navigate('/login');
+    }
   };
 
   const handleUploadAvatar = async (file: File) => {

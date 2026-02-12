@@ -106,3 +106,4 @@ export const MOCK_DOCUMENTS: Document[] = [
 
 export const LOGO_URL = "https://i.imgur.com/dhfJR0n.png";
 export const AVATAR_URL = "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&q=80&w=200&h=200";
+export const DEFAULT_TRIP_IMAGE = "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?auto=format&fit=crop&q=80&w=1200";

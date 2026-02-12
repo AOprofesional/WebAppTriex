@@ -3,6 +3,9 @@ import { useCreatePassengerWithInvite } from '../hooks/useCreatePassengerWithInv
 import { usePassengers } from '../hooks/usePassengers';
 import { useOrangePass } from '../hooks/useOrangePass';
 import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
+import { useDebounce } from '../hooks/useDebounce';
+import { validateEmail, validatePhone, validateCUIL, getErrorMessage } from '../utils/validation';
 
 interface CreatePassengerModalProps {
     isOpen: boolean;
@@ -36,6 +39,24 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
     const [validatingCode, setValidatingCode] = useState(false);
     const [referrerId, setReferrerId] = useState<string | null>(null);
 
+    // Email validation
+    const [emailValidation, setEmailValidation] = useState<{
+        isChecking: boolean;
+        isValid: boolean | null;
+        error?: string;
+    }>({
+        isChecking: false,
+        isValid: null,
+    });
+
+    // Phone and CUIL validation errors
+    const [phoneError, setPhoneError] = useState<string | null>(null);
+    const [cuilError, setCuilError] = useState<string | null>(null);
+
+    // Debounced values
+    const debouncedEmail = useDebounce(formData.email, 500);
+    const debouncedReferralCode = useDebounce(formData.referral_code, 500);
+
     // Fetch trips when modal opens
     useEffect(() => {
         if (isOpen) {
@@ -61,30 +82,132 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
         }
     };
 
-    // Validate referral code when user types
-    const handleReferralCodeBlur = async () => {
-        const code = formData.referral_code.trim();
-        if (!code) {
-            setReferralCodeValid(null);
-            setReferrerId(null);
+    // Validate email uniqueness with debounce
+    useEffect(() => {
+        const validateEmailUnique = async () => {
+            const email = debouncedEmail.trim();
+            if (!email || !isOpen) {
+                setEmailValidation({ isChecking: false, isValid: null });
+                return;
+            }
+
+            setEmailValidation({ isChecking: true, isValid: null });
+
+            // Validar formato primero
+            const formatValidation = validateEmail(email);
+            if (!formatValidation.isValid) {
+                setEmailValidation({
+                    isChecking: false,
+                    isValid: false,
+                    error: formatValidation.error
+                });
+                return;
+            }
+
+            // Verificar si existe en la base de datos
+            try {
+                const { data, error } = await supabase
+                    .from('passengers')
+                    .select('id')
+                    .eq('email', email.toLowerCase())
+                    .limit(1);
+
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    setEmailValidation({
+                        isChecking: false,
+                        isValid: false,
+                        error: 'Este email ya está registrado'
+                    });
+                } else {
+                    setEmailValidation({
+                        isChecking: false,
+                        isValid: true
+                    });
+                }
+            } catch (err: any) {
+                console.error('Error validating email:', err);
+                setEmailValidation({
+                    isChecking: false,
+                    isValid: null,
+                    error: 'Error al validar email'
+                });
+            }
+        };
+
+        validateEmailUnique();
+    }, [debouncedEmail, isOpen]);
+
+    // Validate referral code with debounce
+    useEffect(() => {
+        const validateCode = async () => {
+            const code = debouncedReferralCode.trim();
+            if (!code || !isOpen) {
+                setReferralCodeValid(null);
+                setReferrerId(null);
+                setValidatingCode(false);
+                return;
+            }
+
+            setValidatingCode(true);
+            const referrer = await validateReferralCode(code);
+
+            if (referrer) {
+                setReferralCodeValid(true);
+                setReferrerId(referrer.id);
+            } else {
+                setReferralCodeValid(false);
+                setReferrerId(null);
+            }
+            setValidatingCode(false);
+        };
+
+        validateCode();
+    }, [debouncedReferralCode, isOpen]);
+
+    // Validate phone format
+    const handlePhoneBlur = () => {
+        if (!formData.phone) {
+            setPhoneError(null);
             return;
         }
 
-        setValidatingCode(true);
-        const referrer = await validateReferralCode(code);
+        const validation = validatePhone(formData.phone);
+        setPhoneError(validation.isValid ? null : validation.error);
+    };
 
-        if (referrer) {
-            setReferralCodeValid(true);
-            setReferrerId(referrer.id);
-        } else {
-            setReferralCodeValid(false);
-            setReferrerId(null);
+    // Validate CUIL format
+    const handleCuilBlur = () => {
+        if (!formData.cuil) {
+            setCuilError(null);
+            return;
         }
-        setValidatingCode(false);
+
+        const validation = validateCUIL(formData.cuil);
+        setCuilError(validation.isValid ? null : validation.error);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validate email is unique before proceeding
+        if (emailValidation.isValid === false) {
+            toast.error(emailValidation.error || 'Email inválido');
+            return;
+        }
+
+        // Validate phone if provided
+        if (formData.phone && phoneError) {
+            toast.error(phoneError);
+            return;
+        }
+
+        // Validate CUIL if provided
+        if (formData.cuil && cuilError) {
+            toast.error(cuilError);
+            return;
+        }
 
         // 1. Validate referral code to get reliable referrerId
         let finalReferrerId: string | null = null;
@@ -149,15 +272,15 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
 
                     if (linkError) {
                         console.error('Error linking passenger to trip:', linkError);
-                        alert(`Pasajero creado, pero error al vincular al viaje: ${linkError.message}`);
+                        toast.error(`Pasajero creado, pero error al vincular al viaje: ${linkError.message}`);
                     }
                 } catch (linkErr: any) {
                     console.error('Error linking passenger to trip:', linkErr);
-                    alert(`Pasajero creado, pero error al vincular al viaje: ${linkErr.message}`);
+                    toast.error(`Pasajero creado, pero error al vincular al viaje: ${linkErr.message}`);
                 }
             }
 
-            alert(result.message);
+            toast.success(result.message);
             refetch(); // Refrescar lista de pasajeros
             onClose();
             // Reset form
@@ -177,7 +300,7 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
             setReferrerId(null);
             setReferralCodeValid(null);
         } else {
-            alert(result.message);
+            toast.error(result.message);
         }
     };
 
@@ -262,14 +385,37 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                                 Email * <span className="text-xs text-zinc-500">(Se enviará invitación a este email)</span>
                             </label>
-                            <input
-                                type="email"
-                                required
-                                value={formData.email}
-                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                placeholder="juan.perez@example.com"
-                            />
+                            <div className="relative">
+                                <input
+                                    type="email"
+                                    required
+                                    value={formData.email}
+                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    className={`w-full px-4 py-2.5 pr-10 bg-white dark:bg-zinc-800 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary ${emailValidation.isValid === false ? 'border-red-500' :
+                                        emailValidation.isValid === true ? 'border-green-500' :
+                                            'border-zinc-200 dark:border-zinc-700'
+                                        }`}
+                                    placeholder="juan.perez@example.com"
+                                />
+                                {emailValidation.isChecking && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-primary border-t-transparent"></div>
+                                    </div>
+                                )}
+                                {!emailValidation.isChecking && emailValidation.isValid === true && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <span className="material-symbols-outlined text-green-600 text-xl">check_circle</span>
+                                    </div>
+                                )}
+                                {!emailValidation.isChecking && emailValidation.isValid === false && (
+                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                        <span className="material-symbols-outlined text-red-600 text-xl">cancel</span>
+                                    </div>
+                                )}
+                            </div>
+                            {emailValidation.error && (
+                                <p className="text-xs text-red-500 mt-1">{emailValidation.error}</p>
+                            )}
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -281,9 +427,14 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                                     type="tel"
                                     value={formData.phone}
                                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                    className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                    onBlur={handlePhoneBlur}
+                                    className={`w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border ${phoneError ? 'border-red-500' : 'border-zinc-200 dark:border-zinc-700'
+                                        } rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary`}
                                     placeholder="+54 9 11 1234-5678"
                                 />
+                                {phoneError && (
+                                    <p className="text-xs text-red-500 mt-1">{phoneError}</p>
+                                )}
                             </div>
 
                             <div>
@@ -324,115 +475,120 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
 
                             <div>
                                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                                    CUIL
+                                    CU IL
                                 </label>
                                 <input
                                     type="text"
                                     value={formData.cuil}
                                     onChange={(e) => setFormData({ ...formData, cuil: e.target.value })}
-                                    className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                    onBlur={handleCuilBlur}
+                                    className={`w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border ${cuilError ? 'border-red-500' : 'border-zinc-200 dark:border-zinc-700'
+                                        } rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary`}
                                     placeholder="20-12345678-9"
+                                    maxLength={13}
                                 />
+                                {cuilError && (
+                                    <p className="text-xs text-red-500 mt-1">{cuilError}</p>
+                                )}
                             </div>
                         </div>
+                    </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                                    Tipo de Documento
-                                </label>
-                                <select
-                                    value={formData.document_type}
-                                    onChange={(e) => setFormData({ ...formData, document_type: e.target.value as any })}
-                                    className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                >
-                                    <option value="">Seleccionar...</option>
-                                    <option value="DNI">DNI</option>
-                                    <option value="Pasaporte">Pasaporte</option>
-                                    <option value="Otro">Otro</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                                    Número de Documento
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.document_number}
-                                    onChange={(e) => setFormData({ ...formData, document_number: e.target.value })}
-                                    className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                    placeholder="12345678"
-                                />
-                            </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                                Tipo de Documento
+                            </label>
+                            <select
+                                value={formData.document_type}
+                                onChange={(e) => setFormData({ ...formData, document_type: e.target.value as any })}
+                                className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                            >
+                                <option value="">Seleccionar...</option>
+                                <option value="DNI">DNI</option>
+                                <option value="Pasaporte">Pasaporte</option>
+                                <option value="Otro">Otro</option>
+                            </select>
                         </div>
 
-                        {/* Orange Pass section */}
-                        <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl border border-orange-200 dark:border-orange-800 mt-4">
-                            <div className="flex items-start gap-2 mb-3">
-                                <span className="material-symbols-outlined text-orange-600 dark:text-orange-400 text-[20px] mt-0.5">info</span>
-                                <div>
-                                    <label className="block text-sm font-bold text-orange-800 dark:text-orange-300 mb-1 flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-[18px]">stars</span>
-                                        Código de Referido (Orange Pass)
-                                    </label>
-                                    <p className="text-xs text-orange-700 dark:text-orange-400 font-medium">
-                                        ⚠️ Asegúrate de verificar con el pasajero si fue referido por alguien antes de crearlo
-                                    </p>
+                        <div>
+                            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                                Número de Documento
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.document_number}
+                                onChange={(e) => setFormData({ ...formData, document_number: e.target.value })}
+                                className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                                placeholder="12345678"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Orange Pass section */}
+                    <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-xl border border-orange-200 dark:border-orange-800 mt-4">
+                        <div className="flex items-start gap-2 mb-3">
+                            <span className="material-symbols-outlined text-orange-600 dark:text-orange-400 text-[20px] mt-0.5">info</span>
+                            <div>
+                                <label className="block text-sm font-bold text-orange-800 dark:text-orange-300 mb-1 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-[18px]">stars</span>
+                                    Código de Referido (Orange Pass)
+                                </label>
+                                <p className="text-xs text-orange-700 dark:text-orange-400 font-medium">
+                                    ⚠️ Asegúrate de verificar con el pasajero si fue referido por alguien antes de crearlo
+                                </p>
+                            </div>
+                        </div>
+                        <div className="relative">
+                            <input
+                                type="text"
+                                value={formData.referral_code}
+                                onChange={(e) => setFormData({ ...formData, referral_code: e.target.value.toUpperCase() })}
+                                className={`w-full px-4 py-2.5 pr-10 bg-white dark:bg-zinc-800 border rounded-xl text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/30 uppercase ${referralCodeValid === true ? 'border-green-500 bg-green-50 dark:bg-green-900/20' :
+                                    referralCodeValid === false ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
+                                        'border-orange-300 dark:border-orange-700'
+                                    } focus:border-orange-500`}
+                                placeholder="ABC123XY"
+                                maxLength={8}
+                                disabled={validatingCode}
+                            />
+                            {validatingCode && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-orange-500 border-t-transparent"></div>
                                 </div>
-                            </div>
-                            <div className="relative">
-                                <input
-                                    type="text"
-                                    value={formData.referral_code}
-                                    onChange={(e) => setFormData({ ...formData, referral_code: e.target.value.toUpperCase() })}
-                                    onBlur={handleReferralCodeBlur}
-                                    className={`w-full px-4 py-2.5 pr-10 bg-white dark:bg-zinc-800 border rounded-xl text-sm font-mono font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/30 uppercase ${referralCodeValid === true ? 'border-green-500 bg-green-50 dark:bg-green-900/20' :
-                                        referralCodeValid === false ? 'border-red-500 bg-red-50 dark:bg-red-900/20' :
-                                            'border-orange-300 dark:border-orange-700'
-                                        } focus:border-orange-500`}
-                                    placeholder="ABC123XY"
-                                    maxLength={8}
-                                    disabled={validatingCode}
-                                />
-                                {validatingCode && (
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-orange-500 border-t-transparent"></div>
-                                    </div>
-                                )}
-                                {referralCodeValid === true && (
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        <span className="material-symbols-outlined text-green-600 text-xl">check_circle</span>
-                                    </div>
-                                )}
-                                {referralCodeValid === false && (
-                                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                                        <span className="material-symbols-outlined text-red-600 text-xl">cancel</span>
-                                    </div>
-                                )}
-                            </div>
+                            )}
                             {referralCodeValid === true && (
-                                <div className="mt-2 p-2 bg-green-100 dark:bg-green-900/30 rounded-lg border border-green-300 dark:border-green-700">
-                                    <p className="text-xs text-green-700 dark:text-green-300 font-semibold flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                                        Código válido - Este pasajero será referido y el referidor recibirá puntos cuando confirme su primer viaje
-                                    </p>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                    <span className="material-symbols-outlined text-green-600 text-xl">check_circle</span>
                                 </div>
                             )}
                             {referralCodeValid === false && (
-                                <div className="mt-2 p-2 bg-red-100 dark:bg-red-900/30 rounded-lg border border-red-300 dark:border-red-700">
-                                    <p className="text-xs text-red-700 dark:text-red-300 font-semibold flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-[16px]">cancel</span>
-                                        Código inválido - El pasajero se creará sin referido
-                                    </p>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                    <span className="material-symbols-outlined text-red-600 text-xl">cancel</span>
                                 </div>
                             )}
-                            {!formData.referral_code && (
-                                <p className="mt-2 text-xs text-orange-600 dark:text-orange-400">
-                                    Si fue referido por otro pasajero, ingresa el código de 8 caracteres aquí
-                                </p>
-                            )}
                         </div>
+                        {referralCodeValid === true && (
+                            <div className="mt-2 p-2 bg-green-100 dark:bg-green-900/30 rounded-lg border border-green-300 dark:border-green-700">
+                                <p className="text-xs text-green-700 dark:text-green-300 font-semibold flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                                    Código válido - Este pasajero será referido y el referidor recibirá puntos cuando confirme su primer viaje
+                                </p>
+                            </div>
+                        )}
+                        {referralCodeValid === false && (
+                            <div className="mt-2 p-2 bg-red-100 dark:bg-red-900/30 rounded-lg border border-red-300 dark:border-red-700">
+                                <p className="text-xs text-red-700 dark:text-red-300 font-semibold flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[16px]">cancel</span>
+                                    Código inválido - El pasajero se creará sin referido
+                                </p>
+                            </div>
+                        )}
+                        {!formData.referral_code && (
+                            <p className="mt-2 text-xs text-orange-600 dark:text-orange-400">
+                                Si fue referido por otro pasajero, ingresa el código de 8 caracteres aquí
+                            </p>
+                        )}
                     </div>
 
                     {/* Actions */}

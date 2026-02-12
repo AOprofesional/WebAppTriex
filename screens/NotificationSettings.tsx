@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePassenger } from '../hooks/usePassenger';
 import { PageLoading } from '../components/PageLoading';
+import { useToast } from '../components/Toast';
 
 export const NotificationSettings: React.FC = () => {
     const navigate = useNavigate();
+    const toast = useToast();
     const { passenger, loading, updateNotificationPreferences } = usePassenger();
     const [saving, setSaving] = useState(false);
 
@@ -202,8 +204,8 @@ export const NotificationSettings: React.FC = () => {
                                 )
                             }
                             className={`w-12 h-6 rounded-full transition-all duration-300 relative ${preferences.categories.document_reminders
-                                    ? 'bg-primary'
-                                    : 'bg-zinc-200 dark:bg-zinc-700'
+                                ? 'bg-primary'
+                                : 'bg-zinc-200 dark:bg-zinc-700'
                                 }`}
                         >
                             <div

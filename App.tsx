@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { Home } from './screens/Home';
 import { MyTrip } from './screens/MyTrip';
 import { Itinerary } from './screens/Itinerary';
@@ -25,6 +26,8 @@ import { Sidebar } from './components/Sidebar';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { RoleRedirect } from './components/RoleRedirect';
 import { CreatePasswordModal } from './components/CreatePasswordModal';
+import { ToastProvider } from './components/Toast';
+import { ConfirmDialogProvider } from './components/ConfirmDialog';
 import { useAuth } from './contexts/AuthContext';
 import { useNotifications } from './hooks/useNotifications';
 import { ArchivedAccountScreen } from './screens/ArchivedAccount';
@@ -145,122 +148,150 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 const App: React.FC = () => {
   return (
     <HashRouter>
-      <Routes>
-        {/* Admin Routes - Protected for operators and admins only */}
-        <Route path="/admin" element={
-          <ProtectedRoute allowedRoles={['operator', 'admin']} redirectTo="/">
-            <AdminLayout />
-          </ProtectedRoute>
-        }>
-          <Route index element={<AdminDashboard />} />
-          <Route path="passengers" element={<AdminPassengers />} />
-          <Route path="trips" element={<AdminTrips />} />
-          <Route path="trips/new" element={<TripForm />} />
-          <Route path="trips/:id" element={<TripForm />} />
-          <Route path="vouchers" element={<AdminVouchers />} />
-          <Route path="documents" element={<AdminDocuments />} />
-          <Route path="points" element={<AdminPoints />} />
-          <Route path="communications" element={<AdminCommunications />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="settings" element={<AdminSettings />} />
-        </Route>
+      <ToastProvider>
+        <ConfirmDialogProvider>
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              duration: 4000,
+              style: {
+                background: '#18181b',
+                color: '#fff',
+                borderRadius: '12px',
+                padding: '16px',
+              },
+              success: {
+                iconTheme: {
+                  primary: '#10b981',
+                  secondary: '#fff',
+                },
+              },
+              error: {
+                iconTheme: {
+                  primary: '#ef4444',
+                  secondary: '#fff',
+                },
+              },
+            }}
+          />
+          <Routes>
+            {/* Admin Routes - Protected for operators and admins only */}
+            <Route path="/admin" element={
+              <ProtectedRoute allowedRoles={['operator', 'admin']} redirectTo="/">
+                <AdminLayout />
+              </ProtectedRoute>
+            }>
+              <Route index element={<AdminDashboard />} />
+              <Route path="passengers" element={<AdminPassengers />} />
+              <Route path="trips" element={<AdminTrips />} />
+              <Route path="trips/new" element={<TripForm />} />
+              <Route path="trips/:id" element={<TripForm />} />
+              <Route path="vouchers" element={<AdminVouchers />} />
+              <Route path="documents" element={<AdminDocuments />} />
+              <Route path="points" element={<AdminPoints />} />
+              <Route path="communications" element={<AdminCommunications />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="settings" element={<AdminSettings />} />
+            </Route>
 
-        {/* Passenger Routes - With layout */}
-        <Route path="/*" element={
-          <Layout>
-            <Routes>
-              {/* Public routes - No authentication required */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-              <Route path="/update-password" element={<UpdatePassword />} />
+            {/* Passenger Routes - With layout */}
+            <Route path="/*" element={
+              <Layout>
+                <Routes>
+                  {/* Public routes - No authentication required */}
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/signup" element={<Signup />} />
+                  <Route path="/reset-password" element={<ResetPassword />} />
+                  <Route path="/update-password" element={<UpdatePassword />} />
 
-              {/* Auth callback for invite-claim flow */}
-              <Route path="/auth/callback" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <AuthCallback />
-                </ProtectedRoute>
-              } />
+                  {/* Auth callback for invite-claim flow */}
+                  <Route path="/auth/callback" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <AuthCallback />
+                    </ProtectedRoute>
+                  } />
 
-              {/* Pending account screen */}
-              <Route path="/pending" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <Pending />
-                </ProtectedRoute>
-              } />
+                  {/* Pending account screen */}
+                  <Route path="/pending" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <Pending />
+                    </ProtectedRoute>
+                  } />
 
-              {/* Role redirect route */}
-              <Route path="/app" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <RoleRedirect />
-                </ProtectedRoute>
-              } />
+                  {/* Role redirect route */}
+                  <Route path="/app" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <RoleRedirect />
+                    </ProtectedRoute>
+                  } />
 
-              {/* Protected passenger routes - Require authentication */}
-              <Route path="/" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <Home />
-                </ProtectedRoute>
-              } />
-              <Route path="/mytrip" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <MyTrip />
-                </ProtectedRoute>
-              } />
-              <Route path="/itinerary" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <Itinerary />
-                </ProtectedRoute>
-              } />
-              <Route path="/vouchers" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <Vouchers />
-                </ProtectedRoute>
-              } />
-              <Route path="/travel-docs" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <VouchersAndDocs />
-                </ProtectedRoute>
-              } />
-              <Route path="/points" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <Points />
-                </ProtectedRoute>
-              } />
-              <Route path="/profile" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <Profile />
-                </ProtectedRoute>
-              } />
-              <Route path="/edit-personal-info" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <EditPersonalInfo />
-                </ProtectedRoute>
-              } />
-              <Route path="/security-settings" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <SecuritySettings />
-                </ProtectedRoute>
-              } />
-              <Route path="/notification-settings" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <NotificationSettings />
-                </ProtectedRoute>
-              } />
-              <Route path="/upload" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <UploadDocument />
-                </ProtectedRoute>
-              } />
-              <Route path="/notifications" element={
-                <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                  <Notifications />
-                </ProtectedRoute>
-              } />
-            </Routes>
-          </Layout>
-        } />
-      </Routes>
+                  {/* Protected passenger routes - Require authentication */}
+                  <Route path="/" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <Home />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/mytrip" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <MyTrip />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/itinerary" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <Itinerary />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/vouchers" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <Vouchers />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/travel-docs" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <VouchersAndDocs />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/points" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <Points />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/profile" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <Profile />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/edit-personal-info" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <EditPersonalInfo />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/security-settings" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <SecuritySettings />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/notification-settings" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <NotificationSettings />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/upload" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <UploadDocument />
+                    </ProtectedRoute>
+                  } />
+                  <Route path="/notifications" element={
+                    <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
+                      <Notifications />
+                    </ProtectedRoute>
+                  } />
+                </Routes>
+              </Layout>
+            } />
+          </Routes>
+        </ConfirmDialogProvider>
+      </ToastProvider>
     </HashRouter>
   );
 };

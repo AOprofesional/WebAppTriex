@@ -4,6 +4,7 @@ import { usePassenger } from '../hooks/usePassenger';
 import { useOrangePass } from '../hooks/useOrangePass';
 import { formatPoints, getExpirationMessage, getCategoryLabel } from '../utils/orangePassHelpers';
 import { PageLoading } from '../components/PageLoading';
+import { useToast } from '../components/Toast';
 import { supabase } from '../lib/supabase';
 
 export const Points: React.FC = () => {
@@ -12,8 +13,10 @@ export const Points: React.FC = () => {
     loading,
     balance,
     pointsHistory,
+    redemptionHistory,
     referredPassengers,
   } = useOrangePass(passenger?.id);
+  const toast = useToast();
 
   // Redemption State
   const [showRedemptionModal, setShowRedemptionModal] = useState(false);
@@ -27,13 +30,29 @@ export const Points: React.FC = () => {
 
   const isMember = passenger.is_orange_member;
 
+  // Detect expiring points (within 30 days)
+  const expiringPoints = pointsHistory.filter((point: any) => {
+    if (!point.expires_at || point.points_amount <= 0) return false;
+    const expirationDate = new Date(point.expires_at);
+    const now = new Date();
+    const daysUntilExpiration = Math.ceil((expirationDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return daysUntilExpiration > 0 && daysUntilExpiration <= 30;
+  });
+
+  const totalExpiringPoints = expiringPoints.reduce((sum: number, point: any) => sum + point.points_amount, 0);
+
   const handleRedemptionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pointsToRedeem || isSubmittingRedemption) return;
 
     const points = parseInt(pointsToRedeem, 10);
-    if (isNaN(points) || points <= 0 || points > balance.total) {
-      alert('Cantidad de puntos inválida');
+    if (isNaN(points) || points <= 0) {
+      toast.error('Cantidad inválida', 'Debes ingresar una cantidad de puntos válida.');
+      return;
+    }
+
+    if (points > balance.total) {
+      toast.error('Puntos insuficientes', `Solo tienes ${balance.total} puntos disponibles.`);
       return;
     }
 
@@ -51,13 +70,13 @@ export const Points: React.FC = () => {
 
       if (error) throw error;
 
-      alert('Solicitud enviada. Te responderemos en 3 a 5 días hábiles.');
+      toast.success('¡Solicitud enviada!', 'Te responderemos en 3 a 5 días hábiles.');
       setShowRedemptionModal(false);
       setPointsToRedeem('');
       setRedemptionComment('');
     } catch (err: any) {
       console.error('Error submitting redemption:', err);
-      alert('Error al enviar la solicitud: ' + (err.message || 'Intente nuevamente'));
+      toast.error('Error al enviar solicitud', err.message || 'Por favor, intenta nuevamente.');
     } finally {
       setIsSubmittingRedemption(false);
     }
@@ -131,7 +150,7 @@ export const Points: React.FC = () => {
                   <p className="text-3xl font-bold text-zinc-700 dark:text-zinc-300">
                     {formatPoints(balance.active)}
                   </p>
-                  <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">Total Histórico</p>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">Puntos Ganados</p>
                 </div>
               )}
 
@@ -161,7 +180,7 @@ export const Points: React.FC = () => {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(passenger.orange_referral_code || '');
-                  alert('Código copiado al portapapeles');
+                  toast.success('Código copiado', 'Tu código de referido ha sido copiado al portapapeles.');
                 }}
                 className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold transition-colors flex items-center gap-2"
               >
@@ -172,6 +191,60 @@ export const Points: React.FC = () => {
             <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-4">
               Comparte este código con tus amigos. Cuando realicen una compra confirmada, ¡recibirás puntos!
             </p>
+          </div>
+        )}
+
+        {/* Redemption History */}
+        {isMember && redemptionHistory.length > 0 && (
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-zinc-800 dark:text-white mb-4 flex items-center gap-2">
+              <span className="material-symbols-outlined text-orange-500">redeem</span>
+              Historial de Canjes
+            </h2>
+            <div className="space-y-3">
+              {redemptionHistory.map((redemption: any) => (
+                <div
+                  key={redemption.id}
+                  className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-xl"
+                >
+                  <div className="flex-1">
+                    <p className="font-semibold text-zinc-800 dark:text-white">
+                      {redemption.points_amount} puntos - {
+                        redemption.type === 'NEXT_TRIP' ? 'Descuento en viaje' : 'Retiro en efectivo'
+                      }
+                    </p>
+                    <p className="text-xs text-zinc-500 mt-1">
+                      {new Date(redemption.created_at).toLocaleDateString('es-AR')}
+                    </p>
+                    {redemption.admin_comment && (
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 italic">
+                        Nota: {redemption.admin_comment}
+                      </p>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    {redemption.status === 'PENDING' && (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded-full text-xs font-semibold">
+                        <span className="material-symbols-outlined text-sm">pending</span>
+                        Pendiente
+                      </span>
+                    )}
+                    {redemption.status === 'COMPLETED' && (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-xs font-semibold">
+                        <span className="material-symbols-outlined text-sm">check_circle</span>
+                        Completado
+                      </span>
+                    )}
+                    {redemption.status === 'REJECTED' && (
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-full text-xs font-semibold">
+                        <span className="material-symbols-outlined text-sm">cancel</span>
+                        Rechazado
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

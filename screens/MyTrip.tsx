@@ -1,7 +1,6 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LOGO_URL } from '../constants';
+import { LOGO_URL, DEFAULT_TRIP_IMAGE } from '../constants';
 import { useTripDetails } from '../hooks/useTripDetails';
 import { TripStatusBadge } from '../components/TripStatusBadge';
 import { PageLoading } from '../components/PageLoading';
@@ -10,13 +9,22 @@ import { useNextActivity } from '../hooks/useNextActivity';
 export const MyTrip: React.FC = () => {
   const navigate = useNavigate();
   const { trip, vouchers, documentRequirements, loading } = useTripDetails();
+  // Safe optional chaining for nextActivity hook
   const { nextActivity } = useNextActivity(trip?.id);
+  const [openingVoucher, setOpeningVoucher] = useState<string | null>(null);
 
-  // Format date range
+  // Format date range with validation
   const formatDateRange = (startDate: string | null, endDate: string | null) => {
     if (!startDate || !endDate) return 'Por confirmar';
+
     const start = new Date(startDate);
     const end = new Date(endDate);
+
+    // Validate dates
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return 'Fecha por confirmar';
+    }
+
     const startDay = start.getDate();
     const endDay = end.getDate();
     const startMonth = start.toLocaleDateString('es-AR', { month: 'short' });
@@ -28,6 +36,20 @@ export const MyTrip: React.FC = () => {
     return `${startDay} ${startMonth} - ${endDay} ${endMonth}`;
   };
 
+  const handleVoucherClick = async (voucher: any) => {
+    setOpeningVoucher(voucher.id);
+    try {
+      if (voucher.external_url) {
+        window.open(voucher.external_url, '_blank');
+      } else if (voucher.file_url) {
+        window.open(voucher.file_url, '_blank');
+      }
+    } finally {
+      // Small delay to show feedback
+      setTimeout(() => setOpeningVoucher(null), 500);
+    }
+  };
+
   if (loading) {
     return <PageLoading message="Cargando tu viaje..." />;
   }
@@ -36,8 +58,12 @@ export const MyTrip: React.FC = () => {
     return (
       <div className="min-h-screen bg-triex-bg dark:bg-zinc-950 pb-20 lg:pb-8">
         <div className="px-5 py-4 flex items-center justify-between bg-white dark:bg-zinc-950 sticky top-0 z-50 lg:hidden">
-          <button onClick={() => navigate(-1)} className="p-1 -ml-1 text-zinc-800 dark:text-zinc-200">
-            <span className="material-symbols-outlined text-[28px]">chevron_left</span>
+          <button
+            onClick={() => navigate(-1)}
+            className="p-1 -ml-1 text-zinc-800 dark:text-zinc-200"
+            aria-label="Volver atrás"
+          >
+            <span className="material-symbols-outlined text-[28px]" aria-hidden="true">chevron_left</span>
           </button>
           <h1 className="text-lg font-bold text-zinc-800 dark:text-white">Mi viaje</h1>
           <div className="w-16 flex justify-end">
@@ -69,8 +95,12 @@ export const MyTrip: React.FC = () => {
     <div className="min-h-screen bg-triex-bg dark:bg-zinc-950 pb-20 lg:pb-8">
       {/* Custom Header for My Trip - Hidden on desktop */}
       <div className="px-5 py-4 flex items-center justify-between bg-white dark:bg-zinc-950 sticky top-0 z-50 lg:hidden">
-        <button onClick={() => navigate(-1)} className="p-1 -ml-1 text-zinc-800 dark:text-zinc-200">
-          <span className="material-symbols-outlined text-[28px]">chevron_left</span>
+        <button
+          onClick={() => navigate(-1)}
+          className="p-1 -ml-1 text-zinc-800 dark:text-zinc-200"
+          aria-label="Volver atrás"
+        >
+          <span className="material-symbols-outlined text-[28px]" aria-hidden="true">chevron_left</span>
         </button>
         <h1 className="text-lg font-bold text-zinc-800 dark:text-white">Mi viaje</h1>
         <div className="w-16 flex justify-end">
@@ -78,19 +108,21 @@ export const MyTrip: React.FC = () => {
         </div>
       </div>
 
-      <div className="px-5 pt-4 space-y-6">
+      <div className="px-5 pt-4 space-y-6 max-w-4xl mx-auto">
         {/* Main Trip Card */}
         <div className="bg-[#3D3935] dark:bg-zinc-900 rounded-[40px] overflow-hidden shadow-xl">
           <div className="relative h-48">
             <img
-              // Use trip icon/image or default placeholder
-              src={trip.banner_image_url || trip.image_url || "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800"}
-              alt={trip.destination}
+              src={trip.banner_image_url || trip.image_url || DEFAULT_TRIP_IMAGE}
+              alt={trip.destination || 'Imagen del viaje'}
               className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.src = DEFAULT_TRIP_IMAGE;
+              }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
             <div className="absolute top-4 right-4">
-              <TripStatusBadge status={(trip.status_operational || 'PREVIO') as any} />
+              <TripStatusBadge status={(trip.status_operational ?? 'PREVIO') as any} />
             </div>
           </div>
           <div className="p-8 space-y-6 text-white">
@@ -111,10 +143,10 @@ export const MyTrip: React.FC = () => {
                 <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.2em] mb-2">Tipo</p>
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary text-xl">
-                    {trip.trip_type === 'GRUPAL' ? 'groups' : 'person'}
+                    {trip.trip_type === 'GRUPAL' ? 'groups' : trip.trip_type === 'INDIVIDUAL' ? 'person' : 'travel_explore'}
                   </span>
                   <span className="text-[15px] font-bold">
-                    {trip.trip_type === 'GRUPAL' ? 'Grupal' : 'Individual'}
+                    {trip.trip_type === 'GRUPAL' ? 'Grupal' : trip.trip_type === 'INDIVIDUAL' ? 'Individual' : 'Viaje'}
                   </span>
                 </div>
               </div>
@@ -250,6 +282,7 @@ export const MyTrip: React.FC = () => {
                   <a
                     href={`tel:${trip.coordinator_phone}`}
                     className="text-[15px] font-semibold text-[#E0592A] hover:underline"
+                    aria-label={`Llamar al coordinador al ${trip.coordinator_phone}`}
                   >
                     {trip.coordinator_phone}
                   </a>
@@ -261,6 +294,7 @@ export const MyTrip: React.FC = () => {
                   <a
                     href={`mailto:${trip.coordinator_email}`}
                     className="text-[15px] font-semibold text-[#E0592A] hover:underline"
+                    aria-label={`Enviar email al coordinador a ${trip.coordinator_email}`}
                   >
                     {trip.coordinator_email}
                   </a>
@@ -299,20 +333,20 @@ export const MyTrip: React.FC = () => {
               {vouchers.slice(0, 3).map((voucher) => (
                 <div
                   key={voucher.id}
-                  className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-750 transition-colors cursor-pointer"
-                  onClick={() => {
-                    if (voucher.external_url) {
-                      window.open(voucher.external_url, '_blank');
-                    } else if (voucher.file_url) {
-                      window.open(voucher.file_url, '_blank');
-                    }
-                  }}
+                  className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-2xl hover:bg-zinc-100 dark:hover:bg-zinc-750 transition-colors cursor-pointer relative"
+                  onClick={() => handleVoucherClick(voucher)}
+                  role="button"
+                  aria-label={`Abrir voucher ${voucher.title}`}
                 >
                   <div className="flex items-center gap-3 flex-1">
                     <div className="w-10 h-10 bg-white dark:bg-zinc-700 rounded-xl flex items-center justify-center">
-                      <span className="material-symbols-outlined text-[#E0592A] text-[20px]">
-                        {voucher.format === 'PDF' ? 'picture_as_pdf' : voucher.format === 'IMAGE' ? 'image' : 'link'}
-                      </span>
+                      {openingVoucher === voucher.id ? (
+                        <div className="w-5 h-5 border-2 border-[#E0592A] border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <span className="material-symbols-outlined text-[#E0592A] text-[20px]">
+                          {voucher.format === 'PDF' ? 'picture_as_pdf' : voucher.format === 'IMAGE' ? 'image' : 'link'}
+                        </span>
+                      )}
                     </div>
                     <div className="flex-1">
                       <h4 className="font-bold text-[14px] text-zinc-800 dark:text-white">

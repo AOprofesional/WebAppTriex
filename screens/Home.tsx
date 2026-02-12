@@ -79,7 +79,7 @@ export const Home: React.FC = () => {
             </h2>
             {primaryTrip && (
               <TripStatusBadge
-                status={(primaryTrip.status_operational || 'PREVIO') as any}
+                status={(primaryTrip.status_operational ?? 'PREVIO') as any}
                 size="sm"
               />
             )}

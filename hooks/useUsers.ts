@@ -10,6 +10,7 @@ interface User {
     updated_at: string | null;
     last_sign_in_at: string | null;
     email_confirmed_at: string | null;
+    banned_until: string | null;
 }
 
 export const useUsers = () => {
@@ -29,7 +30,8 @@ export const useUsers = () => {
                     full_name,
                     role,
                     created_at,
-                    updated_at
+                    updated_at,
+                    banned_until
                 `)
                 .in('role', ['operator', 'admin', 'superadmin'])
                 .order('created_at', { ascending: false });

@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAdminVouchers } from '../../hooks/useAdminVouchers';
 import { useTrips } from '../../hooks/useTrips';
+import { useConfirm } from '../../components/ConfirmDialog';
+import { Pagination } from '../../components/Pagination';
 import { VoucherFormModal } from '../../components/modals/VoucherFormModal';
 import { VoucherViewModal } from '../../components/modals/VoucherViewModal';
+import toast from 'react-hot-toast';
 
 export const AdminVouchers: React.FC = () => {
     const {
@@ -17,6 +20,8 @@ export const AdminVouchers: React.FC = () => {
     } = useAdminVouchers();
     const { trips } = useTrips();
 
+    const { confirm } = useConfirm();
+
     const [filters, setFilters] = useState({
         search: '',
         typeId: '',
@@ -24,6 +29,9 @@ export const AdminVouchers: React.FC = () => {
         tripId: '',
         status: 'active',
     });
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 15;
 
     const [formModalOpen, setFormModalOpen] = useState(false);
     const [viewModalOpen, setViewModalOpen] = useState(false);
@@ -56,12 +64,18 @@ export const AdminVouchers: React.FC = () => {
         if (!filters.search) return true;
         const searchLower = filters.search.toLowerCase();
         return (
-            v.title.toLowerCase().includes(searchLower) ||
-            v.trips?.name.toLowerCase().includes(searchLower) ||
-            v.passengers?.first_name.toLowerCase().includes(searchLower) ||
-            v.passengers?.last_name.toLowerCase().includes(searchLower)
+            v.title?.toLowerCase().includes(searchLower) ||
+            v.trips?.name?.toLowerCase().includes(searchLower) ||
+            v.passengers?.first_name?.toLowerCase().includes(searchLower) ||
+            v.passengers?.last_name?.toLowerCase().includes(searchLower)
         );
     });
+
+    // Pagination
+    const totalPages = Math.ceil(filteredVouchers.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const paginatedVouchers = filteredVouchers.slice(startIndex, endIndex);
 
     const handleView = (voucher: any) => {
         setSelectedVoucher(voucher);
@@ -75,32 +89,62 @@ export const AdminVouchers: React.FC = () => {
     };
 
     const handleArchive = async (voucher: any) => {
-        if (!confirm(`¿Archivar el voucher "${voucher.title}"?`)) return;
+        const confirmed = await confirm({
+            title: 'Archivar Voucher',
+            message: `¿Archivar el voucher "${voucher.title}"?`,
+            confirmText: 'Archivar',
+            confirmVariant: 'primary'
+        });
+
+        if (!confirmed) return;
 
         const { error } = await archiveVoucher(voucher.id);
         if (error) {
-            alert('Error al archivar: ' + error);
+            toast.error('Error al archivar voucher');
         } else {
-            setViewModalOpen(false);
+            toast.success('Voucher archivado exitosamente');
         }
     };
 
     const handleRestore = async (voucher: any) => {
-        if (!confirm(`¿Restaurar el voucher "${voucher.title}"?`)) return;
+        const confirmed = await confirm({
+            title: 'Restaurar Voucher',
+            message: `¿Restaurar el voucher "${voucher.title}"?`,
+            confirmText: 'Restaurar',
+            confirmVariant: 'success'
+        });
+
+        if (!confirmed) return;
 
         const { error } = await restoreVoucher(voucher.id);
         if (error) {
-            alert('Error al restaurar: ' + error);
+            toast.error('Error al restaurar voucher');
+        } else {
+            toast.success('Voucher restaurado exitosamente');
         }
     };
 
     const handleDelete = async (voucher: any) => {
-        if (!confirm(`¿ESTÁS SEGURO? Eliminar permanentemente el voucher "${voucher.title}" borrará el archivo asociado y NO se puede deshacer.`)) return;
+        const confirmed = await confirm({
+            title: 'Eliminar Voucher',
+            message: `¿Eliminar permanentemente el voucher "${voucher.title}"? Esta acción no se puede deshacer.`,
+            confirmText: 'Eliminar',
+            confirmVariant: 'danger'
+        });
+
+        if (!confirmed) return;
 
         const { error } = await deleteVoucher(voucher.id);
         if (error) {
-            alert('Error al eliminar: ' + error);
+            toast.error('Error al eliminar voucher');
+        } else {
+            toast.success('Voucher eliminado exitosamente');
         }
+    };
+
+    const handleCreateNew = () => {
+        setSelectedVoucher(null);
+        setFormModalOpen(true);
     };
 
     const getFormatIcon = (format: string) => {
