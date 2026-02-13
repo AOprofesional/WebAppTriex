@@ -398,7 +398,20 @@ export const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
                             <input
                                 type="file"
                                 accept={formData.format === 'pdf' ? '.pdf' : 'image/*'}
-                                onChange={(e) => setFile(e.target.files?.[0] || null)}
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                        if (file.size > 5 * 1024 * 1024) {
+                                            alert("El archivo es demasiado grande. El tamaño máximo permitido es 5MB.");
+                                            e.target.value = "";
+                                            setFile(null);
+                                            return;
+                                        }
+                                        setFile(file);
+                                    } else {
+                                        setFile(null);
+                                    }
+                                }}
                                 required={!voucher}
                                 className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                             />

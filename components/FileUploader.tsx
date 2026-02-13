@@ -2,206 +2,206 @@ import React, { useState, useCallback } from 'react';
 import { uploadFile } from '../lib/storageHelpers';
 
 interface FileUploaderProps {
-    bucket: 'documents' | 'vouchers';
-    filePath: string;
-    onUploadComplete: (filePath: string) => void;
-    onError?: (error: string) => void;
-    accept?: string;
-    maxSizeMB?: number;
-    label?: string;
-    disabled?: boolean;
+  bucket: 'documents' | 'vouchers';
+  filePath: string;
+  onUploadComplete: (filePath: string) => void;
+  onError?: (error: string) => void;
+  accept?: string;
+  maxSizeMB?: number;
+  label?: string;
+  disabled?: boolean;
 }
 
 export function FileUploader({
-    bucket,
-    filePath,
-    onUploadComplete,
-    onError,
-    accept = '.pdf,.jpg,.jpeg,.png',
-    maxSizeMB = 20,
-    label = 'Seleccionar archivo',
-    disabled = false
+  bucket,
+  filePath,
+  onUploadComplete,
+  onError,
+  accept = '.pdf,.jpg,.jpeg,.png',
+  maxSizeMB = 5,
+  label = 'Seleccionar archivo',
+  disabled = false
 }: FileUploaderProps) {
-    const [file, setFile] = useState<File | null>(null);
-    const [uploading, setUploading] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const [error, setError] = useState<string | null>(null);
-    const [dragActive, setDragActive] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
-    const validateFile = (file: File): boolean => {
-        // Validar tamaño
-        const maxBytes = maxSizeMB * 1024 * 1024;
-        if (file.size > maxBytes) {
-            const msg = `El archivo excede el tamaño máximo de ${maxSizeMB} MB`;
-            setError(msg);
-            if (onError) onError(msg);
-            return false;
-        }
+  const validateFile = (file: File): boolean => {
+    // Validar tamaño
+    const maxBytes = maxSizeMB * 1024 * 1024;
+    if (file.size > maxBytes) {
+      const msg = `El archivo excede el tamaño máximo de ${maxSizeMB} MB`;
+      setError(msg);
+      if (onError) onError(msg);
+      return false;
+    }
 
-        // Validar tipo
-        const acceptedTypes = accept.split(',').map(t => t.trim());
-        const isValid = acceptedTypes.some(type => {
-            if (type.startsWith('.')) {
-                return file.name.toLowerCase().endsWith(type);
-            }
-            return file.type.includes(type.replace('*', ''));
-        });
+    // Validar tipo
+    const acceptedTypes = accept.split(',').map(t => t.trim());
+    const isValid = acceptedTypes.some(type => {
+      if (type.startsWith('.')) {
+        return file.name.toLowerCase().endsWith(type);
+      }
+      return file.type.includes(type.replace('*', ''));
+    });
 
-        if (!isValid) {
-            const msg = `Tipo de archivo no permitido. Formatos aceptados: ${accept}`;
-            setError(msg);
-            if (onError) onError(msg);
-            return false;
-        }
+    if (!isValid) {
+      const msg = `Tipo de archivo no permitido. Formatos aceptados: ${accept}`;
+      setError(msg);
+      if (onError) onError(msg);
+      return false;
+    }
 
-        return true;
-    };
+    return true;
+  };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const selectedFile = e.target.files?.[0];
-        if (selectedFile && validateFile(selectedFile)) {
-            setFile(selectedFile);
-            setError(null);
-        }
-    };
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile && validateFile(selectedFile)) {
+      setFile(selectedFile);
+      setError(null);
+    }
+  };
 
-    const handleDrag = useCallback((e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.type === 'dragenter' || e.type === 'dragover') {
-            setDragActive(true);
-        } else if (e.type === 'dragleave') {
-            setDragActive(false);
-        }
-    }, []);
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  }, []);
 
-    const handleDrop = useCallback((e: React.DragEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setDragActive(false);
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
 
-        if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            const droppedFile = e.dataTransfer.files[0];
-            if (validateFile(droppedFile)) {
-                setFile(droppedFile);
-                setError(null);
-            }
-        }
-    }, [accept, maxSizeMB]);
-
-    const handleUpload = async () => {
-        if (!file) return;
-
-        setUploading(true);
-        setProgress(0);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const droppedFile = e.dataTransfer.files[0];
+      if (validateFile(droppedFile)) {
+        setFile(droppedFile);
         setError(null);
+      }
+    }
+  }, [accept, maxSizeMB]);
 
-        try {
-            setProgress(30);
-            await uploadFile(bucket, filePath, file);
-            setProgress(100);
-            onUploadComplete(filePath);
+  const handleUpload = async () => {
+    if (!file) return;
 
-            // Reset
-            setFile(null);
-            setProgress(0);
-        } catch (err) {
-            const msg = err instanceof Error ? err.message : 'Error al subir archivo';
-            setError(msg);
-            if (onError) onError(msg);
-        } finally {
-            setUploading(false);
-        }
-    };
+    setUploading(true);
+    setProgress(0);
+    setError(null);
 
-    const handleRemove = () => {
-        setFile(null);
-        setError(null);
-        setProgress(0);
-    };
+    try {
+      setProgress(30);
+      await uploadFile(bucket, filePath, file);
+      setProgress(100);
+      onUploadComplete(filePath);
 
-    return (
-        <div className="file-uploader">
-            {!file ? (
-                <div
-                    className={`upload-zone ${dragActive ? 'drag-active' : ''} ${disabled ? 'disabled' : ''}`}
-                    onDragEnter={handleDrag}
-                    onDragLeave={handleDrag}
-                    onDragOver={handleDrag}
-                    onDrop={handleDrop}
-                >
-                    <input
-                        type="file"
-                        id="file-input"
-                        accept={accept}
-                        onChange={handleFileChange}
-                        disabled={disabled || uploading}
-                        style={{ display: 'none' }}
-                    />
-                    <label htmlFor="file-input" className="upload-label">
-                        <div className="upload-icon">📁</div>
-                        <p className="upload-text">{label}</p>
-                        <p className="upload-hint">
-                            o arrastra archivo aquí
-                        </p>
-                        <p className="upload-restrictions">
-                            {accept} • Máx {maxSizeMB} MB
-                        </p>
-                    </label>
-                </div>
-            ) : (
-                <div className="file-preview">
-                    <div className="file-info">
-                        <span className="file-icon">
-                            {file.type.includes('pdf') ? '📄' : '🖼️'}
-                        </span>
-                        <div className="file-details">
-                            <p className="file-name">{file.name}</p>
-                            <p className="file-size">
-                                {(file.size / 1024 / 1024).toFixed(2)} MB
-                            </p>
-                        </div>
-                        {!uploading && (
-                            <button
-                                type="button"
-                                onClick={handleRemove}
-                                className="remove-btn"
-                                disabled={disabled}
-                            >
-                                ✕
-                            </button>
-                        )}
-                    </div>
+      // Reset
+      setFile(null);
+      setProgress(0);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al subir archivo';
+      setError(msg);
+      if (onError) onError(msg);
+    } finally {
+      setUploading(false);
+    }
+  };
 
-                    {uploading && progress > 0 && (
-                        <div className="progress-bar">
-                            <div
-                                className="progress-fill"
-                                style={{ width: `${progress}%` }}
-                            />
-                        </div>
-                    )}
+  const handleRemove = () => {
+    setFile(null);
+    setError(null);
+    setProgress(0);
+  };
 
-                    {!uploading && (
-                        <button
-                            type="button"
-                            onClick={handleUpload}
-                            className="upload-btn"
-                            disabled={disabled}
-                        >
-                            Subir archivo
-                        </button>
-                    )}
-                </div>
+  return (
+    <div className="file-uploader">
+      {!file ? (
+        <div
+          className={`upload-zone ${dragActive ? 'drag-active' : ''} ${disabled ? 'disabled' : ''}`}
+          onDragEnter={handleDrag}
+          onDragLeave={handleDrag}
+          onDragOver={handleDrag}
+          onDrop={handleDrop}
+        >
+          <input
+            type="file"
+            id="file-input"
+            accept={accept}
+            onChange={handleFileChange}
+            disabled={disabled || uploading}
+            style={{ display: 'none' }}
+          />
+          <label htmlFor="file-input" className="upload-label">
+            <div className="upload-icon">📁</div>
+            <p className="upload-text">{label}</p>
+            <p className="upload-hint">
+              o arrastra archivo aquí
+            </p>
+            <p className="upload-restrictions">
+              {accept} • Máx {maxSizeMB} MB
+            </p>
+          </label>
+        </div>
+      ) : (
+        <div className="file-preview">
+          <div className="file-info">
+            <span className="file-icon">
+              {file.type.includes('pdf') ? '📄' : '🖼️'}
+            </span>
+            <div className="file-details">
+              <p className="file-name">{file.name}</p>
+              <p className="file-size">
+                {(file.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+            </div>
+            {!uploading && (
+              <button
+                type="button"
+                onClick={handleRemove}
+                className="remove-btn"
+                disabled={disabled}
+              >
+                ✕
+              </button>
             )}
+          </div>
 
-            {error && (
-                <div className="error-message">
-                    ⚠️ {error}
-                </div>
-            )}
+          {uploading && progress > 0 && (
+            <div className="progress-bar">
+              <div
+                className="progress-fill"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          )}
 
-            <style jsx>{`
+          {!uploading && (
+            <button
+              type="button"
+              onClick={handleUpload}
+              className="upload-btn"
+              disabled={disabled}
+            >
+              Subir archivo
+            </button>
+          )}
+        </div>
+      )}
+
+      {error && (
+        <div className="error-message">
+          ⚠️ {error}
+        </div>
+      )}
+
+      <style jsx>{`
         .file-uploader {
           width: 100%;
         }
@@ -353,6 +353,6 @@ export function FileUploader({
           font-size: 0.875rem;
         }
       `}</style>
-        </div>
-    );
+    </div>
+  );
 }

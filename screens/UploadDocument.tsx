@@ -122,6 +122,15 @@ export const UploadDocument: React.FC = () => {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Validate file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        alert("El archivo es demasiado grande. El tamaño máximo permitido es 5MB.");
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+        return;
+      }
+
       setCapturedFile(file);
 
       if (file.type.startsWith('image/')) {
