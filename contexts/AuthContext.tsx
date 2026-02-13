@@ -32,15 +32,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
         }
 
-        const { data, error } = await supabase.rpc('get_my_role');
+        try {
+            const { data, error } = await supabase.rpc('get_my_role');
 
-        if (error) {
-            console.error('Error getting user role:', error);
+            if (error) {
+                // Check if it's an AbortError (from React Strict Mode)
+                if (error.message?.includes('aborted')) {
+                    console.log('Role fetch aborted (likely React Strict Mode)');
+                } else {
+                    console.error('Error getting user role:', JSON.stringify(error));
+                }
+                setRole(null);
+            } else {
+                console.log('Role fetched:', data);
+                setRole(data);
+            }
+        } catch (err: any) {
+            if (err.name === 'AbortError') {
+                console.log('Role fetch aborted (caught exception)');
+            } else {
+                console.error('Unexpected error fetching role:', err);
+            }
             setRole(null);
-        } else {
-            setRole(data);
+        } finally {
+            setRoleLoading(false);
         }
-        setRoleLoading(false);
     };
 
     // Function to check if passenger is archived
@@ -50,15 +66,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
         }
 
-        const { data, error } = await supabase.rpc('is_passenger_archived');
+        try {
+            const { data, error } = await supabase.rpc('is_passenger_archived');
 
-        if (error) {
-            console.error('Error checking archived status:', error);
+            if (error) {
+                // Check if it's an AbortError (from React Strict Mode)
+                if (error.message?.includes('aborted')) {
+                    console.log('Archived status check aborted (likely React Strict Mode)');
+                } else {
+                    console.error('Error checking archived status:', JSON.stringify(error));
+                }
+                setIsArchived(false);
+                return;
+            }
+
+            setIsArchived(data === true);
+        } catch (err: any) {
+            if (err.name === 'AbortError') {
+                console.log('Archived status check aborted (caught exception)');
+            } else {
+                console.error('Unexpected error checking archived status:', err);
+            }
             setIsArchived(false);
-            return;
         }
-
-        setIsArchived(data === true);
     };
 
     useEffect(() => {

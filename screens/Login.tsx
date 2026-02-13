@@ -44,7 +44,10 @@ export const Login: React.FC = () => {
 
             if (error) throw error;
 
+            console.log('Login successful, user:', data.user);
+
             if (data.user) {
+                console.log('Navigating to /app...');
                 navigate('/app');
             }
         } catch (err: any) {

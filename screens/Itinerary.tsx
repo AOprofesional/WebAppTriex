@@ -5,6 +5,7 @@ import { usePassengerTrips } from '../hooks/usePassengerTrips';
 import { useItineraryDays } from '../hooks/useItineraryDays';
 import { useItineraryItems } from '../hooks/useItineraryItems';
 import { PageLoading } from '../components/PageLoading';
+import { ContactCoordinatorModal } from '../components/ContactCoordinatorModal';
 
 export const Itinerary: React.FC = () => {
   const { primaryTrip } = usePassengerTrips();
@@ -14,6 +15,7 @@ export const Itinerary: React.FC = () => {
   const { items, loading: itemsLoading } = useItineraryItems(selectedDayId);
 
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [showContactModal, setShowContactModal] = useState(false);
   const activeItemRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -131,7 +133,10 @@ export const Itinerary: React.FC = () => {
 
                 {/* Coordinator Contact */}
                 <div className="mt-8 mb-12 ml-14">
-                  <button className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all">
+                  <button
+                    onClick={() => setShowContactModal(true)}
+                    className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all"
+                  >
                     <span className="material-symbols-outlined text-2xl">support_agent</span>
                     Contactar coordinador
                   </button>
@@ -190,7 +195,14 @@ export const Itinerary: React.FC = () => {
               <div className="mb-8">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="text-lg font-bold text-[#1F2937] dark:text-white">Punto de encuentro</h3>
-                  <span className="text-xs font-bold text-[#F97316]">Ver en Google Maps</span>
+                  <a
+                    href={selectedActivity.meetingPoint.mapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-bold text-[#F97316] hover:underline"
+                  >
+                    Ver en Google Maps
+                  </a>
                 </div>
                 <div className="rounded-2xl overflow-hidden border border-zinc-100 dark:border-zinc-800 relative h-44">
                   <img alt="Meeting point map" className="w-full h-full object-cover" src={selectedActivity.meetingPoint.mapUrl} />
@@ -210,7 +222,10 @@ export const Itinerary: React.FC = () => {
             )}
 
             <div className="flex flex-col gap-3 pb-8">
-              <button className="w-full py-4 bg-[#3D3935] text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2">
+              <button
+                onClick={() => setShowContactModal(true)}
+                className="w-full py-4 bg-[#3D3935] text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2"
+              >
                 <span className="material-symbols-outlined">support_agent</span>
                 Contactar coordinador
               </button>
@@ -221,6 +236,13 @@ export const Itinerary: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ContactCoordinatorModal
+        isOpen={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        coordinatorPhone={primaryTrip?.coordinator_phone}
+        coordinatorEmail={primaryTrip?.coordinator_email}
+      />
     </div>
   );
 };

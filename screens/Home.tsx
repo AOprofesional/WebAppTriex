@@ -228,15 +228,16 @@ export const Home: React.FC = () => {
         <section className="mt-6 lg:mt-0 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-[32px] p-7 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/40">
           <div>
             <p className="text-[13px] font-bold text-zinc-500 dark:text-zinc-400">Tus puntos</p>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-[32px] font-black text-triex-grey dark:text-white leading-none">0</span>
-              {/* TODO: Connect to real points system when available */}
-              <span className="text-[12px] font-bold text-zinc-500 dark:text-zinc-400 bg-zinc-200 dark:bg-zinc-800 px-1.5 py-0.5 rounded tracking-tighter">PTS</span>
+            {/* TODO: Connect to real points system when available */}
+            <div className="flex flex-col mt-1">
+              <span className="text-[14px] font-bold text-triex-grey dark:text-white leading-tight">Próximamente</span>
+              <span className="text-[10px] text-zinc-400">Programa de beneficios</span>
             </div>
           </div>
           <button
             onClick={() => navigate('/points')}
-            className="px-7 py-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-[18px] font-extrabold text-[14px] text-triex-grey dark:text-white shadow-sm active:scale-95 transition-all"
+            className="px-7 py-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-[18px] font-extrabold text-[14px] text-triex-grey dark:text-white shadow-sm active:scale-95 transition-all opacity-50 cursor-not-allowed"
+            disabled
           >
             Ver puntos
           </button>

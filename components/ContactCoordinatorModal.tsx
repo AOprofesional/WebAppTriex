@@ -3,20 +3,29 @@ import React from 'react';
 interface ContactCoordinatorModalProps {
     isOpen: boolean;
     onClose: () => void;
+    coordinatorPhone?: string | null;
+    coordinatorEmail?: string | null;
 }
 
-export const ContactCoordinatorModal: React.FC<ContactCoordinatorModalProps> = ({ isOpen, onClose }) => {
+export const ContactCoordinatorModal: React.FC<ContactCoordinatorModalProps> = ({
+    isOpen,
+    onClose,
+    coordinatorPhone,
+    coordinatorEmail
+}) => {
     if (!isOpen) return null;
 
     const handleWhatsApp = () => {
         // Opens WhatsApp with a pre-filled message
-        window.open('https://wa.me/5491123456789?text=Hola,%20necesito%20ayuda%20urgente', '_blank');
+        const phone = coordinatorPhone?.replace(/\D/g, '') || '5491123456789'; // Fallback or strict cleanup
+        window.open(`https://wa.me/${phone}?text=Hola,%20necesito%20ayuda`, '_blank');
         onClose();
     };
 
     const handleEmail = () => {
         // Opens default email client
-        window.location.href = 'mailto:coordinador@triex.com?subject=Consulta%20general';
+        const email = coordinatorEmail || 'coordinador@triex.com';
+        window.location.href = `mailto:${email}?subject=Consulta%20general`;
         onClose();
     };
 

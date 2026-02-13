@@ -41,7 +41,13 @@ export const useNotifications = () => {
 
             // Get current user
             const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('No authenticated user');
+            if (!user) {
+                // No user logged in - this is expected on login screen
+                setNotifications([]);
+                setUnreadCount(0);
+                setLoading(false);
+                return;
+            }
 
             // Get passenger record for current user
             const { data: passenger, error: passengerError } = await supabase

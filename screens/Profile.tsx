@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePassenger } from '../hooks/usePassenger';
+import { usePassengerTrips } from '../hooks/usePassengerTrips';
 import { ProfilePhotoModal } from '../components/ProfilePhotoModal';
 import { PageLoading } from '../components/PageLoading';
 import { supabase } from '../lib/supabase';
@@ -13,6 +14,7 @@ export const Profile: React.FC = () => {
   const toast = useToast();
   const confirm = useConfirm();
   const { passenger, loading, uploadAvatar, removeAvatar } = usePassenger();
+  const { primaryTrip } = usePassengerTrips();
   const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'));
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
@@ -177,10 +179,20 @@ export const Profile: React.FC = () => {
       </div>
 
       {/* Coordinator Contact */}
-      <button className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all mb-6">
+      <button
+        onClick={() => setShowContactModal(true)}
+        className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all mb-6"
+      >
         <span className="material-symbols-outlined text-2xl">support_agent</span>
         Contactar coordinador
       </button>
+
+      <ContactCoordinatorModal
+        isOpen={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        coordinatorPhone={primaryTrip?.coordinator_phone}
+        coordinatorEmail={primaryTrip?.coordinator_email}
+      />
 
       {/* Logout */}
       <button

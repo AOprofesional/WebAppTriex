@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 
 export const AdminTrips: React.FC = () => {
     const navigate = useNavigate();
-    const { trips, loading, fetchTrips, archiveTrip, restoreTrip, deleteTrip } = useTrips();
+    const { trips, loading, error, fetchTrips, archiveTrip, restoreTrip, deleteTrip } = useTrips();
 
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatusCommercial, setFilterStatusCommercial] = useState('all');
@@ -295,6 +295,25 @@ export const AdminTrips: React.FC = () => {
                     <div className="p-12 text-center bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
                         <div className="inline-block w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
                         <p className="mt-4 text-sm text-zinc-500">Cargando viajes...</p>
+                    </div>
+                ) : error ? (
+                    <div className="p-12 text-center bg-white dark:bg-zinc-900 rounded-2xl border border-red-200 dark:border-red-900/50">
+                        <div className="w-16 h-16 mx-auto bg-red-100 dark:bg-red-900/20 rounded-2xl flex items-center justify-center mb-4">
+                            <span className="material-symbols-outlined text-3xl text-red-500">error</span>
+                        </div>
+                        <h3 className="text-lg font-bold text-red-600 dark:text-red-400 mb-2">
+                            Error al cargar viajes
+                        </h3>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-6 max-w-md mx-auto">
+                            {error}
+                        </p>
+                        <button
+                            onClick={() => fetchTrips()}
+                            className="inline-flex items-center gap-2 px-5 py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl font-semibold text-sm hover:bg-red-100 dark:hover:bg-red-900/30 transition-all border border-red-200 dark:border-red-800"
+                        >
+                            <span className="material-symbols-outlined text-xl">refresh</span>
+                            Reintentar
+                        </button>
                     </div>
                 ) : trips.length === 0 ? (
                     <div className="p-12 text-center bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">

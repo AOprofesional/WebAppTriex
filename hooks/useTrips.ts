@@ -1,12 +1,12 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { Tables, TablesInsert, TablesUpdate } from '../types/database.types';
+import { Database } from '../types/database.types';
 import { calculateTripStatus } from '../utils/dateUtils';
 
-type Trip = Tables<'trips'>;
-type TripInsert = TablesInsert<'trips'>;
-type TripUpdate = TablesUpdate<'trips'>;
+type Trip = Database['public']['Tables']['trips']['Row'];
+type TripInsert = Database['public']['Tables']['trips']['Insert'];
+type TripUpdate = Database['public']['Tables']['trips']['Update'];
 
 export const useTrips = () => {
     const [trips, setTrips] = useState<Trip[]>([]);
@@ -17,7 +17,7 @@ export const useTrips = () => {
         fetchTrips();
     }, []);
 
-    const fetchTrips = async (filters?: {
+    const fetchTrips = useCallback(async (filters?: {
         statusOperational?: string;
         statusCommercial?: string;
         brandSub?: string;
@@ -85,7 +85,7 @@ export const useTrips = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     const createTrip = async (tripData: TripInsert) => {
         try {

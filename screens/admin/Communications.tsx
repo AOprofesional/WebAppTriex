@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAdminNotifications } from '../../hooks/useAdminNotifications';
 import { useAutoNotificationSettings } from '../../hooks/useAutoNotificationSettings';
 import { CreateNotificationModal } from '../../components/admin/CreateNotificationModal';
+import { Pagination } from '../../components/Pagination';
 
 export const AdminCommunications: React.FC = () => {
     const { notifications, loading, fetchAllNotifications } = useAdminNotifications();
@@ -10,6 +11,8 @@ export const AdminCommunications: React.FC = () => {
     const [filter, setFilter] = useState('all');
     const [showConfig, setShowConfig] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 20;
 
     useEffect(() => {
         fetchAllNotifications({
@@ -51,6 +54,16 @@ export const AdminCommunications: React.FC = () => {
         // Refresh notifications after modal closes
         fetchAllNotifications({ limit: 50 });
     };
+
+    // Filter and paginate notifications
+    const filteredNotifications = notifications.filter(n => {
+        if (filter === 'all') return true;
+        if (filter === 'unread') return !n.is_read;
+        return n.type === filter;
+    });
+
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const paginatedNotifications = filteredNotifications.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
     return (
         <div className="space-y-6">
@@ -171,6 +184,16 @@ export const AdminCommunications: React.FC = () => {
                 isOpen={isModalOpen}
                 onClose={handleModalClose}
             />
+
+            {/* Pagination */}
+            {!showConfig && (
+                <Pagination
+                    totalItems={filteredNotifications.length}
+                    itemsPerPage={ITEMS_PER_PAGE}
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                />
+            )}
         </div>
     );
 };
