@@ -123,7 +123,7 @@ export const Home: React.FC = () => {
                 </div>
 
                 <button
-                  onClick={() => navigate('/my-trip')}
+                  onClick={() => navigate('/mytrip')}
                   className="mt-6 w-full bg-triex-grey dark:bg-white text-white dark:text-triex-grey py-3.5 rounded-2xl font-bold text-[15px] active:scale-[0.98] transition-transform flex items-center justify-center gap-2"
                 >
                   Ver detalles del viaje
