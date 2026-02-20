@@ -91,19 +91,26 @@ self.addEventListener('notificationclick', (event) => {
 self.addEventListener('pushsubscriptionchange', (event) => {
     console.log('[Service Worker] Push subscription changed', event);
 
+    // Re-subscribe with the same VAPID key
     event.waitUntil(
         self.registration.pushManager.subscribe({
             userVisibleOnly: true,
-            applicationServerKey: event.oldSubscription.options.applicationServerKey
+            applicationServerKey: event.oldSubscription?.options?.applicationServerKey
         })
             .then((subscription) => {
                 console.log('[Service Worker] Resubscribed successfully', subscription);
-                // You might want to send this to your server
-                return fetch('/api/update-subscription', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(subscription)
+                // Notify all open windows so the app can update the subscription in the DB
+                return self.clients.matchAll({ type: 'window' }).then((clients) => {
+                    clients.forEach((client) => {
+                        client.postMessage({
+                            type: 'PUSH_SUBSCRIPTION_CHANGED',
+                            subscription: subscription.toJSON()
+                        });
+                    });
                 });
+            })
+            .catch((err) => {
+                console.error('[Service Worker] Failed to resubscribe', err);
             })
     );
 });

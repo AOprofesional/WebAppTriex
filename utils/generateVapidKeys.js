@@ -2,10 +2,10 @@
 // Run this once: node utils/generateVapidKeys.js
 // Then copy the keys to your Supabase system_settings table
 
-const crypto = require('crypto');
+import { generateKeyPairSync } from 'crypto';
 
 function generateVapidKeys() {
-    const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', {
+    const { publicKey, privateKey } = generateKeyPairSync('ec', {
         namedCurve: 'prime256v1',
         publicKeyEncoding: {
             type: 'spki',

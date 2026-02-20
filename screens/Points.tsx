@@ -274,9 +274,9 @@ export const Points: React.FC = () => {
                         Puntos Acreditados
                       </span>
                     ) : referred.has_confirmed_purchase ? (
-                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-semibold">
-                        <span className="material-symbols-outlined text-sm">pending</span>
-                        Compra Confirmada
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 rounded-full text-xs font-semibold">
+                        <span className="material-symbols-outlined text-sm">hourglass_top</span>
+                        Puntos Pendientes
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full text-xs font-semibold">

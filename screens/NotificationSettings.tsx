@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePassenger } from '../hooks/usePassenger';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 import { PageLoading } from '../components/PageLoading';
 import { useToast } from '../components/Toast';
 
@@ -8,7 +9,13 @@ export const NotificationSettings: React.FC = () => {
     const navigate = useNavigate();
     const toast = useToast();
     const { passenger, loading, updateNotificationPreferences } = usePassenger();
+    const { sendTestNotification } = usePushNotifications();
     const [saving, setSaving] = useState(false);
+
+    const handleTestNotification = async () => {
+        const success = await sendTestNotification();
+        if (success) toast.success('Notificación enviada');
+    };
 
     const [preferences, setPreferences] = useState({
         push: true,
@@ -150,6 +157,31 @@ export const NotificationSettings: React.FC = () => {
                                 className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform duration-300 ${preferences.email ? 'translate-x-6 shadow-md' : ''
                                     }`}
                             />
+                        </button>
+                    </div>
+
+                    {/* Test Notification Button */}
+                    <div className="flex items-center justify-between p-5 border-t border-zinc-50 dark:border-zinc-800/50">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-purple-600 dark:text-purple-400 text-xl">
+                                    send_to_mobile
+                                </span>
+                            </div>
+                            <div>
+                                <p className="font-bold text-zinc-800 dark:text-white">
+                                    Probar Notificaciones
+                                </p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                                    Envía una notificación de prueba a este dispositivo
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleTestNotification}
+                            className="text-sm font-semibold text-primary hover:underline px-2"
+                        >
+                            Enviar
                         </button>
                     </div>
                 </div>

@@ -179,12 +179,22 @@ export const usePushNotifications = () => {
         if (!user) return false;
 
         try {
+            // Explicitly pass the JWT so the Edge Function can verify the user
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                alert('Sesión expirada. Volvé a iniciar sesión.');
+                return false;
+            }
+
             const { error } = await supabase.functions.invoke('send-push', {
+                headers: {
+                    Authorization: `Bearer ${session.access_token}`
+                },
                 body: {
                     userId: user.id,
                     title: '🎉 Test de Notificación',
                     body: 'Las notificaciones están funcionando correctamente',
-                    url: '/admin'
+                    url: '/'
                 }
             });
 
@@ -197,6 +207,7 @@ export const usePushNotifications = () => {
         }
     };
 
+
     return {
         ...state,
         loading,
@@ -208,14 +219,15 @@ export const usePushNotifications = () => {
 };
 
 // Helper function to convert VAPID key
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding)
         .replace(/-/g, '+')
         .replace(/_/g, '/');
 
     const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
+    const buffer = new ArrayBuffer(rawData.length);
+    const outputArray = new Uint8Array(buffer);
 
     for (let i = 0; i < rawData.length; ++i) {
         outputArray[i] = rawData.charCodeAt(i);

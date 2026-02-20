@@ -81,6 +81,7 @@ const ActivityItem: React.FC<{
 
 import { CreatePassengerModal } from '../../components/CreatePassengerModal';
 import { VoucherFormModal } from '../../components/modals/VoucherFormModal';
+import { NotificationPermissionBanner } from '../../components/NotificationPermissionBanner';
 
 export const AdminDashboard: React.FC = () => {
     const navigate = useNavigate();
@@ -109,6 +110,8 @@ export const AdminDashboard: React.FC = () => {
 
     return (
         <div className="space-y-8">
+            <NotificationPermissionBanner />
+
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-3">
                 <QuickAction label="Crear viaje" icon="add" onClick={() => navigate('/admin/trips/new')} />

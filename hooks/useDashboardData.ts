@@ -133,12 +133,24 @@ export const useDashboardData = () => {
             }
 
             // Get recent document activity (last 10 actions)
-            const { data: recentDocs } = await supabase
+            const { data: recentDocs, error: recentActivityError } = await supabase
                 .from('passenger_documents')
-                .select('id, status, updated_at, passengers(first_name, last_name), required_documents(document_types(name))')
+                .select(`
+                    id, 
+                    status, 
+                    updated_at, 
+                    passengers (first_name, last_name), 
+                    required_documents (
+                        document_types (name)
+                    )
+                `)
                 .in('status', ['uploaded', 'approved', 'rejected'])
                 .order('updated_at', { ascending: false })
                 .limit(10);
+
+            if (recentActivityError) {
+                console.error('Error fetching recent activity:', recentActivityError);
+            }
 
             // Map to activity items
             const activity: RecentActivity[] = (recentDocs || []).map((doc: any) => {

@@ -8,6 +8,10 @@ import { TripStatusBadge } from '../components/TripStatusBadge';
 import { PageLoading } from '../components/PageLoading';
 import { useDocuments } from '../hooks/useDocuments';
 
+import { useOrangePass } from '../hooks/useOrangePass';
+import { formatPoints } from '../utils/orangePassHelpers';
+import { NotificationPermissionBanner } from '../components/NotificationPermissionBanner';
+
 export const Home: React.FC = () => {
   const navigate = useNavigate();
   const { primaryTrip, nextStep, loading: loadingTrips } = usePassengerTrips();
@@ -19,6 +23,8 @@ export const Home: React.FC = () => {
     fetchRequiredDocuments,
     fetchPassengerDocuments
   } = useDocuments();
+
+  const { balance, loading: loadingPoints } = useOrangePass(passenger?.id);
 
   React.useEffect(() => {
     if (primaryTrip) {
@@ -67,6 +73,8 @@ export const Home: React.FC = () => {
           ¡Qué bueno volver a verte!
         </p>
       </section>
+
+      <NotificationPermissionBanner />
 
       {/* Desktop: First row grid */}
       <div className="lg:grid lg:grid-cols-2 lg:gap-8">
@@ -228,16 +236,16 @@ export const Home: React.FC = () => {
         <section className="mt-6 lg:mt-0 border-2 border-dashed border-zinc-200 dark:border-zinc-800 rounded-[32px] p-7 flex items-center justify-between bg-zinc-50/50 dark:bg-zinc-900/40">
           <div>
             <p className="text-[13px] font-bold text-zinc-500 dark:text-zinc-400">Tus puntos</p>
-            {/* TODO: Connect to real points system when available */}
             <div className="flex flex-col mt-1">
-              <span className="text-[14px] font-bold text-triex-grey dark:text-white leading-tight">Próximamente</span>
-              <span className="text-[10px] text-zinc-400">Programa de beneficios</span>
+              <span className="text-[20px] font-extrabold text-orange-600 dark:text-orange-400 leading-tight">
+                {loadingPoints ? '...' : formatPoints(balance?.total || 0)}
+              </span>
+              <span className="text-[10px] text-zinc-400">Puntos disponibles</span>
             </div>
           </div>
           <button
             onClick={() => navigate('/points')}
-            className="px-7 py-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-[18px] font-extrabold text-[14px] text-triex-grey dark:text-white shadow-sm active:scale-95 transition-all opacity-50 cursor-not-allowed"
-            disabled
+            className="px-7 py-3 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-[18px] font-extrabold text-[14px] text-triex-grey dark:text-white shadow-sm active:scale-95 transition-all hover:bg-zinc-50 dark:hover:bg-zinc-700"
           >
             Ver puntos
           </button>
