@@ -143,7 +143,7 @@ export const EditPersonalInfo: React.FC = () => {
                                 Email: {passenger?.email}
                             </p>
                             <p className="text-xs text-blue-700 dark:text-blue-300">
-                                El email no puede modificarse desde aquí. Contactá a tu coordinador si necesitás cambiarlo.
+                                El email no puede modificarse desde aquí. Contactá a tu agente de ventas si necesitás cambiarlo.
                             </p>
                         </div>
                     </div>

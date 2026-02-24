@@ -25,13 +25,15 @@ export const BottomNav: React.FC = () => {
               to={item.path}
               className="flex flex-col items-center gap-1 group flex-1"
             >
-              <span
-                className={`material-symbols-outlined transition-all duration-200 text-[26px] ${isActive ? 'text-primary' : 'text-zinc-400 dark:text-zinc-600'}`}
-                style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}
-              >
-                {item.icon}
-              </span>
-              <span className={`text-[10px] font-extrabold tracking-tighter text-center ${isActive ? 'text-primary' : 'text-zinc-400 dark:text-zinc-600'}`}>
+              <div className={`relative flex items-center justify-center w-10 h-8 rounded-2xl transition-all duration-300 ${isActive ? 'bg-primary/10' : ''}`}>
+                <span
+                  className={`material-symbols-outlined transition-all duration-300 text-[26px] ${isActive ? 'text-primary scale-110' : 'text-zinc-400 dark:text-zinc-600'}`}
+                  style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}
+                >
+                  {item.icon}
+                </span>
+              </div>
+              <span className={`text-[10px] font-extrabold tracking-tighter text-center transition-colors duration-300 ${isActive ? 'text-primary' : 'text-zinc-400 dark:text-zinc-600'}`}>
                 {item.label}
               </span>
             </Link>

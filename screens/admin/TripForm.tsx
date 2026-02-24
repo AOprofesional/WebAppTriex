@@ -947,7 +947,7 @@ export const TripForm: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                         <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
-                            Nombre coordinador
+                            Nombre agente de ventas
                         </label>
                         <input
                             type="text"
@@ -960,7 +960,7 @@ export const TripForm: React.FC = () => {
 
                     <div>
                         <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
-                            Teléfono coordinador
+                            Teléfono agente de ventas
                         </label>
                         <input
                             type="tel"
@@ -973,14 +973,14 @@ export const TripForm: React.FC = () => {
 
                     <div>
                         <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">
-                            Email coordinador
+                            Email agente de ventas
                         </label>
                         <input
                             type="email"
                             value={formData.coordinator_email}
                             onChange={(e) => handleInputChange('coordinator_email', e.target.value)}
                             className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                            placeholder="coordinador@triex.com"
+                            placeholder="agente@triex.com"
                         />
                     </div>
 
@@ -1050,7 +1050,7 @@ export const TripForm: React.FC = () => {
                                     value={formData.next_step_title_override}
                                     onChange={(e) => handleInputChange('next_step_title_override', e.target.value)}
                                     className={`w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border ${errors.next_step_title_override ? 'border-red-500' : 'border-zinc-200 dark:border-zinc-700'} rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary`}
-                                    placeholder="Urgente: Contactar coordinador"
+                                    placeholder="Urgente: Contactar agente de ventas"
                                 />
                                 {errors.next_step_title_override && <p className="mt-1 text-sm text-red-500">{errors.next_step_title_override}</p>}
                             </div>

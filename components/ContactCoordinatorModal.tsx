@@ -24,7 +24,7 @@ export const ContactCoordinatorModal: React.FC<ContactCoordinatorModalProps> = (
 
     const handleEmail = () => {
         // Opens default email client
-        const email = coordinatorEmail || 'coordinador@triex.com';
+        const email = coordinatorEmail || 'agente@triex.com';
         window.location.href = `mailto:${email}?subject=Consulta%20general`;
         onClose();
     };
@@ -36,7 +36,7 @@ export const ContactCoordinatorModal: React.FC<ContactCoordinatorModalProps> = (
                 <div className="p-6 border-b border-zinc-200 dark:border-zinc-800">
                     <div className="flex items-center justify-between">
                         <h2 className="text-xl font-bold text-triex-grey dark:text-white">
-                            Contactar coordinador
+                            Contactar agente de ventas
                         </h2>
                         <button
                             onClick={onClose}
@@ -50,7 +50,7 @@ export const ContactCoordinatorModal: React.FC<ContactCoordinatorModalProps> = (
                 {/* Content */}
                 <div className="p-6 space-y-4">
                     <p className="text-zinc-600 dark:text-zinc-300 text-sm">
-                        ¿Cómo preferís comunicarte con tu coordinador?
+                        ¿Cómo preferís comunicarte con tu agente de ventas?
                     </p>
 
                     {/* WhatsApp Option */}

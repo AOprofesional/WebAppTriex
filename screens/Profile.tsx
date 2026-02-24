@@ -184,7 +184,7 @@ export const Profile: React.FC = () => {
         className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all mb-6"
       >
         <span className="material-symbols-outlined text-2xl">support_agent</span>
-        Contactar coordinador
+        Contactar agente de ventas
       </button>
 
       <ContactCoordinatorModal

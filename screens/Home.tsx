@@ -148,7 +148,7 @@ export const Home: React.FC = () => {
                 No hay viajes programados
               </h3>
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Contactá a tu coordinador para más información
+                Contactá a tu agente de ventas para más información
               </p>
             </div>
           )}

@@ -82,15 +82,6 @@ export const VouchersAndDocs: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[#F4F5F9] dark:bg-zinc-950 pb-20 lg:pb-8 font-sans">
-            {/* Header Mobile */}
-            <div className="px-5 py-4 flex items-center justify-between bg-white dark:bg-zinc-950 sticky top-0 z-50 lg:hidden border-b border-zinc-100 dark:border-zinc-800">
-                <button onClick={() => navigate(-1)} className="p-1 -ml-1 text-zinc-800 dark:text-zinc-200">
-                    <span className="material-symbols-outlined text-[28px]">chevron_left</span>
-                </button>
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-100">
-                    <img src={AVATAR_URL} alt="Profile" className="w-full h-full object-cover" />
-                </div>
-            </div>
 
             <div className="px-5 pt-6 max-w-4xl mx-auto">
                 <h1 className="text-2xl font-bold text-[#1F2937] dark:text-white mb-8">

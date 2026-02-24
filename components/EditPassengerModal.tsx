@@ -35,7 +35,7 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
         last_name: '',
         email: '',
         phone: '',
-        document_type: 'DNI',
+        document_type: '',
         document_number: '',
         passenger_type_id: 1 as number,  // 1 = regular
         is_recurrent: false,
@@ -99,7 +99,7 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                 last_name: passenger.last_name || '',
                 email: passenger.passenger_email || '',
                 phone: passenger.phone || '',
-                document_type: passenger.document_type || 'DNI',
+                document_type: passenger.document_type || '',
                 document_number: passenger.document_number || '',
                 passenger_type_id: typeCodeToId[passenger.type_code || 'regular'] || 1,
                 is_recurrent: passenger.is_recurrent || false,
@@ -151,13 +151,16 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
         setIsLoading(true);
 
         try {
+            const docNumber = formData.document_number?.trim() || null;
+            const docType = docNumber ? (formData.document_type || 'DNI') : null;
+
             const updates: any = {
                 first_name: formData.first_name,
                 last_name: formData.last_name,
                 email: formData.email,
                 phone: formData.phone || null,
-                document_type: formData.document_type,
-                document_number: formData.document_number || null,
+                document_type: docType,
+                document_number: docNumber,
                 passenger_type_id: formData.passenger_type_id,
                 is_recurrent: formData.is_recurrent,
                 referred_by_code_raw: formData.referral_code || null,
@@ -287,6 +290,7 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                                 onChange={(e) => setFormData({ ...formData, document_type: e.target.value })}
                                 className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                             >
+                                <option value="">Seleccionar...</option>
                                 <option value="DNI">DNI</option>
                                 <option value="Pasaporte">Pasaporte</option>
                                 <option value="Otro">Otro</option>
@@ -334,8 +338,8 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                                 onChange={(e) => setFormData({ ...formData, referral_code: e.target.value.toUpperCase() })}
                                 onBlur={handleReferralCodeBlur}
                                 className={`w-full px-4 py-2.5 pr-10 bg-zinc-50 dark:bg-zinc-900 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 uppercase ${referralCodeValid === true ? 'border-green-500' :
-                                        referralCodeValid === false ? 'border-red-500' :
-                                            'border-zinc-200 dark:border-zinc-700'
+                                    referralCodeValid === false ? 'border-red-500' :
+                                        'border-zinc-200 dark:border-zinc-700'
                                     } focus:border-primary`}
                                 placeholder="Ingresa código de referido"
                                 maxLength={8}

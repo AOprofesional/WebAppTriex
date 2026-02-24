@@ -87,8 +87,12 @@ export const Points: React.FC = () => {
       <div className="max-w-4xl mx-auto space-y-5">
         {/* Header */}
         <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="material-symbols-outlined text-4xl">card_giftcard</span>
+          <div className="flex items-center gap-4 mb-4">
+            <img
+              src="https://i.imgur.com/4UYsBB4.png"
+              alt="Orange Pass"
+              className="h-14 w-auto object-contain"
+            />
             <div>
               <h1 className="text-2xl font-bold">Orange Pass</h1>
               <p className="text-orange-100 text-sm">Programa de Referidos y Puntos</p>

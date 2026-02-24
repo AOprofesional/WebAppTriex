@@ -140,10 +140,7 @@ export const Notifications: React.FC = () => {
   return (
     <div className="min-h-screen bg-triex-bg dark:bg-zinc-950 pb-24 lg:pb-8">
       {/* Header Notifications */}
-      <div className="px-5 py-6 flex items-center justify-between">
-        <div className="w-8 h-8 bg-zinc-100 dark:bg-zinc-900 rounded-lg flex items-center justify-center">
-          <img src={LOGO_URL} alt="Triex" className="h-4 brightness-0 opacity-40 dark:brightness-200" />
-        </div>
+      <div className="px-5 py-6 flex items-center justify-end">
         {unreadCount > 0 && (
           <button
             onClick={() => markAllAsRead()}
@@ -218,7 +215,7 @@ export const Notifications: React.FC = () => {
       <div className="px-5 mt-12 mb-8">
         <button className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all">
           <span className="material-symbols-outlined text-2xl">support_agent</span>
-          Contactar coordinador
+          Contactar agente de ventas
         </button>
       </div>
 

@@ -156,7 +156,7 @@ export const Itinerary: React.FC = () => {
                     className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all"
                   >
                     <span className="material-symbols-outlined text-2xl">support_agent</span>
-                    Contactar coordinador
+                    Contactar agente de ventas
                   </button>
                 </div>
               </div>
@@ -245,7 +245,7 @@ export const Itinerary: React.FC = () => {
                 className="w-full py-4 bg-[#3D3935] text-white rounded-xl font-bold shadow-lg flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined">support_agent</span>
-                Contactar coordinador
+                Contactar agente de ventas
               </button>
               <button onClick={() => setSelectedActivity(null)} className="w-full py-4 bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-xl font-bold border border-zinc-200 dark:border-zinc-700">
                 Cerrar
