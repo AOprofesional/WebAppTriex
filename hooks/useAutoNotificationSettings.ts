@@ -20,8 +20,9 @@ export const useAutoNotificationSettings = () => {
         fetchSettings();
 
         // Real-time subscription for settings changes
+        const channelId = `auto-notification-settings-changes-${Math.random().toString(36).substring(7)}`;
         const channel = supabase
-            .channel('auto-notification-settings-changes')
+            .channel(channelId)
             .on(
                 'postgres_changes',
                 { event: '*', schema: 'public', table: 'auto_notification_settings' },

@@ -4,6 +4,7 @@ import { useTrips } from '../../hooks/useTrips';
 import { useAuth } from '../../contexts/AuthContext';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { TripStatusBadge } from '../../components/TripStatusBadge';
+import { TripFormModal } from '../../components/TripFormModal';
 import { calculateTripStatus } from '../../utils/dateUtils';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
@@ -11,6 +12,9 @@ import toast from 'react-hot-toast';
 export const AdminTrips: React.FC = () => {
     const navigate = useNavigate();
     const { trips, loading, error, fetchTrips, archiveTrip, restoreTrip, deleteTrip } = useTrips();
+
+    const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+    const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatusCommercial, setFilterStatusCommercial] = useState('all');
@@ -145,7 +149,10 @@ export const AdminTrips: React.FC = () => {
                         </button>
                     </div>
                     <button
-                        onClick={() => navigate('/admin/trips/new')}
+                        onClick={() => {
+                            setSelectedTripId(null);
+                            setIsFormModalOpen(true);
+                        }}
                         className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary/90 transition-all shrink-0"
                     >
                         <span className="material-symbols-outlined text-xl">add</span>
@@ -330,7 +337,10 @@ export const AdminTrips: React.FC = () => {
                         </p>
                         {!searchTerm && filterStatusCommercial === 'all' && filterStatusOperational === 'all' && filterBrandSub === 'all' && (
                             <button
-                                onClick={() => navigate('/admin/trips/new')}
+                                onClick={() => {
+                                    setSelectedTripId(null);
+                                    setIsFormModalOpen(true);
+                                }}
                                 className="inline-flex items-center gap-2 px-5 py-3 bg-primary text-white rounded-xl font-semibold text-sm hover:bg-primary/90 transition-all"
                             >
                                 <span className="material-symbols-outlined text-xl">add</span>
@@ -465,7 +475,10 @@ export const AdminTrips: React.FC = () => {
                                                 ) : (
                                                     <>
                                                         <button
-                                                            onClick={() => navigate(`/admin/trips/${trip.id}`)}
+                                                            onClick={() => {
+                                                                setSelectedTripId(trip.id);
+                                                                setIsFormModalOpen(true);
+                                                            }}
                                                             className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
                                                             title="Editar"
                                                         >
@@ -553,7 +566,10 @@ export const AdminTrips: React.FC = () => {
                                 {/* Footer & Actions */}
                                 <div className="flex items-center justify-between">
                                     <button
-                                        onClick={() => navigate(`/admin/trips/${trip.id}`)}
+                                        onClick={() => {
+                                            setSelectedTripId(trip.id);
+                                            setIsFormModalOpen(true);
+                                        }}
                                         className="text-orange-500 font-bold text-sm hover:text-orange-600 transition-colors"
                                     >
                                         Ver detalle
@@ -579,7 +595,10 @@ export const AdminTrips: React.FC = () => {
                                         ) : (
                                             <>
                                                 <button
-                                                    onClick={() => navigate(`/admin/trips/${trip.id}`)}
+                                                    onClick={() => {
+                                                        setSelectedTripId(trip.id);
+                                                        setIsFormModalOpen(true);
+                                                    }}
                                                     className="p-1.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
                                                     title="Editar"
                                                 >
@@ -615,6 +634,17 @@ export const AdminTrips: React.FC = () => {
                     </div>
                 )
             }
+
+            {/* Modal de Viaje */}
+            <TripFormModal
+                isOpen={isFormModalOpen}
+                onClose={() => {
+                    setIsFormModalOpen(false);
+                    setSelectedTripId(null);
+                    fetchTrips(); // Refresh the list when closing the modal
+                }}
+                tripId={selectedTripId}
+            />
         </div >
     );
 };

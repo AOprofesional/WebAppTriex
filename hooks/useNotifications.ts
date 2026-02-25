@@ -15,8 +15,9 @@ export const useNotifications = () => {
         fetchNotifications();
 
         // Set up real-time subscription
+        const channelId = `notifications-changes-${Math.random().toString(36).substring(7)}`;
         const channel = supabase
-            .channel('notifications-changes')
+            .channel(channelId)
             .on('postgres_changes',
                 {
                     event: '*',
@@ -54,10 +55,16 @@ export const useNotifications = () => {
                 .from('passengers')
                 .select('id')
                 .eq('profile_id', user.id)
-                .single();
+                .maybeSingle();
 
             if (passengerError) throw passengerError;
-            if (!passenger) throw new Error('No passenger record found');
+            if (!passenger) {
+                // Not a passenger (e.g. admin or operator)
+                setNotifications([]);
+                setUnreadCount(0);
+                setLoading(false);
+                return;
+            }
 
             // Fetch notifications for this passenger
             const { data, error: fetchError } = await supabase
@@ -111,9 +118,10 @@ export const useNotifications = () => {
                 .from('passengers')
                 .select('id')
                 .eq('profile_id', user.id)
-                .single();
+                .maybeSingle();
 
             if (passengerError) throw passengerError;
+            if (!passenger) return { error: null }; // Not a passenger, nothing to mark as read
 
             // Mark all as read
             const { error: updateError } = await supabase

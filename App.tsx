@@ -37,7 +37,6 @@ import { AdminLayout } from './screens/admin/AdminLayout';
 import { AdminDashboard } from './screens/admin/Dashboard';
 import { AdminPassengers } from './screens/admin/Passengers';
 import { AdminTrips } from './screens/admin/Trips';
-import { TripForm } from './screens/admin/TripForm';
 import { AdminVouchers } from './screens/admin/Vouchers';
 import { AdminDocuments } from './screens/admin/Documents';
 import { AdminPoints } from './screens/admin/Points';
@@ -75,7 +74,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const showNav = !hideNavOn.some(path => location.pathname.startsWith(path));
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen w-full overflow-x-hidden bg-triex-bg dark:bg-zinc-950">
       {/* Desktop Sidebar - Always visible on lg+ screens */}
       {showNav && (
         <aside className="hidden lg:flex lg:flex-col lg:w-72 lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:bg-white lg:dark:bg-zinc-900 lg:border-r lg:border-zinc-100 lg:dark:border-zinc-800">
@@ -93,7 +92,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       )}
 
       {/* Main Content Area */}
-      <div className={`flex flex-col flex-1 ${showNav ? 'lg:ml-72' : ''}`}>
+      <div className={`flex flex-col flex-1 min-w-0 overflow-x-hidden ${showNav ? 'lg:ml-72' : ''}`}>
         {showNav && (
           <div className="lg:hidden">
             <Header onMenuClick={() => setIsSidebarOpen(true)} />
@@ -128,7 +127,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </header>
         )}
 
-        <main className={`flex-1 ${showNav ? 'pb-24 lg:pb-8' : ''}`}>
+        <main className={`flex-1 min-w-0 ${showNav ? 'pb-24 lg:pb-8' : ''}`}>
           {children}
         </main>
 
@@ -184,8 +183,6 @@ const App: React.FC = () => {
               <Route index element={<AdminDashboard />} />
               <Route path="passengers" element={<AdminPassengers />} />
               <Route path="trips" element={<AdminTrips />} />
-              <Route path="trips/new" element={<TripForm />} />
-              <Route path="trips/:id" element={<TripForm />} />
               <Route path="vouchers" element={<AdminVouchers />} />
               <Route path="documents" element={<AdminDocuments />} />
               <Route path="points" element={<AdminPoints />} />
