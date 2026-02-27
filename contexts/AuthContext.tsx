@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
+import toast from 'react-hot-toast';
 
 interface AuthContextType {
     user: User | null;
@@ -22,6 +23,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [role, setRole] = useState<string | null>(null);
     const [roleLoading, setRoleLoading] = useState(true);
     const [isArchived, setIsArchived] = useState(false);
+
+    // Formatear mensaje y cerrar sesión
+    const handleBanned = async () => {
+        toast.error('Tu cuenta ha sido bloqueada. La sesión se cerrará.', { duration: 5000 });
+        await signOut();
+    };
 
     // Function to fetch and update role
     const refreshRole = async () => {
@@ -45,7 +52,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setRole(null);
             } else {
                 console.log('Role fetched:', data);
-                setRole(data);
+                if (data === null) {
+                    // Supabase get_my_role now returns null if the user is banned
+                    handleBanned();
+                } else {
+                    setRole(data);
+                }
             }
         } catch (err: any) {
             if (err.name === 'AbortError') {
@@ -113,8 +125,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     // Auto-load role and archived status when user changes
     useEffect(() => {
-        refreshRole();
-        checkArchivedStatus();
+        if (user) {
+            refreshRole();
+            checkArchivedStatus();
+
+            // Setup Realtime subscription for banned_until changes
+            const profileSubscription = supabase
+                .channel(`public:profiles:id=eq.${user.id}`)
+                .on(
+                    'postgres_changes',
+                    {
+                        event: 'UPDATE',
+                        schema: 'public',
+                        table: 'profiles',
+                        filter: `id=eq.${user.id}`,
+                    },
+                    (payload) => {
+                        const newProfile = payload.new;
+                        if (newProfile && newProfile.banned_until) {
+                            console.log('User has been banned. Forcing logout.');
+                            handleBanned();
+                        }
+                    }
+                )
+                .subscribe();
+
+            return () => {
+                supabase.removeChannel(profileSubscription);
+            };
+        } else {
+            setRole(null);
+            setIsArchived(false);
+        }
     }, [user]);
 
     const signOut = async () => {

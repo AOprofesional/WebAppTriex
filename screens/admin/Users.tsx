@@ -119,12 +119,19 @@ export const AdminUsers: React.FC = () => {
             return;
         }
 
-        const result = await sendPasswordReset(user.email!);
-        if (!result.error) {
-            toast.success('Email de restablecimiento enviado');
-        } else {
-            toast.error(`Error al enviar email: ${result.error}`, { duration: 5000 });
-        }
+        const resetPromise = sendPasswordReset(user.email!);
+
+        toast.promise(
+            resetPromise.then(result => {
+                if (result.error) throw new Error(result.error);
+                return result;
+            }),
+            {
+                loading: 'Enviando email de restablecimiento...',
+                success: 'Email de restablecimiento enviado',
+                error: (err) => `Error al enviar email: ${err.message}`
+            }
+        );
     }, [sendPasswordReset]);
 
     const handleSort = useCallback((column: 'name' | 'role' | 'date') => {

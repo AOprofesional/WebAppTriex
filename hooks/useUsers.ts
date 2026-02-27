@@ -76,11 +76,12 @@ export const useUsers = () => {
         try {
             setLoading(true);
 
-            // Get current session token
-            const { data: { session } } = await supabase.auth.getSession();
+            // Force refresh session to get a fresh access token
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            const session = refreshData?.session;
 
-            if (!session) {
-                throw new Error('No active session');
+            if (refreshError || !session) {
+                throw new Error('No active session or could not refresh token');
             }
 
             // Call Edge Function to create user
@@ -161,19 +162,32 @@ export const useUsers = () => {
         try {
             setLoading(true);
 
-            // Use Supabase Admin API to ban/unban user
-            if (isActive) {
-                // Unban user (remove ban)
-                const { error } = await supabase.auth.admin.updateUserById(userId, {
-                    ban_duration: 'none'
-                });
-                if (error) throw error;
-            } else {
-                // Ban user indefinitely
-                const { error } = await supabase.auth.admin.updateUserById(userId, {
-                    ban_duration: '876000h' // ~100 years
-                });
-                if (error) throw error;
+            // Force refresh session to get a fresh access token
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            const session = refreshData?.session;
+
+            if (refreshError || !session) {
+                throw new Error('No active session or could not refresh token');
+            }
+
+            // Call Edge Function to toggle user status
+            const response = await fetch(
+                `${supabaseUrl}/functions/v1/toggle-user-status`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'apikey': supabaseAnonKey,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ userId, isActive }),
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Failed to toggle user status');
             }
 
             await fetchUsers();
@@ -209,11 +223,12 @@ export const useUsers = () => {
         try {
             setLoading(true);
 
-            // Get current session token
-            const { data: { session } } = await supabase.auth.getSession();
+            // Force refresh session to get a fresh access token
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            const session = refreshData?.session;
 
-            if (!session) {
-                throw new Error('No active session');
+            if (refreshError || !session) {
+                throw new Error('No active session or could not refresh token');
             }
 
             // Call Edge Function to delete user

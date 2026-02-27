@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Tables } from '../types/database.types';
+import { useEmailService, buildGenericEmailHtml } from './useEmailService';
 
 type Notification = Tables<'notifications'>;
 // Manual type for notification inserts since TablesInsert doesn't exist in types
@@ -29,6 +30,7 @@ export const useAdminNotifications = () => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { sendEmail } = useEmailService();
 
     useEffect(() => {
         fetchAllNotifications();
@@ -99,6 +101,28 @@ export const useAdminNotifications = () => {
 
             if (insertError) throw insertError;
 
+            // Obtener email y nombre del pasajero para enviar email
+            const { data: passenger } = await supabase
+                .from('passengers')
+                .select('email, first_name')
+                .eq('id', params.passengerId)
+                .single();
+
+            if (passenger?.email) {
+                const html = buildGenericEmailHtml({
+                    firstName: passenger.first_name || 'Pasajero',
+                    title: params.title,
+                    message: params.message,
+                    type: params.type,
+                });
+                // Enviar email de forma no bloqueante (no lanzar error si falla)
+                sendEmail({
+                    to: passenger.email,
+                    subject: params.title,
+                    html,
+                }).catch((emailErr) => console.warn('Email no enviado (notificación creada igual):', emailErr));
+            }
+
             await fetchAllNotifications();
             return { data, error: null };
         } catch (err: any) {
@@ -127,6 +151,31 @@ export const useAdminNotifications = () => {
                 .select();
 
             if (insertError) throw insertError;
+
+            // Obtener emails de todos los pasajeros para envío masivo
+            const { data: passengers } = await supabase
+                .from('passengers')
+                .select('email, first_name')
+                .in('id', params.passengerIds);
+
+            if (passengers && passengers.length > 0) {
+                // Enviar email a cada pasajero de forma no bloqueante
+                passengers.forEach((passenger) => {
+                    if (passenger.email) {
+                        const html = buildGenericEmailHtml({
+                            firstName: passenger.first_name || 'Pasajero',
+                            title: params.title,
+                            message: params.message,
+                            type: params.type,
+                        });
+                        sendEmail({
+                            to: passenger.email,
+                            subject: params.title,
+                            html,
+                        }).catch((emailErr) => console.warn('Email no enviado para', passenger.email, emailErr));
+                    }
+                });
+            }
 
             await fetchAllNotifications();
             return { data, error: null };
