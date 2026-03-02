@@ -32,6 +32,7 @@ import { useAuth } from './contexts/AuthContext';
 import { useNotifications } from './hooks/useNotifications';
 import { ArchivedAccountScreen } from './screens/ArchivedAccount';
 import { NotificationListener } from './components/NotificationListener';
+import { InstallAppBanner } from './components/InstallAppBanner';
 
 // Admin imports
 import { AdminLayout } from './screens/admin/AdminLayout';
@@ -137,6 +138,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
         {/* Bottom Nav - Hidden on desktop */}
         {showNav && <div className="lg:hidden"><BottomNav /></div>}
+
+        {/* PWA Install Banner - shows only when app can be installed */}
+        {showNav && <InstallAppBanner />}
 
         {/* Create Password Modal - Only for Magic Link users */}
         <CreatePasswordModal

@@ -21,11 +21,16 @@ export default {
             },
             animation: {
                 'pulse-subtle': 'pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                'slide-up': 'slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both',
             },
             keyframes: {
                 'pulse-subtle': {
                     '0%, 100%': { opacity: 1, transform: 'scale(1)' },
                     '50%': { opacity: .8, transform: 'scale(1.05)' },
+                },
+                'slide-up': {
+                    '0%': { opacity: 0, transform: 'translateY(20px)' },
+                    '100%': { opacity: 1, transform: 'translateY(0)' },
                 }
             }
         }
