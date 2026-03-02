@@ -31,6 +31,7 @@ import { ConfirmDialogProvider } from './components/ConfirmDialog';
 import { useAuth } from './contexts/AuthContext';
 import { useNotifications } from './hooks/useNotifications';
 import { ArchivedAccountScreen } from './screens/ArchivedAccount';
+import { NotificationListener } from './components/NotificationListener';
 
 // Admin imports
 import { AdminLayout } from './screens/admin/AdminLayout';
@@ -75,6 +76,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <div className="flex min-h-screen w-full overflow-x-hidden bg-triex-bg dark:bg-zinc-950">
+      {/* Listener global de notificaciones en tiempo real (sin UI) */}
+      <NotificationListener />
+
       {/* Desktop Sidebar - Always visible on lg+ screens */}
       {showNav && (
         <aside className="hidden lg:flex lg:flex-col lg:w-72 lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:bg-white lg:dark:bg-zinc-900 lg:border-r lg:border-zinc-100 lg:dark:border-zinc-800">

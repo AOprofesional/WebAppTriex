@@ -105,7 +105,8 @@ serve(async (req) => {
         const notificationData = {
             title: payload.title,
             body: payload.body,
-            icon: payload.icon || '/favicon.ico',
+            icon: payload.icon || 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/archivos-sistema/favicon-192.png',
+            badge: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/archivos-sistema/favicon-192.png',
             data: {
                 url: payload.url || '/',
             },

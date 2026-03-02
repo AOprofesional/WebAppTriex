@@ -1,72 +1,74 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { Tables } from '../types/database.types';
 
 type Notification = Tables<'notifications'>;
 
 export const useNotifications = () => {
+    const { user } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [unreadCount, setUnreadCount] = useState(0);
+    // Flag para saber si es el fetch inicial (muestra spinner) o un background refresh (silencioso)
+    const isFirstFetch = useRef(true);
 
     useEffect(() => {
+        if (!user?.id) {
+            setNotifications([]);
+            setUnreadCount(0);
+            setLoading(false);
+            return;
+        }
+
+        isFirstFetch.current = true;
         fetchNotifications();
 
-        // Set up real-time subscription
-        const channelId = `notifications-changes-${Math.random().toString(36).substring(7)}`;
+        // Usar ID aleatorio para evitar conflictos entre múltiples instancias del hook
+        const channelId = `notifications-${user.id}-${Math.random().toString(36).substring(7)}`;
         const channel = supabase
             .channel(channelId)
             .on('postgres_changes',
-                {
-                    event: '*',
-                    schema: 'public',
-                    table: 'notifications'
-                },
+                { event: '*', schema: 'public', table: 'notifications' },
                 () => {
+                    isFirstFetch.current = false; // Background refresh — sin spinner
                     fetchNotifications();
                 }
             )
             .subscribe();
 
-        return () => {
-            supabase.removeChannel(channel);
-        };
-    }, []);
+        return () => { supabase.removeChannel(channel); };
+    }, [user?.id]);
 
     const fetchNotifications = async () => {
         try {
-            setLoading(true);
+            // Solo mostrar loading spinner en el primer fetch
+            if (isFirstFetch.current) {
+                setLoading(true);
+            }
             setError(null);
 
-            // Get current user
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
-                // No user logged in - this is expected on login screen
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (!currentUser) {
                 setNotifications([]);
                 setUnreadCount(0);
-                setLoading(false);
                 return;
             }
 
-            // Get passenger record for current user
-            const { data: passenger, error: passengerError } = await supabase
+            const { data: passenger } = await supabase
                 .from('passengers')
                 .select('id')
-                .eq('profile_id', user.id)
+                .eq('profile_id', currentUser.id)
                 .maybeSingle();
 
-            if (passengerError) throw passengerError;
             if (!passenger) {
-                // Not a passenger (e.g. admin or operator)
                 setNotifications([]);
                 setUnreadCount(0);
-                setLoading(false);
                 return;
             }
 
-            // Fetch notifications for this passenger
             const { data, error: fetchError } = await supabase
                 .from('notifications')
                 .select('*')
@@ -75,13 +77,15 @@ export const useNotifications = () => {
 
             if (fetchError) throw fetchError;
 
-            setNotifications(data || []);
-            setUnreadCount((data || []).filter(n => !n.is_read).length);
+            const fresh = data || [];
+            setNotifications(fresh);
+            setUnreadCount(fresh.filter(n => !n.is_read).length);
         } catch (err: any) {
             setError(err.message);
             console.error('Error fetching notifications:', err);
         } finally {
             setLoading(false);
+            isFirstFetch.current = false;
         }
     };
 
@@ -93,13 +97,8 @@ export const useNotifications = () => {
                 .eq('id', notificationId);
 
             if (updateError) throw updateError;
-
-            // Update local state
-            setNotifications(prev =>
-                prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
-            );
+            setNotifications(prev => prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n));
             setUnreadCount(prev => Math.max(0, prev - 1));
-
             return { error: null };
         } catch (err: any) {
             console.error('Error marking notification as read:', err);
@@ -109,21 +108,17 @@ export const useNotifications = () => {
 
     const markAllAsRead = async () => {
         try {
-            // Get current user
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('No authenticated user');
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (!currentUser) return { error: null };
 
-            // Get passenger record
-            const { data: passenger, error: passengerError } = await supabase
+            const { data: passenger } = await supabase
                 .from('passengers')
                 .select('id')
-                .eq('profile_id', user.id)
+                .eq('profile_id', currentUser.id)
                 .maybeSingle();
 
-            if (passengerError) throw passengerError;
-            if (!passenger) return { error: null }; // Not a passenger, nothing to mark as read
+            if (!passenger) return { error: null };
 
-            // Mark all as read
             const { error: updateError } = await supabase
                 .from('notifications')
                 .update({ is_read: true })
@@ -131,13 +126,9 @@ export const useNotifications = () => {
                 .eq('is_read', false);
 
             if (updateError) throw updateError;
-
-            // Update local state
-            setNotifications(prev =>
-                prev.map(n => ({ ...n, is_read: true }))
-            );
+            // Actualizar estado local inmediatamente (sin esperar realtime)
+            setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
             setUnreadCount(0);
-
             return { error: null };
         } catch (err: any) {
             console.error('Error marking all as read:', err);
@@ -145,13 +136,5 @@ export const useNotifications = () => {
         }
     };
 
-    return {
-        notifications,
-        loading,
-        error,
-        unreadCount,
-        markAsRead,
-        markAllAsRead,
-        refetch: fetchNotifications,
-    };
+    return { notifications, loading, error, unreadCount, markAsRead, markAllAsRead, refetch: fetchNotifications };
 };

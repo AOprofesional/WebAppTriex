@@ -101,13 +101,30 @@ export const useAdminNotifications = () => {
 
             if (insertError) throw insertError;
 
-            // Obtener email y nombre del pasajero para enviar email
+            // Obtener email, nombre y profile_id del pasajero
             const { data: passenger } = await supabase
                 .from('passengers')
-                .select('email, first_name')
+                .select('email, first_name, profile_id')
                 .eq('id', params.passengerId)
                 .single();
 
+            // Enviar push notification (no bloqueante)
+            if (passenger?.profile_id) {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    supabase.functions.invoke('send-push', {
+                        headers: { Authorization: `Bearer ${session.access_token}` },
+                        body: {
+                            userId: passenger.profile_id,
+                            title: params.title,
+                            body: params.message,
+                            url: '/notificaciones',
+                        },
+                    }).catch((pushErr) => console.warn('Push no enviado (notificación creada igual):', pushErr));
+                }
+            }
+
+            // Enviar email (no bloqueante)
             if (passenger?.email) {
                 const html = buildGenericEmailHtml({
                     firstName: passenger.first_name || 'Pasajero',
@@ -115,7 +132,6 @@ export const useAdminNotifications = () => {
                     message: params.message,
                     type: params.type,
                 });
-                // Enviar email de forma no bloqueante (no lanzar error si falla)
                 sendEmail({
                     to: passenger.email,
                     subject: params.title,
@@ -152,14 +168,33 @@ export const useAdminNotifications = () => {
 
             if (insertError) throw insertError;
 
-            // Obtener emails de todos los pasajeros para envío masivo
+            // Obtener emails, nombres y profile_ids para push + email masivo
             const { data: passengers } = await supabase
                 .from('passengers')
-                .select('email, first_name')
+                .select('email, first_name, profile_id')
                 .in('id', params.passengerIds);
 
             if (passengers && passengers.length > 0) {
-                // Enviar email a cada pasajero de forma no bloqueante
+                const { data: { session } } = await supabase.auth.getSession();
+
+                // Enviar push a todos los pasajeros con profile_id (no bloqueante)
+                const profileIds = passengers
+                    .map((p) => p.profile_id)
+                    .filter(Boolean) as string[];
+
+                if (profileIds.length > 0 && session) {
+                    supabase.functions.invoke('send-push', {
+                        headers: { Authorization: `Bearer ${session.access_token}` },
+                        body: {
+                            userIds: profileIds,
+                            title: params.title,
+                            body: params.message,
+                            url: '/notificaciones',
+                        },
+                    }).catch((pushErr) => console.warn('Push masivo no enviado:', pushErr));
+                }
+
+                // Enviar email a cada pasajero (no bloqueante)
                 passengers.forEach((passenger) => {
                     if (passenger.email) {
                         const html = buildGenericEmailHtml({

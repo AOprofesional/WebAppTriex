@@ -99,9 +99,9 @@ serve(async (req) => {
         const smtpConfig = settingsRow.value
 
         // Contraseña desde secreto de entorno (más seguro que DB)
-        const smtpPassword = Deno.env.get('SMTP_PASSWORD') ?? ''
+        const smtpPassword = Deno.env.get('SMTP_PASSWORD_WEBEMAIL') ?? ''
         if (!smtpPassword) {
-            throw new Error('Secreto SMTP_PASSWORD no configurado en la Edge Function')
+            throw new Error('Secreto SMTP_PASSWORD_WEBEMAIL no configurado en la Edge Function')
         }
 
         const payload: EmailPayload = await req.json()

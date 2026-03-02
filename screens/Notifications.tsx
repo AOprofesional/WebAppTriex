@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
 import { useNotifications } from '../hooks/useNotifications';
@@ -16,6 +16,23 @@ export const Notifications: React.FC = () => {
   const { passenger } = usePassenger();
   const { redemptionHistory, pointsHistory } = useOrangePass(passenger?.id);
   const [selectedNotification, setSelectedNotification] = React.useState<any | null>(null);
+
+  // Marcar todas como leídas cuando el usuario realmente SALE de la pantalla.
+  // Usamos un timer cancelable para evitar que React StrictMode dispare markAllAsRead
+  // al montar/desmontar en desarrollo (StrictMode remonta en < 50ms, una navegación real tarda más).
+  const cleanupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    // Cancelar cualquier timer pendiente del ciclo anterior (StrictMode remount)
+    if (cleanupTimer.current) {
+      clearTimeout(cleanupTimer.current);
+      cleanupTimer.current = null;
+    }
+    return () => {
+      cleanupTimer.current = setTimeout(() => {
+        markAllAsRead();
+      }, 300); // 300ms: suficiente para StrictMode pero inmediato para el usuario
+    };
+  }, []);
 
   // Group notifications by date
   const groupedNotifications = React.useMemo(() => {
@@ -140,7 +157,16 @@ export const Notifications: React.FC = () => {
   return (
     <div className="min-h-screen bg-triex-bg dark:bg-zinc-950 pb-24 lg:pb-8">
       {/* Header Notifications */}
-      <div className="px-5 py-6 flex items-center justify-end">
+      <div className="px-5 py-6 flex items-center justify-between">
+        {/* Botón volver — solo mobile */}
+        <button
+          onClick={() => navigate(-1)}
+          className="lg:hidden flex items-center gap-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
+        >
+          <span className="material-symbols-outlined text-[22px]">arrow_back_ios</span>
+          <span className="text-sm font-semibold">Volver</span>
+        </button>
+        <div className="hidden lg:block" />
         {unreadCount > 0 && (
           <button
             onClick={() => markAllAsRead()}
@@ -186,13 +212,19 @@ export const Notifications: React.FC = () => {
                   <div
                     key={item.id}
                     onClick={() => handleNotificationClick(item)}
-                    className="bg-white dark:bg-zinc-900 rounded-[24px] p-5 shadow-sm border border-zinc-100 dark:border-zinc-800/50 flex gap-5 relative group active:scale-[0.98] transition-all cursor-pointer"
+                    className={`rounded-[24px] p-5 shadow-sm flex gap-5 relative group active:scale-[0.98] transition-all cursor-pointer
+                      ${item.unread
+                        ? 'bg-white dark:bg-zinc-900 border border-orange-200 dark:border-orange-800/40 border-l-4 border-l-primary'
+                        : 'bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800/50'
+                      }`}
                   >
                     <div className={`w-14 h-14 ${item.iconBg} dark:bg-zinc-800 rounded-2xl flex items-center justify-center ${item.iconColor} shrink-0`}>
                       <span className="material-symbols-outlined text-[28px]">{item.icon}</span>
                     </div>
                     <div className="flex-1 pr-4">
-                      <h3 className="font-bold text-zinc-800 dark:text-zinc-100 text-[16px]">{item.title}</h3>
+                      <h3 className={`font-bold text-[16px] ${item.unread ? 'text-primary' : 'text-zinc-800 dark:text-zinc-100'}`}>
+                        {item.title}
+                      </h3>
                       <p className="text-zinc-500 dark:text-zinc-400 text-[13px] mt-1 leading-snug line-clamp-2">
                         {item.description}
                       </p>
@@ -201,7 +233,7 @@ export const Notifications: React.FC = () => {
                       </p>
                     </div>
                     {item.unread && (
-                      <div className="absolute top-5 right-5 w-2.5 h-2.5 bg-primary rounded-full ring-4 ring-white dark:ring-zinc-900"></div>
+                      <div className="absolute top-5 right-5 w-2.5 h-2.5 bg-primary rounded-full ring-4 ring-orange-50 dark:ring-zinc-900"></div>
                     )}
                   </div>
                 ))}

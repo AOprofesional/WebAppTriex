@@ -8,7 +8,7 @@ import { PageLoading } from '../components/PageLoading';
 import { ContactCoordinatorModal } from '../components/ContactCoordinatorModal';
 
 export const Itinerary: React.FC = () => {
-  const { primaryTrip } = usePassengerTrips();
+  const { primaryTrip, loading: tripsLoading } = usePassengerTrips();
   const { days, loading: daysLoading } = useItineraryDays(primaryTrip?.id);
   const [selectedDayId, setSelectedDayId] = useState<string | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -87,7 +87,7 @@ export const Itinerary: React.FC = () => {
     return () => clearTimeout(timer);
   }, [selectedDayId]);
 
-  if (daysLoading && days.length === 0) {
+  if (tripsLoading || (daysLoading && days.length === 0)) {
     return <PageLoading message="Cargando itinerario..." />;
   }
 

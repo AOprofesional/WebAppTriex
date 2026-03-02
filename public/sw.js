@@ -18,8 +18,8 @@ self.addEventListener('push', (event) => {
     let notificationData = {
         title: 'Triex',
         body: 'Tienes una nueva notificación',
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
+        icon: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/archivos-sistema/favicon-192.png',
+        badge: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/archivos-sistema/favicon-192.png',
         data: {
             url: '/'
         }
