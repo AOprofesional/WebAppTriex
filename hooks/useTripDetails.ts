@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Tables } from '../types/database.types';
 import { selectPrimaryTrip } from '../utils/tripSelection';
+import { calculateTripStatus } from '../utils/dateUtils';
 
 type Trip = Tables<'trips'>;
 type Voucher = Tables<'vouchers'>;
@@ -146,8 +147,15 @@ export const useTripDetails = (tripId?: string) => {
 
             if (docsError) throw docsError;
 
+            // Override status_operational with calculated value from dates
+            // This ensures UI always reflects reality, regardless of DB column staleness
+            const tripWithCalculatedStatus = trip ? {
+                ...trip,
+                status_operational: calculateTripStatus(trip.start_date ?? '', trip.end_date ?? '')
+            } : null;
+
             setData({
-                trip: trip || null,
+                trip: tripWithCalculatedStatus,
                 passenger: passengerId ? { id: passengerId } : null,
                 vouchers: vouchers || [],
                 documentRequirements: documentRequirements || [],
