@@ -295,7 +295,10 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
 
         setSaving(true);
         try {
-            const tripData: any = { ...formData };
+            const tripData: any = {
+                ...formData,
+                status_operational: calculateAutoStatus()
+            };
             let currentTripId: string;
 
             if (tripId) {
@@ -345,7 +348,10 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
 
         setSaving(true);
         try {
-            const tripData: any = { ...formData };
+            const tripData: any = {
+                ...formData,
+                status_operational: calculateAutoStatus()
+            };
             let currentTripId: string;
 
             if (tripId) {
