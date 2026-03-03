@@ -10,6 +10,7 @@ type DocRequirement = Tables<'trip_documents_requirements'>;
 
 type TripDetails = {
     trip: Trip | null;
+    passenger: { id: string } | null;
     vouchers: Voucher[];
     documentRequirements: DocRequirement[];
 };
@@ -17,6 +18,7 @@ type TripDetails = {
 export const useTripDetails = (tripId?: string) => {
     const [data, setData] = useState<TripDetails>({
         trip: null,
+        passenger: null,
         vouchers: [],
         documentRequirements: [],
     });
@@ -79,7 +81,7 @@ export const useTripDetails = (tripId?: string) => {
             const primaryTrip = selectPrimaryTrip(trips);
 
             if (primaryTrip) {
-                await fetchTripDetails(primaryTrip.id);
+                await fetchTripDetails(primaryTrip.id, passenger.id);
             } else {
                 setLoading(false);
             }
@@ -90,7 +92,7 @@ export const useTripDetails = (tripId?: string) => {
         }
     };
 
-    const fetchTripDetails = async (id: string) => {
+    const fetchTripDetails = async (id: string, passengerIdArg?: string) => {
         try {
             setLoading(true);
             setError(null);
@@ -114,7 +116,7 @@ export const useTripDetails = (tripId?: string) => {
                     .select('id')
                     .eq('profile_id', user.id)
                     .single();
-                passengerId = passenger?.id || null;
+                passengerId = passengerIdArg || passenger?.id || null;
             }
 
             // Fetch vouchers (Filtered by passenger if available)
@@ -146,6 +148,7 @@ export const useTripDetails = (tripId?: string) => {
 
             setData({
                 trip: trip || null,
+                passenger: passengerId ? { id: passengerId } : null,
                 vouchers: vouchers || [],
                 documentRequirements: documentRequirements || [],
             });

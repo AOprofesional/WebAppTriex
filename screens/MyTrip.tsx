@@ -1,17 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LOGO_URL, DEFAULT_TRIP_IMAGE } from '../constants';
 import { useTripDetails } from '../hooks/useTripDetails';
 import { TripStatusBadge } from '../components/TripStatusBadge';
 import { PageLoading } from '../components/PageLoading';
 import { useNextActivity } from '../hooks/useNextActivity';
+import { useSurvey } from '../hooks/useSurvey';
+import { SurveyModal } from '../components/SurveyModal';
 
 export const MyTrip: React.FC = () => {
   const navigate = useNavigate();
-  const { trip, vouchers, documentRequirements, loading } = useTripDetails();
+  const { trip, passenger, vouchers, documentRequirements, loading } = useTripDetails();
   // Safe optional chaining for nextActivity hook
   const { nextActivity } = useNextActivity(trip?.id);
   const [openingVoucher, setOpeningVoucher] = useState<string | null>(null);
+  const [showSurveyModal, setShowSurveyModal] = useState(false);
+
+  // Survey hook — only active when trip is FINALIZADO
+  const isFinished = trip?.status_operational === 'FINALIZADO';
+  const { existingSurvey, loading: surveyLoading } = useSurvey(
+    isFinished ? (trip?.id ?? null) : null,
+    isFinished ? (passenger?.id ?? null) : null
+  );
+
+  // Auto-show survey modal on first visit after trip is FINALIZADO
+  useEffect(() => {
+    if (!isFinished || surveyLoading || existingSurvey) return;
+    const key = `survey_dismissed_${trip?.id}`;
+    if (!localStorage.getItem(key)) {
+      setShowSurveyModal(true);
+    }
+  }, [isFinished, surveyLoading, existingSurvey, trip?.id]);
+
+  const handleSurveyClose = () => {
+    // Mark as dismissed so it won't auto-show again
+    if (trip?.id) {
+      localStorage.setItem(`survey_dismissed_${trip.id}`, 'true');
+    }
+    setShowSurveyModal(false);
+  };
+
+  const handleSurveySubmitSuccess = () => {
+    // Clear dismissal flag — survey is now done permanently
+    if (trip?.id) {
+      localStorage.removeItem(`survey_dismissed_${trip.id}`);
+    }
+  };
 
   // Format date range with validation
   const formatDateRange = (startDate: string | null, endDate: string | null) => {
@@ -386,7 +420,88 @@ export const MyTrip: React.FC = () => {
             </button>
           </div>
         )}
+
+        {/* Post Viaje Section — shown only when trip is FINALIZADO */}
+        {isFinished && (
+          <div className="space-y-4">
+            <h3 className="text-[20px] font-extrabold text-triex-grey dark:text-white">
+              Post Viaje
+            </h3>
+            <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-7 shadow-sm border border-zinc-100 dark:border-zinc-800">
+              <div className="flex items-start gap-4 mb-6">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${existingSurvey
+                  ? 'bg-green-500/10'
+                  : 'bg-[#E0592A]/10'
+                  }`}>
+                  <span
+                    className="material-symbols-outlined text-[24px]"
+                    style={{
+                      color: existingSurvey ? '#22c55e' : '#E0592A',
+                      fontVariationSettings: existingSurvey ? "'FILL' 1" : "'FILL' 0",
+                    }}
+                  >
+                    {existingSurvey ? 'check_circle' : 'sentiment_satisfied'}
+                  </span>
+                </div>
+                <div className="flex-1">
+                  <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mb-1 block">
+                    ENCUESTA DE SATISFACCIÓN
+                  </span>
+                  <h4 className="text-lg font-bold text-triex-grey dark:text-white leading-tight mb-1">
+                    {existingSurvey ? 'Encuesta completada' : '¿Cómo fue tu experiencia?'}
+                  </h4>
+                  <p className="text-[13px] text-zinc-500 dark:text-zinc-400">
+                    {existingSurvey
+                      ? `Respondiste el ${new Date(existingSurvey.responded_at).toLocaleDateString('es-AR')}. ¡Gracias por tu tiempo!`
+                      : 'Tu opinión nos ayuda a mejorar cada experiencia.'}
+                  </p>
+                </div>
+              </div>
+
+              {!existingSurvey && (
+                <button
+                  onClick={() => setShowSurveyModal(true)}
+                  className="w-full py-4 bg-[#E0592A] hover:bg-[#F06A3B] text-white rounded-[20px] font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-[20px]">edit_note</span>
+                  Completar encuesta
+                </button>
+              )}
+
+              {existingSurvey && (
+                <div className="grid grid-cols-3 gap-3 pt-2">
+                  <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-center">
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">NPS</p>
+                    <p className="text-2xl font-extrabold text-zinc-700 dark:text-white">{existingSurvey.nps}</p>
+                    <p className="text-[10px] text-zinc-400">/10</p>
+                  </div>
+                  <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-center">
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Organización</p>
+                    <p className="text-2xl font-extrabold text-yellow-500">{existingSurvey.rating_organization}</p>
+                    <p className="text-[10px] text-zinc-400">/5 ⭐</p>
+                  </div>
+                  <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-center">
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Atención</p>
+                    <p className="text-2xl font-extrabold text-yellow-500">{existingSurvey.rating_attention}</p>
+                    <p className="text-[10px] text-zinc-400">/5 ⭐</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Survey Modal */}
+      {isFinished && trip?.id && passenger?.id && (
+        <SurveyModal
+          isOpen={showSurveyModal}
+          onClose={handleSurveyClose}
+          tripId={trip.id}
+          passengerId={passenger.id}
+          onSubmitSuccess={handleSurveySubmitSuccess}
+        />
+      )}
     </div>
   );
 };

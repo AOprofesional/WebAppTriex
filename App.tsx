@@ -45,6 +45,7 @@ import { AdminPoints } from './screens/admin/Points';
 import { AdminCommunications } from './screens/admin/Communications';
 import { AdminUsers } from './screens/admin/Users';
 import { AdminSettings } from './screens/admin/Settings';
+import { AdminSurveys } from './screens/admin/Surveys';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
@@ -197,6 +198,7 @@ const App: React.FC = () => {
               <Route path="communications" element={<AdminCommunications />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="settings" element={<AdminSettings />} />
+              <Route path="surveys" element={<AdminSurveys />} />
             </Route>
 
             {/* Passenger Routes - With layout */}

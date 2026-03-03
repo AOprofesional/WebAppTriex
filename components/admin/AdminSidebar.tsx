@@ -25,6 +25,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false })
         { label: 'Viajes', icon: 'flight_takeoff', path: '/admin/trips' },
         { label: 'Puntos', icon: 'stars', path: '/admin/points' },
         { label: 'Comunicaciones', icon: 'notifications', path: '/admin/communications' },
+        { label: 'Satisfacción', icon: 'sentiment_satisfied', path: '/admin/surveys' },
         { label: 'Usuarios', icon: 'admin_panel_settings', path: '/admin/users' },
         { label: 'Configuración', icon: 'settings', path: '/admin/settings' },
     ];

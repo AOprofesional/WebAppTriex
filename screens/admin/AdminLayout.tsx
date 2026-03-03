@@ -11,6 +11,7 @@ const pageTitles: Record<string, string> = {
     '/admin/vouchers': 'Vouchers & Documentación',
     '/admin/points': 'Puntos',
     '/admin/communications': 'Comunicaciones',
+    '/admin/surveys': 'Satisfacción',
     '/admin/users': 'Usuarios Internos',
     '/admin/settings': 'Configuración',
 };
