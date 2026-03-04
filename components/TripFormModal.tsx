@@ -638,9 +638,9 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                                                     onChange={(e) => handleInputChange('brand_sub', e.target.value)}
                                                     className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                                 >
-                                                    <option value="Triex Egresados">Triex Egresados</option>
-                                                    <option value="Triex Corporate">Triex Corporate</option>
-                                                    <option value="Triex Familias">Triex Familias</option>
+                                                    <option value="Triex Sin Barreras">Triex Sin Barreras</option>
+                                                    <option value="Wine Adventure">Wine Adventure</option>
+                                                    <option value="Triex Group">Triex Group</option>
                                                 </select>
                                             </div>
                                         </div>

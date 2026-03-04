@@ -5,6 +5,8 @@ import { usePassengerTrips } from '../hooks/usePassengerTrips';
 import { useDocuments, RequiredDocument, PassengerDocument } from '../hooks/useDocuments';
 
 type FlowStep = 'list' | 'method_selection' | 'camera' | 'review' | 'success';
+// For DNI/Passport: 'front' = first photo (front side), 'back' = second photo (back side)
+type PhotoSide = 'front' | 'back';
 
 export const UploadDocument: React.FC = () => {
   const navigate = useNavigate();
@@ -25,6 +27,8 @@ export const UploadDocument: React.FC = () => {
 
   const [step, setStep] = useState<FlowStep>('list');
   const [selectedReq, setSelectedReq] = useState<RequiredDocument | null>(null);
+  // Which side we're currently capturing (only relevant for DNI/Passport)
+  const [photoSide, setPhotoSide] = useState<PhotoSide>('front');
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -45,13 +49,17 @@ export const UploadDocument: React.FC = () => {
       const req = requiredDocuments.find(r => r.id === state.selectedDocId);
       if (req) {
         const status = getDocStatus(req.id, req);
-        // Only auto-open if missing or rejected to avoid annoyance
-        if (status === 'missing' || status === 'rejected') {
+        if (status === 'missing' || status === 'rejected' || status === 'partial') {
           setSelectedReq(req);
+          // If partial, we already have the front — go straight to back side
+          if (status === 'partial' && isDni(req)) {
+            setPhotoSide('back');
+          } else {
+            setPhotoSide('front');
+          }
           setStep('method_selection');
         }
       }
-      // Clear state to prevent re-opening on back navigation
       window.history.replaceState({}, document.title);
     }
   }, [requiredDocuments, location.state]);
@@ -83,7 +91,6 @@ export const UploadDocument: React.FC = () => {
       }
     } catch (err) {
       console.error("Camera access denied", err);
-      // Fallback for demo/testing without camera
       alert("No se pudo acceder a la cámara. Por favor intenta subir un archivo.");
       setStep('list');
     }
@@ -107,7 +114,6 @@ export const UploadDocument: React.FC = () => {
         const dataUrl = canvas.toDataURL('image/jpeg');
         setCapturedImage(dataUrl);
 
-        // Convert to File object
         fetch(dataUrl)
           .then(res => res.blob())
           .then(blob => {
@@ -122,7 +128,6 @@ export const UploadDocument: React.FC = () => {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Validate file size (5MB limit)
       if (file.size > 5 * 1024 * 1024) {
         alert("El archivo es demasiado grande. El tamaño máximo permitido es 5MB.");
         if (fileInputRef.current) {
@@ -141,7 +146,7 @@ export const UploadDocument: React.FC = () => {
         };
         reader.readAsDataURL(file);
       } else {
-        setCapturedImage(null); // No preview for non-images
+        setCapturedImage(null);
         setStep('review');
       }
     }
@@ -163,8 +168,19 @@ export const UploadDocument: React.FC = () => {
 
       if (error) throw new Error(error);
 
-      setStep('success');
-      loadData(); // Refresh list
+      // Refresh data
+      await loadData();
+
+      // For DNI/Passport: if we just uploaded the front, move to back side
+      if (selectedReq && isDni(selectedReq) && photoSide === 'front') {
+        setPhotoSide('back');
+        setCapturedImage(null);
+        setCapturedFile(null);
+        setStep('method_selection');
+      } else {
+        // Single-photo docs OR back side done → success
+        setStep('success');
+      }
     } catch (err) {
       alert('Error al subir documento: ' + err);
     } finally {
@@ -173,7 +189,6 @@ export const UploadDocument: React.FC = () => {
   };
 
   const getDocFiles = (reqId: string) => {
-    // Files are ordered by created_at DESC from the hook, but ensure it here to be safe
     return passengerDocuments
       .filter(d => d.required_document_id === reqId)
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -182,29 +197,25 @@ export const UploadDocument: React.FC = () => {
   const getDocStatus = (reqId: string, req?: RequiredDocument) => {
     const allFiles = getDocFiles(reqId);
 
-    // Logic for DNI (requires 2 files)
+    // Logic for DNI/Passport (requires 2 files)
     if (req && isDni(req)) {
-      // Consider ONLY the latest 2 files for status
-      // Since files are DESC, taking first 2 gives us the most recent attempts
       const latestFiles = allFiles.slice(0, 2);
 
       if (latestFiles.length === 0) return 'missing';
       if (latestFiles.length === 1) return 'partial';
 
-      // With 2 files (or more, but evaluating latest 2)
-      // If any of the LATEST 2 is rejected, overall is rejected
       if (latestFiles.some(f => f.status === 'rejected')) return 'rejected';
-      // If all approved
       if (latestFiles.every(f => f.status === 'approved')) return 'approved';
       return 'uploaded';
     }
 
     // Default logic (1 file)
     if (allFiles.length === 0) return 'missing';
-    const doc = allFiles[0]; // Latest file
+    const doc = allFiles[0];
     return doc?.status || 'missing';
   };
 
+  // ─── SUCCESS SCREEN ───────────────────────────────────────────────────────────
   if (step === 'success') {
     return (
       <div className="flex flex-col items-center justify-center px-8 text-center min-h-screen bg-white max-w-md mx-auto">
@@ -214,9 +225,9 @@ export const UploadDocument: React.FC = () => {
         <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-200 mb-8 animate-bounce">
           <span className="material-symbols-outlined text-white text-5xl font-bold">check</span>
         </div>
-        <h1 className="text-2xl font-extrabold text-triex-grey mb-4 font-ubuntu">¡Documento subido!</h1>
+        <h1 className="text-2xl font-extrabold text-triex-grey mb-4 font-ubuntu">¡Documentos subidos!</h1>
         <p className="text-zinc-500 mb-12 px-6">
-          Tu documento se ha enviado correctamente. Te notificaremos cuando sea revisado.
+          Tus documentos se han enviado correctamente. Te notificaremos cuando sean revisados.
         </p>
         <button
           onClick={() => {
@@ -224,6 +235,7 @@ export const UploadDocument: React.FC = () => {
             setSelectedReq(null);
             setCapturedImage(null);
             setCapturedFile(null);
+            setPhotoSide('front');
           }}
           className="w-full py-4 bg-primary text-white font-bold rounded-xl shadow-lg active:scale-95 transition-transform"
         >
@@ -233,7 +245,14 @@ export const UploadDocument: React.FC = () => {
     );
   }
 
+  // ─── METHOD SELECTION ─────────────────────────────────────────────────────────
   if (step === 'method_selection') {
+    const isMultiPhoto = selectedReq && isDni(selectedReq);
+    const sideLabel = photoSide === 'front' ? 'Foto frontal' : 'Foto posterior (dorso)';
+    const sideHint = photoSide === 'front'
+      ? 'Cara delantera del documento'
+      : 'Cara trasera del documento';
+
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
         <div className="bg-white w-full max-w-sm sm:rounded-[32px] rounded-t-[32px] p-6 animate-in slide-in-from-bottom duration-200">
@@ -244,9 +263,40 @@ export const UploadDocument: React.FC = () => {
               <span className="material-symbols-outlined text-primary text-3xl">upload_file</span>
             </div>
             <h3 className="text-xl font-bold text-zinc-900">Subir Documento</h3>
-            <p className="text-zinc-500 text-sm mt-2">
-              Para {selectedReq?.document_types?.name}
+            <p className="text-zinc-500 text-sm mt-1">
+              {selectedReq?.document_types?.name}
             </p>
+
+            {/* Photo step indicator for DNI/Passport */}
+            {isMultiPhoto && (
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${photoSide === 'front' ? 'bg-primary text-white' : 'bg-green-100 text-green-700'}`}>
+                  {photoSide === 'front' ? (
+                    <>
+                      <span className="material-symbols-outlined text-sm">looks_one</span>
+                      Foto 1 de 2
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-sm">check_circle</span>
+                      Foto 1 ✓
+                    </>
+                  )}
+                </div>
+                <div className="w-4 h-px bg-zinc-300" />
+                <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${photoSide === 'back' ? 'bg-primary text-white' : 'bg-zinc-100 text-zinc-400'}`}>
+                  <span className="material-symbols-outlined text-sm">looks_two</span>
+                  Foto 2 de 2
+                </div>
+              </div>
+            )}
+
+            {isMultiPhoto && (
+              <p className="text-sm font-semibold text-primary mt-3">{sideLabel}</p>
+            )}
+            {isMultiPhoto && (
+              <p className="text-xs text-zinc-400 mt-0.5">{sideHint}</p>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -295,6 +345,7 @@ export const UploadDocument: React.FC = () => {
             onClick={() => {
               setStep('list');
               setSelectedReq(null);
+              setPhotoSide('front');
             }}
             className="w-full py-4 mt-6 text-zinc-400 font-bold text-sm hover:text-zinc-600 transition-colors"
           >
@@ -305,7 +356,11 @@ export const UploadDocument: React.FC = () => {
     );
   }
 
+  // ─── CAMERA ───────────────────────────────────────────────────────────────────
   if (step === 'camera') {
+    const isMultiPhoto = selectedReq && isDni(selectedReq);
+    const sideLabel = photoSide === 'front' ? 'Cara frontal' : 'Cara posterior (dorso)';
+
     return (
       <div className="fixed inset-0 bg-black z-[100] flex flex-col max-w-md mx-auto">
         <div className="relative flex-1 flex items-center justify-center overflow-hidden">
@@ -315,7 +370,6 @@ export const UploadDocument: React.FC = () => {
             playsInline
             className="w-full h-full object-cover"
           />
-          {/* Viewfinder Overlay */}
           <div className="absolute inset-0 flex flex-col items-center justify-center p-8 pointer-events-none">
             <div className="w-full aspect-[3/4] border-2 border-white/50 rounded-2xl relative">
               <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-xl"></div>
@@ -324,7 +378,7 @@ export const UploadDocument: React.FC = () => {
               <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-xl"></div>
             </div>
             <p className="mt-6 text-white text-sm font-bold text-center bg-black/40 px-4 py-2 rounded-full backdrop-blur-sm">
-              Encuadra el documento: {selectedReq?.document_types?.name}
+              {isMultiPhoto ? `${selectedReq?.document_types?.name} — ${sideLabel}` : `Encuadra el documento: ${selectedReq?.document_types?.name}`}
             </p>
           </div>
         </div>
@@ -346,7 +400,11 @@ export const UploadDocument: React.FC = () => {
     );
   }
 
+  // ─── REVIEW ───────────────────────────────────────────────────────────────────
   if (step === 'review') {
+    const isMultiPhoto = selectedReq && isDni(selectedReq);
+    const sideLabel = photoSide === 'front' ? 'Foto 1 de 2 — Cara frontal' : 'Foto 2 de 2 — Cara posterior';
+
     return (
       <div className="flex flex-col min-h-screen bg-zinc-50 max-w-md mx-auto">
         <header className="p-4 flex items-center justify-between bg-white border-b">
@@ -355,6 +413,14 @@ export const UploadDocument: React.FC = () => {
           <div className="w-6"></div>
         </header>
         <main className="flex-1 p-6">
+          {isMultiPhoto && (
+            <div className="mb-4 flex items-center justify-center gap-2">
+              <div className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 ${photoSide === 'front' ? 'bg-primary text-white' : 'bg-green-100 text-green-700'}`}>
+                <span className="material-symbols-outlined text-sm">{photoSide === 'front' ? 'looks_one' : 'check_circle'}</span>
+                {sideLabel}
+              </div>
+            </div>
+          )}
           <div className="bg-white rounded-3xl overflow-hidden shadow-sm border border-zinc-200 mb-6 flex items-center justify-center min-h-[300px] bg-zinc-100">
             {capturedImage ? (
               <img src={capturedImage} alt="Review" className="w-full h-auto object-contain" />
@@ -373,6 +439,14 @@ export const UploadDocument: React.FC = () => {
                 {capturedImage ? 'Buena iluminación detectada' : 'Archivo listo para subir'}
               </p>
             </div>
+            {isMultiPhoto && photoSide === 'front' && (
+              <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-2xl border border-blue-100">
+                <span className="material-symbols-outlined text-blue-500">info</span>
+                <p className="text-sm font-medium text-blue-700">
+                  Después de confirmar, se te pedirá la cara posterior del documento.
+                </p>
+              </div>
+            )}
           </div>
         </main>
         <footer className="p-5 bg-white border-t space-y-3">
@@ -387,7 +461,7 @@ export const UploadDocument: React.FC = () => {
                 Subiendo...
               </>
             ) : (
-              'Confirmar y Enviar'
+              isMultiPhoto && photoSide === 'front' ? 'Confirmar y continuar →' : 'Confirmar y Enviar'
             )}
           </button>
           <button
@@ -402,7 +476,7 @@ export const UploadDocument: React.FC = () => {
     );
   }
 
-  // LIST STEP (DEFAULT)
+  // ─── LIST (DEFAULT) ───────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col min-h-screen bg-white max-w-md mx-auto lg:max-w-2xl">
       <header className="flex items-center justify-between p-4 h-16 border-b border-zinc-50">
@@ -428,19 +502,26 @@ export const UploadDocument: React.FC = () => {
             </div>
           ) : (
             requiredDocuments.map(req => {
-              const status = getDocStatus(req.id);
+              const status = getDocStatus(req.id, req);
               const doc = passengerDocuments.find(d => d.required_document_id === req.id);
+              const isActionable = status === 'missing' || status === 'rejected' || status === 'partial';
 
               return (
                 <div
                   key={req.id}
                   onClick={() => {
-                    if (status === 'missing' || status === 'rejected') {
+                    if (isActionable) {
                       setSelectedReq(req);
+                      // If partial (front already done), jump straight to back side
+                      if (status === 'partial' && isDni(req)) {
+                        setPhotoSide('back');
+                      } else {
+                        setPhotoSide('front');
+                      }
                       setStep('method_selection');
                     }
                   }}
-                  className={`p-5 rounded-[24px] border transition-all ${status === 'missing' || status === 'rejected'
+                  className={`p-5 rounded-[24px] border transition-all ${isActionable
                     ? 'bg-white border-zinc-200 shadow-sm cursor-pointer hover:border-primary active:scale-[0.98]'
                     : 'bg-zinc-50 border-zinc-100 opacity-90'
                     }`}
@@ -450,12 +531,15 @@ export const UploadDocument: React.FC = () => {
                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${status === 'approved' ? 'bg-green-100 text-green-600' :
                         status === 'uploaded' ? 'bg-amber-100 text-amber-600' :
                           status === 'rejected' ? 'bg-red-100 text-red-600' :
-                            'bg-zinc-100 text-zinc-400'
+                            status === 'partial' ? 'bg-blue-100 text-blue-600' :
+                              'bg-zinc-100 text-zinc-400'
                         }`}>
                         <span className="material-symbols-outlined">
                           {status === 'approved' ? 'check_circle' :
                             status === 'uploaded' ? 'schedule' :
-                              status === 'rejected' ? 'error' : 'upload_file'}
+                              status === 'rejected' ? 'error' :
+                                status === 'partial' ? 'looks_two' :
+                                  'upload_file'}
                         </span>
                       </div>
                       <div>
@@ -463,15 +547,18 @@ export const UploadDocument: React.FC = () => {
                         <p className={`text-sm font-medium ${status === 'approved' ? 'text-green-600' :
                           status === 'uploaded' ? 'text-amber-600' :
                             status === 'rejected' ? 'text-red-600' :
-                              'text-zinc-400'
+                              status === 'partial' ? 'text-blue-600' :
+                                'text-zinc-400'
                           }`}>
                           {status === 'approved' ? 'Aprobado' :
                             status === 'uploaded' ? 'En revisión' :
-                              status === 'rejected' ? 'Rechazado' : 'Pendiente'}
+                              status === 'rejected' ? 'Rechazado' :
+                                status === 'partial' ? 'Falta cara posterior (foto 2 de 2)' :
+                                  'Pendiente'}
                         </p>
                       </div>
                     </div>
-                    {(status === 'missing' || status === 'rejected') && (
+                    {isActionable && (
                       <span className="material-symbols-outlined text-zinc-300">chevron_right</span>
                     )}
                   </div>
@@ -479,6 +566,13 @@ export const UploadDocument: React.FC = () => {
                   {status === 'rejected' && doc?.review_comment && (
                     <div className="mt-4 p-3 bg-red-50 rounded-xl border border-red-100 text-sm text-red-700">
                       <span className="font-bold">Motivo:</span> {doc.review_comment}
+                    </div>
+                  )}
+
+                  {status === 'partial' && (
+                    <div className="mt-4 p-3 bg-blue-50 rounded-xl border border-blue-100 text-sm text-blue-700 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-sm">info</span>
+                      Toca para subir la cara posterior del documento.
                     </div>
                   )}
 
