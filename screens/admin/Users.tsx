@@ -4,6 +4,7 @@ import { UserCreateModal } from '../../components/modals/UserCreateModal';
 import { UserEditModal } from '../../components/modals/UserEditModal';
 import toast, { Toaster } from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
+import { useConfirm } from '../../components/ConfirmDialog';
 
 const PERMISSIONS = {
     superadmin: ['Dashboard', 'Pasajeros', 'Viajes', 'Vouchers', 'Documentos', 'Puntos', 'Comunicaciones', 'Usuarios', 'Configuración'],
@@ -31,6 +32,7 @@ const formatLastLogin = (timestamp: string | null) => {
 
 export const AdminUsers: React.FC = () => {
     const { users, loading, createUser, updateUser, deleteUser, toggleUserStatus, sendPasswordReset } = useUsers();
+    const { confirm } = useConfirm();
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -88,7 +90,15 @@ export const AdminUsers: React.FC = () => {
 
         const confirmMessage = `⚠️ ADVERTENCIA: Esta acción es PERMANENTE\n\n¿Estás seguro de que deseas eliminar completamente a ${user.full_name}?\n\nEsta acción eliminará:\n- El usuario de la base de datos\n- Su perfil y toda la información asociada\n- NO puede ser revertida\n\n¿Deseas continuar?`;
 
-        if (!confirm(confirmMessage)) {
+        const confirmResult = await confirm({
+            title: 'Eliminar Usuario',
+            message: confirmMessage,
+            confirmText: 'Eliminar Permanentemente',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        });
+
+        if (!confirmResult.confirmed) {
             return;
         }
 
@@ -102,7 +112,15 @@ export const AdminUsers: React.FC = () => {
 
     const handleToggleStatus = useCallback(async (user: any) => {
         const action = user.banned_until ? 'desbloquear' : 'bloquear';
-        if (!confirm(`¿Estás seguro de que deseas ${action} a ${user.full_name}?`)) {
+        const confirmResult = await confirm({
+            title: `${action.charAt(0).toUpperCase() + action.slice(1)} Usuario`,
+            message: `¿Estás seguro de que deseas ${action} a ${user.full_name}?`,
+            confirmText: action.charAt(0).toUpperCase() + action.slice(1),
+            cancelText: 'Cancelar',
+            type: user.banned_until ? 'info' : 'warning'
+        });
+
+        if (!confirmResult.confirmed) {
             return;
         }
 
@@ -115,7 +133,14 @@ export const AdminUsers: React.FC = () => {
     }, [toggleUserStatus]);
 
     const handleResetPassword = useCallback(async (user: any) => {
-        if (!confirm(`¿Enviar email de restablecimiento de contraseña a ${user.email}?`)) {
+        const confirmResult = await confirm({
+            title: 'Resetear contraseña',
+            message: `¿Enviar email de restablecimiento de contraseña a ${user.email}?`,
+            confirmText: 'Enviar email',
+            cancelText: 'Cancelar'
+        });
+
+        if (!confirmResult.confirmed) {
             return;
         }
 

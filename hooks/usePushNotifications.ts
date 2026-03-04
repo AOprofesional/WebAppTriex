@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../components/Toast';
 
 interface PushNotificationState {
     permission: NotificationPermission;
@@ -10,6 +11,7 @@ interface PushNotificationState {
 }
 
 export const usePushNotifications = () => {
+    const toast = useToast();
     const { user } = useAuth();
     const [state, setState] = useState<PushNotificationState>({
         permission: 'default',
@@ -51,7 +53,7 @@ export const usePushNotifications = () => {
     // Request notification permission
     const requestPermission = async (): Promise<boolean> => {
         if (!state.isSupported) {
-            alert('Las notificaciones push no están soportadas en este navegador');
+            toast.error('Navegador no soportado', 'Las notificaciones push no están soportadas en este navegador');
             return false;
         }
 
@@ -133,7 +135,7 @@ export const usePushNotifications = () => {
             return true;
         } catch (error) {
             console.error('Error subscribing to push notifications:', error);
-            alert('Error al suscribirse a notificaciones: ' + (error as Error).message);
+            toast.error('Error de Suscripción', 'No se pudo completar la suscripción: ' + (error as Error).message);
             return false;
         } finally {
             setLoading(false);
@@ -182,7 +184,7 @@ export const usePushNotifications = () => {
             // Explicitly pass the JWT so the Edge Function can verify the user
             const { data: { session } } = await supabase.auth.getSession();
             if (!session) {
-                alert('Sesión expirada. Volvé a iniciar sesión.');
+                toast.error('Sesión Expirada', 'Volvé a iniciar sesión.');
                 return false;
             }
 
@@ -202,7 +204,7 @@ export const usePushNotifications = () => {
             return true;
         } catch (error) {
             console.error('Error sending test notification:', error);
-            alert('Error al enviar notificación de prueba');
+            toast.error('Error de Test', 'No se pudo enviar la notificación de prueba');
             return false;
         }
     };

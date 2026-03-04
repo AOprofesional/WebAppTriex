@@ -67,14 +67,14 @@ export const Redemptions: React.FC = () => {
     }, [filter]);
 
     const handleProcessRequest = async (id: string, status: 'COMPLETED' | 'REJECTED', adminComment?: string) => {
-        const confirmed = await confirm.confirm({
+        const result = await confirm({
             title: `¿Confirmar ${status === 'COMPLETED' ? 'aprobación' : 'rechazo'}?`,
             message: `Estás a punto de ${status === 'COMPLETED' ? 'aprobar' : 'rechazar'} esta solicitud de canje. Esta acción no se puede deshacer.`,
             confirmText: status === 'COMPLETED' ? 'Aprobar' : 'Rechazar',
             confirmVariant: status === 'COMPLETED' ? 'success' : 'danger'
         });
 
-        if (!confirmed) return;
+        if (!result.confirmed) return;
 
         setProcessingId(id);
         try {
@@ -200,10 +200,18 @@ export const Redemptions: React.FC = () => {
                                                         Aprobar
                                                     </button>
                                                     <button
-                                                        onClick={() => {
-                                                            const reason = prompt('Motivo del rechazo (opcional):');
-                                                            if (reason !== null) {
-                                                                handleProcessRequest(request.id, 'REJECTED', reason);
+                                                        onClick={async () => {
+                                                            const promptResult = await confirm({
+                                                                title: 'Rechazar solicitud',
+                                                                message: '¿Cuál es el motivo del rechazo? (opcional)',
+                                                                showInput: true,
+                                                                inputPlaceholder: 'Ingresa el motivo aquí...',
+                                                                confirmText: 'Rechazar',
+                                                                confirmVariant: 'danger'
+                                                            });
+
+                                                            if (promptResult.confirmed) {
+                                                                handleProcessRequest(request.id, 'REJECTED', promptResult.value);
                                                             }
                                                         }}
                                                         disabled={processingId === request.id}

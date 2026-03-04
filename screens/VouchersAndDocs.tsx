@@ -6,9 +6,11 @@ import { usePassengerTrips } from '../hooks/usePassengerTrips';
 import { useTripDetails } from '../hooks/useTripDetails';
 import { useDocuments, RequiredDocument, PassengerDocument } from '../hooks/useDocuments';
 import { PageLoading } from '../components/PageLoading';
+import { useToast } from '../components/Toast';
 
 export const VouchersAndDocs: React.FC = () => {
     const navigate = useNavigate();
+    const toast = useToast();
     const { primaryTrip, passenger } = usePassengerTrips();
     const { vouchers, loading: vouchersLoading } = useTripDetails(); // Or useVouchers independent hook if better
     const {
@@ -40,7 +42,7 @@ export const VouchersAndDocs: React.FC = () => {
                 window.open(url, '_blank');
             } else if (error) {
                 console.error('Error opening voucher:', error);
-                alert('No se pudo abrir el voucher. Por favor intente nuevamente.');
+                toast.error('Error', 'No se pudo abrir el voucher. Por favor intente nuevamente.');
             }
         }
     };
@@ -65,7 +67,7 @@ export const VouchersAndDocs: React.FC = () => {
                 document.body.removeChild(link);
             } else if (error) {
                 console.error('Error downloading voucher:', error);
-                alert('No se pudo descargar el voucher. Por favor intente nuevamente.');
+                toast.error('Error', 'No se pudo descargar el voucher. Por favor intente nuevamente.');
             }
         }
     };

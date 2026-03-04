@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useDocuments } from '../../hooks/useDocuments';
 import { useTrips } from '../../hooks/useTrips';
+import { useToast } from '../../components/Toast';
+import { useConfirm } from '../../components/ConfirmDialog';
 
 export const AdminDocumentReview: React.FC = () => {
+    const toast = useToast();
+    const { confirm } = useConfirm();
     const { passengerDocuments, fetchPassengerDocuments, reviewDocument, deleteDocument, getDocumentSignedUrl, loading } = useDocuments();
     const { trips } = useTrips();
     const [filterTripId, setFilterTripId] = useState('');
@@ -54,14 +58,21 @@ export const AdminDocumentReview: React.FC = () => {
     };
 
     const handleDeleteDocument = async (doc: any) => {
-        if (!confirm('¿Estás seguro de eliminar este documento? Se eliminará el archivo del servidor Y el registro de la base de datos. Esta acción no se puede deshacer.')) {
-            return;
-        }
+        const result = await confirm({
+            title: 'Confirmar eliminación',
+            message: '¿Estás seguro de que deseas eliminar este documento? Esta acción no se puede deshacer.',
+            confirmText: 'Eliminar',
+            cancelText: 'Cancelar',
+            confirmVariant: 'danger'
+        });
+
+        if (!result.confirmed) return;
+
         const { error } = await deleteDocument(doc.id, doc.file_path);
         if (error) {
-            alert('Error al eliminar documento: ' + error);
+            toast.error('Error', 'No se pudo eliminar el documento: ' + error);
         } else {
-            alert('Documento eliminado correctamente');
+            toast.success('Éxito', 'Documento eliminado correctamente');
             loadDocuments();
         }
     };
@@ -70,7 +81,7 @@ export const AdminDocumentReview: React.FC = () => {
         if (selectedGroup.length === 0) return;
 
         if (status === 'rejected' && !reviewComment.trim()) {
-            alert('Debes proporcionar un comentario al rechazar un documento');
+            toast.warning('Validación', 'Debes proporcionar un comentario al rechazar un documento');
             return;
         }
 
@@ -78,7 +89,7 @@ export const AdminDocumentReview: React.FC = () => {
         for (const doc of selectedGroup) {
             const { error } = await reviewDocument(doc.id, status, reviewComment);
             if (error) {
-                alert('Error al revisar documento: ' + error);
+                toast.error('Error', 'No se pudo revisar el documento: ' + error);
                 return;
             }
             if (status === 'rejected' && deleteFileOnReject) {
@@ -86,7 +97,7 @@ export const AdminDocumentReview: React.FC = () => {
             }
         }
 
-        alert(`Documento ${status === 'approved' ? 'aprobado' : 'rechazado'} correctamente`);
+        toast.success('Documento Revisado', `Documento ${status === 'approved' ? 'aprobado' : 'rechazado'} correctamente`);
         setSelectedGroup([]);
         setSignedUrls({});
         setReviewComment('');

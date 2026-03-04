@@ -6,10 +6,18 @@ interface ConfirmOptions {
     confirmText?: string;
     cancelText?: string;
     confirmVariant?: 'danger' | 'primary' | 'success';
+    showInput?: boolean;
+    inputPlaceholder?: string;
+    defaultValue?: string;
+}
+
+interface ConfirmResult {
+    confirmed: boolean;
+    value?: string;
 }
 
 interface ConfirmDialogContextType {
-    confirm: (options: ConfirmOptions) => Promise<boolean>;
+    confirm: (options: ConfirmOptions) => Promise<ConfirmResult>;
 }
 
 const ConfirmDialogContext = createContext<ConfirmDialogContextType | undefined>(undefined);
@@ -25,27 +33,29 @@ export const useConfirm = () => {
 export const ConfirmDialogProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [options, setOptions] = useState<ConfirmOptions | null>(null);
-    const [resolvePromise, setResolvePromise] = useState<((value: boolean) => void) | null>(null);
+    const [inputValue, setInputValue] = useState('');
+    const [resolvePromise, setResolvePromise] = useState<((value: ConfirmResult) => void) | null>(null);
 
-    const confirm = useCallback((opts: ConfirmOptions): Promise<boolean> => {
+    const confirm = useCallback((opts: ConfirmOptions): Promise<ConfirmResult> => {
         setOptions(opts);
+        setInputValue(opts.defaultValue || '');
         setIsOpen(true);
 
-        return new Promise<boolean>((resolve) => {
+        return new Promise<ConfirmResult>((resolve) => {
             setResolvePromise(() => resolve);
         });
     }, []);
 
     const handleConfirm = () => {
         if (resolvePromise) {
-            resolvePromise(true);
+            resolvePromise({ confirmed: true, value: inputValue });
         }
         setIsOpen(false);
     };
 
     const handleCancel = () => {
         if (resolvePromise) {
-            resolvePromise(false);
+            resolvePromise({ confirmed: false });
         }
         setIsOpen(false);
     };
@@ -76,9 +86,19 @@ export const ConfirmDialogProvider: React.FC<{ children: React.ReactNode }> = ({
                         </div>
 
                         <div className="p-6">
-                            <p className="text-zinc-600 dark:text-zinc-400 whitespace-pre-line">
+                            <p className="text-zinc-600 dark:text-zinc-400 whitespace-pre-line mb-4">
                                 {options.message}
                             </p>
+                            {options.showInput && (
+                                <input
+                                    type="text"
+                                    value={inputValue}
+                                    onChange={(e) => setInputValue(e.target.value)}
+                                    placeholder={options.inputPlaceholder}
+                                    className="w-full px-4 py-2 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    autoFocus
+                                />
+                            )}
                         </div>
 
                         <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 flex gap-3 justify-end">

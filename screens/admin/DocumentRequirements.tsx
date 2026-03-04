@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useDocuments } from '../../hooks/useDocuments';
 import { useTrips } from '../../hooks/useTrips';
+import { useToast } from '../../components/Toast';
 
 export const AdminDocumentRequirements: React.FC = () => {
+    const toast = useToast();
     const { documentTypes, fetchDocumentTypes, fetchRequiredDocuments, saveRequiredDocuments, loading } = useDocuments();
     const { trips } = useTrips();
     const [selectedTripId, setSelectedTripId] = useState<string>('');
@@ -51,9 +53,9 @@ export const AdminDocumentRequirements: React.FC = () => {
 
         const { error } = await saveRequiredDocuments(selectedTripId, requirements);
         if (error) {
-            alert('Error al guardar requisitos: ' + error);
+            toast.error('Error', 'No se pudieron guardar los requisitos: ' + error);
         } else {
-            alert('Requisitos guardados correctamente');
+            toast.success('Configuración', 'Requisitos guardados correctamente');
         }
     };
 

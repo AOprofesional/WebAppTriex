@@ -56,10 +56,10 @@ export const NotificationSettings: React.FC = () => {
         setSaving(true);
         try {
             await updateNotificationPreferences(preferences);
-            alert('Preferencias guardadas correctamente');
+            toast.success('Configuración', 'Preferencias guardadas correctamente');
             navigate('/profile');
         } catch (error: any) {
-            alert(`Error: ${error.message}`);
+            toast.error('Error', `No se pudieron guardar las preferencias: ${error.message}`);
         } finally {
             setSaving(false);
         }

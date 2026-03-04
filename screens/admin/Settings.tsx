@@ -65,14 +65,14 @@ export const AdminSettings: React.FC = () => {
     };
 
     const handleExportData = async () => {
-        const confirmed = await confirm({
+        const confirmResult = await confirm({
             title: 'Exportar Datos',
             message: 'Se descargará un archivo JSON con todos los datos del sistema (viajes, pasajeros, vouchers, notificaciones, puntos y canjes). ¿Deseas continuar?',
             confirmText: 'Exportar',
             confirmVariant: 'success'
         });
 
-        if (!confirmed) return;
+        if (!confirmResult.confirmed) return;
 
         try {
             toast.loading('Exportando datos...', { id: 'export' });
@@ -114,14 +114,14 @@ export const AdminSettings: React.FC = () => {
     };
 
     const handleRestartSystem = async () => {
-        const confirmed = await confirm({
+        const confirmResult = await confirm({
             title: 'Reiniciar Sistema',
             message: 'Esta acción reiniciará el sistema. Todos los usuarios serán desconectados temporalmente. ¿Estás seguro?',
             confirmText: 'Reiniciar',
             confirmVariant: 'danger'
         });
 
-        if (!confirmed) return;
+        if (!confirmResult.confirmed) return;
 
         toast.error('Función no disponible en esta versión');
     };

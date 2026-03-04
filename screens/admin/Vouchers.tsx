@@ -89,14 +89,14 @@ export const AdminVouchers: React.FC = () => {
     };
 
     const handleArchive = async (voucher: any) => {
-        const confirmed = await confirm({
+        const confirmResult = await confirm({
             title: 'Archivar Voucher',
             message: `¿Archivar el voucher "${voucher.title}"?`,
             confirmText: 'Archivar',
             confirmVariant: 'primary'
         });
 
-        if (!confirmed) return;
+        if (!confirmResult.confirmed) return;
 
         const { error } = await archiveVoucher(voucher.id);
         if (error) {
@@ -107,14 +107,14 @@ export const AdminVouchers: React.FC = () => {
     };
 
     const handleRestore = async (voucher: any) => {
-        const confirmed = await confirm({
+        const confirmResult = await confirm({
             title: 'Restaurar Voucher',
             message: `¿Restaurar el voucher "${voucher.title}"?`,
             confirmText: 'Restaurar',
             confirmVariant: 'success'
         });
 
-        if (!confirmed) return;
+        if (!confirmResult.confirmed) return;
 
         const { error } = await restoreVoucher(voucher.id);
         if (error) {
@@ -125,14 +125,15 @@ export const AdminVouchers: React.FC = () => {
     };
 
     const handleDelete = async (voucher: any) => {
-        const confirmed = await confirm({
+        const confirmResult = await confirm({
             title: 'Eliminar Voucher',
             message: `¿Eliminar permanentemente el voucher "${voucher.title}"? Esta acción no se puede deshacer.`,
             confirmText: 'Eliminar',
+            cancelText: 'Cancelar',
             confirmVariant: 'danger'
         });
 
-        if (!confirmed) return;
+        if (!confirmResult.confirmed) return;
 
         const { error } = await deleteVoucher(voucher.id);
         if (error) {

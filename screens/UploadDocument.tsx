@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { LOGO_URL } from '../constants';
 import { usePassengerTrips } from '../hooks/usePassengerTrips';
 import { useDocuments, RequiredDocument, PassengerDocument } from '../hooks/useDocuments';
+import { useToast } from '../components/Toast';
 
 type FlowStep = 'list' | 'method_selection' | 'camera' | 'review' | 'success';
 // For DNI/Passport: 'front' = first photo (front side), 'back' = second photo (back side)
@@ -11,6 +12,7 @@ type PhotoSide = 'front' | 'back';
 export const UploadDocument: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const toast = useToast();
   const { primaryTrip, passenger } = usePassengerTrips();
   const {
     requiredDocuments,
@@ -91,7 +93,7 @@ export const UploadDocument: React.FC = () => {
       }
     } catch (err) {
       console.error("Camera access denied", err);
-      alert("No se pudo acceder a la cámara. Por favor intenta subir un archivo.");
+      toast.error('Cámara', "No se pudo acceder a la cámara. Por favor intenta subir un archivo.");
       setStep('list');
     }
   };
@@ -129,7 +131,7 @@ export const UploadDocument: React.FC = () => {
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert("El archivo es demasiado grande. El tamaño máximo permitido es 5MB.");
+        toast.warning('Archivo muy grande', "El tamaño máximo permitido es 5MB.");
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
@@ -182,7 +184,7 @@ export const UploadDocument: React.FC = () => {
         setStep('success');
       }
     } catch (err) {
-      alert('Error al subir documento: ' + err);
+      toast.error('Error', 'No se pudo subir el documento: ' + err);
     } finally {
       setUploading(false);
     }

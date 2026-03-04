@@ -32,7 +32,7 @@ export const Profile: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    const confirmed = await confirm({
+    const confirmResult = await confirm({
       title: 'Cerrar sesión',
       message: '¿Estás seguro que querés salir?',
       confirmText: 'Cerrar sesión',
@@ -40,7 +40,7 @@ export const Profile: React.FC = () => {
       confirmVariant: 'danger'
     });
 
-    if (confirmed) {
+    if (confirmResult.confirmed) {
       await supabase.auth.signOut();
       toast.success('Sesión cerrada', 'Hasta pronto!');
       navigate('/login');

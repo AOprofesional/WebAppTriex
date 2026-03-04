@@ -7,6 +7,8 @@ import { supabase } from '../lib/supabase';
 import { NextStepCard } from './NextStepCard';
 import { ActivityModal } from './ActivityModal';
 import { uploadTripBanner, deleteTripBanner, validateImageFile } from '../utils/imageUpload';
+import { useToast } from './Toast';
+import { useConfirm } from './ConfirmDialog';
 
 interface TripFormData {
     name: string;
@@ -56,6 +58,8 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
         requiredDocuments,
         passengerDocuments
     } = useDocuments();
+    const toast = useToast();
+    const { confirm } = useConfirm();
 
     const [activeTab, setActiveTab] = useState<TabType>('general');
     const tabsContainerRef = useRef<HTMLDivElement>(null);
@@ -128,6 +132,8 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
         trip_category: 'OTRO',
     });
 
+    const [initialFormData, setInitialFormData] = useState<TripFormData | null>(null);
+
     // Load trip data if editing
     useEffect(() => {
         if (isOpen) {
@@ -185,13 +191,13 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
         const { data, error } = await getTripById(tripId!);
 
         if (error) {
-            alert('Error al cargar viaje: ' + error);
+            toast.error('Error', 'No se pudo cargar el viaje: ' + error);
             onClose();
             return;
         }
 
         if (data) {
-            setFormData({
+            const dataToSet: TripFormData = {
                 name: data.name || '',
                 internal_code: data.internal_code || '',
                 destination: data.destination || '',
@@ -214,7 +220,9 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                 next_step_cta_label_override: data.next_step_cta_label_override || '',
                 next_step_cta_route_override: data.next_step_cta_route_override || '',
                 trip_category: data.trip_category || 'OTRO',
-            });
+            };
+            setFormData(dataToSet);
+            setInitialFormData(dataToSet);
 
             if (data.banner_image_url) {
                 setCurrentBannerUrl(data.banner_image_url);
@@ -332,13 +340,46 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
             }
 
             onClose();
+            toast.success('Éxito', 'Viaje guardado correctamente');
+            setInitialFormData(formData);
             return currentTripId;
         } catch (error: any) {
-            alert('Error al guardar viaje: ' + error.message);
+            toast.error('Error', 'No se pudo guardar el viaje: ' + error.message);
             return null;
         } finally {
             setSaving(false);
         }
+    };
+
+    const getChangesList = () => {
+        if (!initialFormData) return null;
+        const changes: string[] = [];
+        const labels: Record<string, string> = {
+            name: 'Nombre',
+            destination: 'Destino',
+            start_date: 'Fecha Inicio',
+            end_date: 'Fecha Fin',
+            trip_type: 'Tipo de Viaje',
+            brand_sub: 'Submarca',
+            status_commercial: 'Estado Comercial',
+            general_itinerary: 'Itinerario General',
+            includes_text: 'Incluye',
+            excludes_text: 'No Incluye',
+            coordinator_name: 'Coordinador',
+            coordinator_phone: 'Teléfono Coordinador',
+            internal_code: 'Código Interno',
+            emergency_contact: 'Contacto Emergencia',
+            trip_category: 'Categoría'
+        };
+
+        (Object.keys(formData) as Array<keyof TripFormData>).forEach(key => {
+            if (formData[key] !== initialFormData[key]) {
+                const label = labels[key] || key;
+                changes.push(`${label}: de "${initialFormData[key] || 'vacío'}" a "${formData[key] || 'vacío'}"`);
+            }
+        });
+
+        return changes;
     };
 
     const saveTripNoClose = async (): Promise<string | null> => {
@@ -380,9 +421,10 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                 setBannerPreview(null);
             }
 
+            setInitialFormData(formData);
             return currentTripId;
         } catch (error: any) {
-            alert('Error al guardar viaje: ' + error.message);
+            toast.error('Error', 'No se pudo guardar el viaje: ' + error.message);
             return null;
         } finally {
             setSaving(false);
@@ -391,6 +433,23 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (tripId && initialFormData) {
+            const changes = getChangesList();
+            if (changes && changes.length > 0) {
+                const changeListText = changes.join('\n');
+                const result = await confirm({
+                    title: 'Confirmar cambios',
+                    message: `¿Estás seguro de guardar los cambios? Se han detectado las siguientes modificaciones:\n\n${changeListText}`,
+                    confirmText: 'Guardar cambios',
+                    cancelText: 'Seguir editando',
+                    type: 'warning'
+                });
+
+                if (!result.confirmed) return;
+            }
+        }
+
         await saveTrip();
     };
 
@@ -400,7 +459,7 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
 
         const validation = validateImageFile(file);
         if (!validation.valid) {
-            alert(validation.error);
+            toast.warning('Imagen no válida', validation.error || 'Error desconocido');
             return;
         }
 
@@ -445,14 +504,17 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
 
     const handleAddDay = async () => {
         if (!tripId) {
-            if (confirm('Para agregar días al itinerario, primero debes guardar el viaje. ¿Deseas guardarlo ahora?')) {
+            const confirmResult = await confirm({
+                title: 'Guardar viaje',
+                message: 'Para agregar días al itinerario, primero debes guardar el viaje. ¿Deseas guardarlo ahora?',
+                confirmText: 'Guardar y Continuar',
+                cancelText: 'Cancelar'
+            });
+
+            if (confirmResult.confirmed) {
                 const newId = await saveTripNoClose();
                 if (newId) {
-                    // Update behavior so it can fetch by the new ID? 
-                    // To handle this properly, the parent component needs to know about the new ID, but here we are in a modal. 
-                    // Best practice is to close modal and maybe tell parent to reopen it with the new ID, 
-                    // or we tell the user to manually edit the created trip for detailed itineraries.
-                    alert('Viaje guardado. Por favor, cierra este modal y edita el viaje para agregar días o recarga.');
+                    toast.info('Viaje guardado', 'Por favor, cierra este modal y edita el viaje para agregar días o recarga.');
                 }
             }
             return;
@@ -465,7 +527,15 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
     };
 
     const handleDeleteDay = async (dayId: string) => {
-        if (!confirm('¿Eliminar este día del itinerario?')) return;
+        const confirmResult = await confirm({
+            title: 'Eliminar día',
+            message: '¿Estás seguro de eliminar este día del itinerario?',
+            confirmText: 'Eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        });
+
+        if (!confirmResult.confirmed) return;
 
         const result = await deleteDay(dayId);
         if (!result.error) {
@@ -486,7 +556,15 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
     };
 
     const handleDeleteActivity = async (itemId: string) => {
-        if (!confirm('¿Eliminar esta actividad?')) return;
+        const result = await confirm({
+            title: 'Eliminar actividad',
+            message: '¿Estás seguro de eliminar esta actividad?',
+            confirmText: 'Eliminar',
+            cancelText: 'Cancelar',
+            type: 'danger'
+        });
+
+        if (!result.confirmed) return;
         await deleteItem(itemId);
     };
 

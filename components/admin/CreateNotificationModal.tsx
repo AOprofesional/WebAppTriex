@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAdminNotifications } from '../../hooks/useAdminNotifications';
 import { useTrips } from '../../hooks/useTrips';
 import { usePassengers } from '../../hooks/usePassengers';
+import { useToast } from '../../components/Toast';
 
 interface CreateNotificationModalProps {
     isOpen: boolean;
@@ -13,6 +14,7 @@ export const CreateNotificationModal: React.FC<CreateNotificationModalProps> = (
     const { createNotification, createBulkNotifications, getTripPassengerIds, getAllPassengerIds } = useAdminNotifications();
     const { trips } = useTrips();
     const { passengers } = usePassengers();
+    const { success: toastSuccess, error: toastError, warning: toastWarning } = useToast();
 
     const [target, setTarget] = useState<'specific' | 'trip' | 'all'>('specific');
     const [passengerId, setPassengerId] = useState('');
@@ -41,7 +43,8 @@ export const CreateNotificationModal: React.FC<CreateNotificationModalProps> = (
         try {
             if (target === 'specific') {
                 if (!passengerId) {
-                    alert('Por favor seleccioná un pasajero');
+                    toastWarning('Falta información', 'Por favor seleccioná un pasajero');
+                    setSending(false);
                     return;
                 }
                 const result = await createNotification({
@@ -53,19 +56,21 @@ export const CreateNotificationModal: React.FC<CreateNotificationModalProps> = (
                 });
 
                 if (result.error) {
-                    alert(`Error: ${result.error}`);
+                    toastError('Error al enviar', result.error);
                 } else {
-                    alert('Notificación enviada correctamente');
+                    toastSuccess('Notificación enviada', 'La notificación se envió correctamente');
                     onClose();
                 }
             } else if (target === 'trip') {
                 if (!tripId) {
-                    alert('Por favor seleccioná un viaje');
+                    toastWarning('Falta información', 'Por favor seleccioná un viaje');
+                    setSending(false);
                     return;
                 }
                 const passengerIds = await getTripPassengerIds(tripId);
                 if (passengerIds.length === 0) {
-                    alert('No hay pasajeros en este viaje');
+                    toastWarning('Sin destinatarios', 'No hay pasajeros en este viaje');
+                    setSending(false);
                     return;
                 }
 
@@ -78,15 +83,16 @@ export const CreateNotificationModal: React.FC<CreateNotificationModalProps> = (
                 });
 
                 if (result.error) {
-                    alert(`Error: ${result.error}`);
+                    toastError('Error al enviar', result.error);
                 } else {
-                    alert(`Notificación enviada a ${passengerIds.length} pasajero(s)`);
+                    toastSuccess('Notificaciones enviadas', `Se enviaron correctamente a ${passengerIds.length} pasajero(s)`);
                     onClose();
                 }
             } else if (target === 'all') {
                 const passengerIds = await getAllPassengerIds();
                 if (passengerIds.length === 0) {
-                    alert('No hay pasajeros activos');
+                    toastWarning('Sin destinatarios', 'No hay pasajeros activos');
+                    setSending(false);
                     return;
                 }
 
@@ -98,14 +104,14 @@ export const CreateNotificationModal: React.FC<CreateNotificationModalProps> = (
                 });
 
                 if (result.error) {
-                    alert(`Error: ${result.error}`);
+                    toastError('Error al enviar', result.error);
                 } else {
-                    alert(`Notificación enviada a ${passengerIds.length} pasajero(s)`);
+                    toastSuccess('Notificaciones enviadas', `Se enviaron correctamente a ${passengerIds.length} pasajero(s)`);
                     onClose();
                 }
             }
         } catch (err: any) {
-            alert(`Error: ${err.message}`);
+            toastError('Error inesperado', err.message);
         } finally {
             setSending(false);
         }

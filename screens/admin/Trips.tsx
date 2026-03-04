@@ -56,14 +56,14 @@ export const AdminTrips: React.FC = () => {
     const { confirm } = useConfirm();
 
     const handleArchive = async (id: string, tripName: string) => {
-        const confirmed = await confirm({
+        const confirmResult = await confirm({
             title: 'Archivar Viaje',
             message: `¿Archivar el viaje "${tripName}"?\n\nEl viaje no se eliminará, solo se moverá a la lista de archivados.`,
             confirmText: 'Archivar',
             confirmVariant: 'primary'
         });
 
-        if (!confirmed) return;
+        if (!confirmResult.confirmed) return;
 
         const { error } = await archiveTrip(id);
         if (error) {
@@ -74,14 +74,14 @@ export const AdminTrips: React.FC = () => {
     };
 
     const handleRestore = async (id: string, tripName: string) => {
-        const confirmed = await confirm({
+        const confirmResult = await confirm({
             title: 'Restaurar Viaje',
             message: `¿Restaurar el viaje "${tripName}"?\n\nVolverá a aparecer en la lista principal.`,
             confirmText: 'Restaurar',
             confirmVariant: 'success'
         });
 
-        if (!confirmed) return;
+        if (!confirmResult.confirmed) return;
 
         const { error } = await restoreTrip(id);
         if (error) {
@@ -92,14 +92,14 @@ export const AdminTrips: React.FC = () => {
     };
 
     const handleDelete = async (id: string, tripName: string) => {
-        const confirmed = await confirm({
+        const confirmResult = await confirm({
             title: '⚠ Eliminar Permanentemente',
             message: `¿ELIMINAR PERMANENTEMENTE "${tripName}"?\n\nEsta acción NO SE PUEDE DESHACER. Se borrarán todos los datos asociados (pasajeros, documentos, vouchers, etc).\n\nPara confirmar, escribe el nombre del viaje exactamente: "${tripName}"`,
             confirmText: 'Eliminar Permanentemente',
             confirmVariant: 'danger'
         });
 
-        if (!confirmed) return;
+        if (!confirmResult.confirmed) return;
 
         const { error } = await deleteTrip(id);
         if (error) {
@@ -110,14 +110,14 @@ export const AdminTrips: React.FC = () => {
     };
 
     const handleDuplicate = async (id: string, tripName: string) => {
-        const confirmed = await confirm({
+        const confirmResult = await confirm({
             title: 'Duplicar Viaje',
             message: `¿Duplicar el viaje "${tripName}"?\n\nSe creará una copia con el nombre "Copia de ${tripName}" sin pasajeros asignados ni código interno.`,
             confirmText: 'Duplicar',
             confirmVariant: 'primary'
         });
 
-        if (!confirmed) return;
+        if (!confirmResult.confirmed) return;
 
         const { error } = await duplicateTrip(id);
         if (error) {

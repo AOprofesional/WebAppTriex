@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { useAdminVouchers } from '../../hooks/useAdminVouchers';
 import { useTrips } from '../../hooks/useTrips';
 import { usePassengers } from '../../hooks/usePassengers';
+import { useToast } from '../Toast';
 
 interface VoucherFormModalProps {
     isOpen: boolean;
@@ -17,6 +18,7 @@ export const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
     voucher,
     onSuccess,
 }) => {
+    const toast = useToast();
     const { voucherTypes, fetchVoucherTypes, createVoucher, updateVoucher, loading } = useAdminVouchers();
     const { trips } = useTrips();
     // usePassengers kept for broader context if needed, but we fetch trip specific passengers manually
@@ -131,7 +133,7 @@ export const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
 
         // Validation logic fix: if passenger assignment, ensure trip is selected too (as context)
         if (formData.assignment === 'passenger' && !formData.trip_id) {
-            alert('Por favor selecciona un viaje para buscar al pasajero.');
+            toast.warning('Validación', 'Por favor selecciona un viaje para buscar al pasajero.');
             return;
         }
 
@@ -143,7 +145,7 @@ export const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
         }
 
         if (result.error) {
-            alert('Error: ' + result.error);
+            toast.error('Error', 'No se pudo guardar el voucher: ' + result.error);
         } else {
             onSuccess();
             handleClose();
@@ -402,7 +404,7 @@ export const VoucherFormModal: React.FC<VoucherFormModalProps> = ({
                                     const file = e.target.files?.[0];
                                     if (file) {
                                         if (file.size > 5 * 1024 * 1024) {
-                                            alert("El archivo es demasiado grande. El tamaño máximo permitido es 5MB.");
+                                            toast.warning('Archivo muy grande', "El tamaño máximo permitido es 5MB.");
                                             e.target.value = "";
                                             setFile(null);
                                             return;
