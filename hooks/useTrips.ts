@@ -209,6 +209,36 @@ export const useTrips = () => {
         }
     };
 
+    const duplicateTrip = async (id: string) => {
+        try {
+            const { data: source, error: fetchError } = await getTripById(id);
+            if (fetchError) throw new Error(fetchError);
+            if (!source) throw new Error('No se encontró el viaje a duplicar');
+
+            // Strip fields that should not be copied
+            const {
+                id: _id,
+                created_at: _created_at,
+                updated_at: _updated_at,
+                archived_at: _archived_at,
+                created_by: _created_by,
+                updated_by: _updated_by,
+                internal_code: _internal_code,
+                ...copyable
+            } = source as any;
+
+            const newTripData: TripInsert = {
+                ...copyable,
+                name: `Copia de ${source.name}`,
+            };
+
+            return await createTrip(newTripData);
+        } catch (err: any) {
+            console.error('Error duplicating trip:', err);
+            return { data: null, error: err.message };
+        }
+    };
+
     const assignPassengers = async (tripId: string, passengerIds: string[]) => {
         try {
             // Get existing assignments
@@ -265,6 +295,7 @@ export const useTrips = () => {
         restoreTrip,
         deleteTrip,
         getTripById,
+        duplicateTrip,
         assignPassengers,
     };
 };

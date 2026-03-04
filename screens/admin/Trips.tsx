@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 
 export const AdminTrips: React.FC = () => {
     const navigate = useNavigate();
-    const { trips, loading, error, fetchTrips, archiveTrip, restoreTrip, deleteTrip } = useTrips();
+    const { trips, loading, error, fetchTrips, archiveTrip, restoreTrip, deleteTrip, duplicateTrip } = useTrips();
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
@@ -109,7 +109,23 @@ export const AdminTrips: React.FC = () => {
         }
     };
 
+    const handleDuplicate = async (id: string, tripName: string) => {
+        const confirmed = await confirm({
+            title: 'Duplicar Viaje',
+            message: `¿Duplicar el viaje "${tripName}"?\n\nSe creará una copia con el nombre "Copia de ${tripName}" sin pasajeros asignados ni código interno.`,
+            confirmText: 'Duplicar',
+            confirmVariant: 'primary'
+        });
 
+        if (!confirmed) return;
+
+        const { error } = await duplicateTrip(id);
+        if (error) {
+            toast.error('Error al duplicar viaje: ' + error);
+        } else {
+            toast.success(`Viaje "Copia de ${tripName}" creado exitosamente`);
+        }
+    };
 
 
     const formatDate = (dateStr: string) => {
@@ -485,6 +501,13 @@ export const AdminTrips: React.FC = () => {
                                                             <span className="material-symbols-outlined text-xl">edit</span>
                                                         </button>
                                                         <button
+                                                            onClick={() => handleDuplicate(trip.id, trip.name)}
+                                                            className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-colors"
+                                                            title="Duplicar viaje"
+                                                        >
+                                                            <span className="material-symbols-outlined text-xl">content_copy</span>
+                                                        </button>
+                                                        <button
                                                             onClick={() => handleArchive(trip.id, trip.name)}
                                                             className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 rounded-lg transition-colors"
                                                             title="Archivar"
@@ -603,6 +626,13 @@ export const AdminTrips: React.FC = () => {
                                                     title="Editar"
                                                 >
                                                     <span className="material-symbols-outlined text-xl">edit</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDuplicate(trip.id, trip.name)}
+                                                    className="p-1.5 text-zinc-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                                                    title="Duplicar viaje"
+                                                >
+                                                    <span className="material-symbols-outlined text-xl">content_copy</span>
                                                 </button>
                                                 <button
                                                     onClick={() => handleArchive(trip.id, trip.name)}

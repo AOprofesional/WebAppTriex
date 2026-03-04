@@ -7,8 +7,11 @@ export const AdminDocumentReview: React.FC = () => {
     const { trips } = useTrips();
     const [filterTripId, setFilterTripId] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
-    const [selectedDoc, setSelectedDoc] = useState<any>(null);
-    const [signedUrl, setSignedUrl] = useState<string | null>(null);
+
+    // selectedGroup = array of docs belonging to the same required_document for the same passenger
+    const [selectedGroup, setSelectedGroup] = useState<any[]>([]);
+    // signed URLs indexed by doc.id
+    const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
     const [reviewComment, setReviewComment] = useState('');
     const [deleteFileOnReject, setDeleteFileOnReject] = useState(true);
 
@@ -25,14 +28,31 @@ export const AdminDocumentReview: React.FC = () => {
 
     const handleViewDocument = async (doc: any) => {
         if (!doc.file_path) return;
-        setSelectedDoc(doc);
-        const { url } = await getDocumentSignedUrl(doc.file_path);
-        setSignedUrl(url);
+
+        // Find all docs in the same group (same required_document_id + passenger_id)
+        // sorted oldest first so photo 1 is on the left
+        const group = passengerDocuments
+            .filter((d: any) =>
+                d.required_document_id === doc.required_document_id &&
+                d.passenger_id === doc.passenger_id &&
+                d.file_path
+            )
+            .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+        setSelectedGroup(group);
+        setSignedUrls({});
+        setReviewComment('');
+
+        // Load signed URLs for all docs in the group in parallel
+        const urlEntries = await Promise.all(
+            group.map(async (d: any) => {
+                const { url } = await getDocumentSignedUrl(d.file_path!);
+                return [d.id, url] as [string, string];
+            })
+        );
+        setSignedUrls(Object.fromEntries(urlEntries));
     };
 
-    /**
-     * Completely delete document (file + database record)
-     */
     const handleDeleteDocument = async (doc: any) => {
         if (!confirm('¿Estás seguro de eliminar este documento? Se eliminará el archivo del servidor Y el registro de la base de datos. Esta acción no se puede deshacer.')) {
             return;
@@ -47,31 +67,34 @@ export const AdminDocumentReview: React.FC = () => {
     };
 
     const handleReview = async (status: 'approved' | 'rejected') => {
-        if (!selectedDoc) return;
+        if (selectedGroup.length === 0) return;
 
         if (status === 'rejected' && !reviewComment.trim()) {
             alert('Debes proporcionar un comentario al rechazar un documento');
             return;
         }
 
-        const { error } = await reviewDocument(selectedDoc.id, status, reviewComment);
-
-        if (error) {
-            alert('Error al revisar documento: ' + error);
-        } else {
-            // Delete the entire document record if rejected and option is enabled
-            if (status === 'rejected' && deleteFileOnReject) {
-                await deleteDocument(selectedDoc.id, selectedDoc.file_path);
+        // Review all docs in the group with the same decision
+        for (const doc of selectedGroup) {
+            const { error } = await reviewDocument(doc.id, status, reviewComment);
+            if (error) {
+                alert('Error al revisar documento: ' + error);
+                return;
             }
-
-            alert(`Documento ${status === 'approved' ? 'aprobado' : 'rechazado'} correctamente`);
-            setSelectedDoc(null);
-            setSignedUrl(null);
-            setReviewComment('');
-            setDeleteFileOnReject(true);
-            loadDocuments();
+            if (status === 'rejected' && deleteFileOnReject) {
+                await deleteDocument(doc.id, doc.file_path);
+            }
         }
+
+        alert(`Documento ${status === 'approved' ? 'aprobado' : 'rechazado'} correctamente`);
+        setSelectedGroup([]);
+        setSignedUrls({});
+        setReviewComment('');
+        setDeleteFileOnReject(true);
+        loadDocuments();
     };
+
+    const primaryDoc = selectedGroup[0] ?? null;
 
     return (
         <div className="space-y-6">
@@ -206,17 +229,28 @@ export const AdminDocumentReview: React.FC = () => {
             </div>
 
             {/* Document Review Modal */}
-            {selectedDoc && (
+            {selectedGroup.length > 0 && primaryDoc && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-auto">
+                    <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-auto">
                         <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-triex-grey dark:text-white">
-                                Revisar Documento
-                            </h2>
+                            <div>
+                                <h2 className="text-xl font-bold text-triex-grey dark:text-white">
+                                    Revisar Documento
+                                </h2>
+                                <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
+                                    {primaryDoc.passengers?.first_name} {primaryDoc.passengers?.last_name} — {primaryDoc.required_documents?.document_types?.name}
+                                    {selectedGroup.length > 1 && (
+                                        <span className="ml-2 inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                                            <span className="material-symbols-outlined text-xs">photo_library</span>
+                                            {selectedGroup.length} fotos
+                                        </span>
+                                    )}
+                                </p>
+                            </div>
                             <button
                                 onClick={() => {
-                                    setSelectedDoc(null);
-                                    setSignedUrl(null);
+                                    setSelectedGroup([]);
+                                    setSignedUrls({});
                                     setReviewComment('');
                                 }}
                                 className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
@@ -226,21 +260,76 @@ export const AdminDocumentReview: React.FC = () => {
                         </div>
 
                         <div className="p-6 space-y-4">
-                            {/* Document Preview */}
-                            <div className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-4 min-h-[400px] flex items-center justify-center">
-                                {signedUrl ? (
-                                    selectedDoc.format === 'pdf' ? (
-                                        <iframe src={signedUrl} className="w-full h-[500px] rounded-lg" />
+                            {/* Document Preview — 1 or 2 photos side by side */}
+                            {selectedGroup.length === 1 ? (
+                                // Single photo layout
+                                <div className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-4 min-h-[400px] flex items-center justify-center">
+                                    {signedUrls[selectedGroup[0].id] ? (
+                                        selectedGroup[0].format === 'pdf' ? (
+                                            <iframe src={signedUrls[selectedGroup[0].id]} className="w-full h-[500px] rounded-lg" />
+                                        ) : (
+                                            <img src={signedUrls[selectedGroup[0].id]} alt="Documento" className="max-w-full max-h-[500px] rounded-lg object-contain" />
+                                        )
                                     ) : (
-                                        <img src={signedUrl} alt="Documento" className="max-w-full max-h-[500px] rounded-lg" />
-                                    )
-                                ) : (
-                                    <div className="text-center">
-                                        <div className="inline-block w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4"></div>
-                                        <p className="text-sm text-zinc-500">Cargando documento...</p>
+                                        <div className="text-center">
+                                            <div className="inline-block w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4"></div>
+                                            <p className="text-sm text-zinc-500">Cargando documento...</p>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                // Multi-photo layout (2 columns)
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    {selectedGroup.map((doc: any, idx: number) => (
+                                        <div key={doc.id} className="bg-zinc-50 dark:bg-zinc-800 rounded-xl p-3">
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${idx === 0 ? 'bg-primary' : 'bg-blue-500'}`}>
+                                                    {idx + 1}
+                                                </div>
+                                                <span className="text-sm font-semibold text-zinc-600 dark:text-zinc-300">
+                                                    {idx === 0 ? 'Cara frontal' : 'Cara posterior (dorso)'}
+                                                </span>
+                                                <span className={`ml-auto inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${doc.status === 'approved' ? 'bg-green-50 text-green-600' :
+                                                    doc.status === 'rejected' ? 'bg-red-50 text-red-600' :
+                                                        'bg-amber-50 text-amber-600'
+                                                    }`}>
+                                                    {doc.status === 'approved' ? 'Aprobado' : doc.status === 'rejected' ? 'Rechazado' : 'En revisión'}
+                                                </span>
+                                            </div>
+                                            <div className="min-h-[280px] flex items-center justify-center bg-white dark:bg-zinc-900 rounded-lg overflow-hidden">
+                                                {signedUrls[doc.id] ? (
+                                                    doc.format === 'pdf' ? (
+                                                        <iframe src={signedUrls[doc.id]} className="w-full h-[320px] rounded-lg" />
+                                                    ) : (
+                                                        <img
+                                                            src={signedUrls[doc.id]}
+                                                            alt={`Foto ${idx + 1}`}
+                                                            className="w-full h-auto max-h-[320px] object-contain rounded-lg"
+                                                        />
+                                                    )
+                                                ) : (
+                                                    <div className="text-center p-6">
+                                                        <div className="inline-block w-6 h-6 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-2"></div>
+                                                        <p className="text-xs text-zinc-500">Cargando...</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Info box when only 1 of 2 expected photos is present */}
+                            {selectedGroup.length === 1 && (() => {
+                                const name = primaryDoc.required_documents?.document_types?.name?.toLowerCase() || '';
+                                const isMultiDoc = name.includes('dni') || name.includes('identidad') || name.includes('passport') || name.includes('pasaporte');
+                                return isMultiDoc ? (
+                                    <div className="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-700">
+                                        <span className="material-symbols-outlined text-sm">warning</span>
+                                        Solo se ha subido 1 foto. El pasajero aún no ha enviado la cara posterior.
                                     </div>
-                                )}
-                            </div>
+                                ) : null;
+                            })()}
 
                             {/* Review Comment */}
                             <div>
@@ -276,13 +365,13 @@ export const AdminDocumentReview: React.FC = () => {
                                     onClick={() => handleReview('rejected')}
                                     className="px-6 py-2.5 bg-red-600 text-white rounded-xl font-semibold text-sm hover:bg-red-700 transition-all"
                                 >
-                                    Rechazar
+                                    Rechazar {selectedGroup.length > 1 ? 'ambas fotos' : ''}
                                 </button>
                                 <button
                                     onClick={() => handleReview('approved')}
                                     className="px-6 py-2.5 bg-green-600 text-white rounded-xl font-semibold text-sm hover:bg-green-700 transition-all"
                                 >
-                                    Aprobar
+                                    Aprobar {selectedGroup.length > 1 ? 'ambas fotos' : ''}
                                 </button>
                             </div>
                         </div>
