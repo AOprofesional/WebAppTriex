@@ -62,10 +62,11 @@ export const useDashboardData = () => {
         try {
             setLoading(true);
 
-            // Fetch all active trips
+            // Single query: fetch all active trips WITH embedded passenger counts.
+            // Eliminates the N+1 pattern (was: one query per upcoming trip).
             const { data: trips, error: tripsError } = await supabase
                 .from('trips')
-                .select('id, name, destination, start_date, end_date, status_commercial, archived_at')
+                .select('id, name, destination, start_date, end_date, status_commercial, archived_at, trip_passengers(count)')
                 .is('archived_at', null)
                 .order('start_date', { ascending: true });
 
@@ -84,29 +85,20 @@ export const useDashboardData = () => {
                 if (status === 'PREVIO') upcomingTripsCount++;
             });
 
-            // Get upcoming trips for display (next 5 trips starting soon) with passenger counts
-            const upcomingTripsWithCounts = await Promise.all(
-                (trips
-                    ?.filter(trip => calculateTripStatus(trip.start_date, trip.end_date) === 'PREVIO')
-                    .slice(0, 5) || [])
-                    .map(async (trip) => {
-                        // Get passenger count for this trip
-                        const { count } = await supabase
-                            .from('trip_passengers')
-                            .select('*', { count: 'exact', head: true })
-                            .eq('trip_id', trip.id);
-
-                        return {
-                            id: trip.id,
-                            name: trip.name,
-                            destination: trip.destination,
-                            start_date: trip.start_date,
-                            end_date: trip.end_date,
-                            passenger_count: count || 0,
-                            status_commercial: trip.status_commercial
-                        };
-                    })
-            );
+            // Build upcoming trips list from the already-fetched data (no extra queries)
+            const upcomingTripsWithCounts = (trips
+                ?.filter(trip => calculateTripStatus(trip.start_date, trip.end_date) === 'PREVIO')
+                .slice(0, 5) || [])
+                .map((trip: any) => ({
+                    id: trip.id,
+                    name: trip.name,
+                    destination: trip.destination,
+                    start_date: trip.start_date,
+                    end_date: trip.end_date,
+                    // trip_passengers is an array of aggregated rows: [{count: N}]
+                    passenger_count: trip.trip_passengers?.[0]?.count ?? 0,
+                    status_commercial: trip.status_commercial
+                }));
 
             // Get pending documents count
             const { count: pendingDocs, error: docsError } = await supabase
@@ -116,16 +108,14 @@ export const useDashboardData = () => {
 
             if (docsError) console.error('Error fetching documents:', docsError);
 
-            // Get total points (Current System Liability - All Active Points)
+            // Get total active points via SQL SUM (avoids loading all rows into JS)
             let totalPoints = 0;
             try {
-                const { data: ledgerData, error: ledgerError } = await supabase
-                    .from('orange_points_ledger')
-                    .select('points')
-                    .eq('status', 'ACTIVE');
+                const { data: pointsData, error: pointsError } = await supabase
+                    .rpc('get_total_active_points');
 
-                if (!ledgerError && ledgerData) {
-                    totalPoints = ledgerData.reduce((sum, entry) => sum + (entry.points || 0), 0);
+                if (!pointsError && pointsData !== null) {
+                    totalPoints = Number(pointsData);
                 }
             } catch (err) {
                 console.error('Error fetching ledger points:', err);

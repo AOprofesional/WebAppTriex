@@ -12,6 +12,7 @@ export const AdminVouchers: React.FC = () => {
         vouchers,
         voucherTypes,
         loading,
+        totalCount,
         fetchVoucherTypes,
         fetchAllVouchers,
         archiveVoucher,
@@ -43,39 +44,28 @@ export const AdminVouchers: React.FC = () => {
 
     useEffect(() => {
         applyFilters();
-    }, [filters]);
+    }, [filters, currentPage]);
+
+    // Reset pagination when search or filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filters.search, filters.typeId, filters.format, filters.tripId, filters.status]);
 
     const loadData = async () => {
         await fetchVoucherTypes();
-        await fetchAllVouchers();
+        await applyFilters();
     };
 
-    const applyFilters = () => {
+    const applyFilters = async () => {
         const filterParams: any = {};
+        if (filters.search) filterParams.searchTerm = filters.search;
         if (filters.typeId) filterParams.typeId = filters.typeId;
         if (filters.format) filterParams.format = filters.format;
         if (filters.tripId) filterParams.tripId = filters.tripId;
         if (filters.status) filterParams.status = filters.status;
 
-        fetchAllVouchers(filterParams);
+        await fetchAllVouchers(currentPage, ITEMS_PER_PAGE, filterParams);
     };
-
-    const filteredVouchers = vouchers.filter(v => {
-        if (!filters.search) return true;
-        const searchLower = filters.search.toLowerCase();
-        return (
-            v.title?.toLowerCase().includes(searchLower) ||
-            v.trips?.name?.toLowerCase().includes(searchLower) ||
-            v.passengers?.first_name?.toLowerCase().includes(searchLower) ||
-            v.passengers?.last_name?.toLowerCase().includes(searchLower)
-        );
-    });
-
-    // Pagination
-    const totalPages = Math.ceil(filteredVouchers.length / ITEMS_PER_PAGE);
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    const paginatedVouchers = filteredVouchers.slice(startIndex, endIndex);
 
     const handleView = (voucher: any) => {
         setSelectedVoucher(voucher);
@@ -171,7 +161,7 @@ export const AdminVouchers: React.FC = () => {
     };
 
     const stats = {
-        total: vouchers.length,
+        total: totalCount,
         pdf: vouchers.filter(v => v.format === 'pdf').length,
         images: vouchers.filter(v => v.format === 'image').length,
         links: vouchers.filter(v => v.format === 'link').length,
@@ -335,14 +325,14 @@ export const AdminVouchers: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
-                                {filteredVouchers.length === 0 ? (
+                                {vouchers.length === 0 ? (
                                     <tr>
                                         <td colSpan={7} className="px-6 py-12 text-center text-sm text-zinc-500">
                                             No se encontraron vouchers
                                         </td>
                                     </tr>
                                 ) : (
-                                    filteredVouchers.map((voucher) => {
+                                    vouchers.map((voucher) => {
                                         const typeIcon = getTypeIcon(voucher.voucher_types?.name);
                                         const formatIcon = getFormatIcon(voucher.format);
 
@@ -439,6 +429,26 @@ export const AdminVouchers: React.FC = () => {
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Pagination Controls */}
+            {!loading && vouchers.length > 0 && (
+                <div className="pt-2">
+                    <Pagination
+                        totalItems={totalCount}
+                        itemsPerPage={ITEMS_PER_PAGE}
+                        currentPage={currentPage}
+                        onPageChange={setCurrentPage}
+                    />
+                    <div className="flex justify-between items-center text-sm text-zinc-500 mt-4 px-2">
+                        <span>
+                            Mostrando <strong className="text-zinc-800 dark:text-zinc-200">{vouchers.length}</strong> de <strong className="text-zinc-800 dark:text-zinc-200">{totalCount}</strong> vouchers
+                        </span>
+                        <span>
+                            Última actualización: {new Date().toLocaleTimeString('es-AR')}
+                        </span>
                     </div>
                 </div>
             )}

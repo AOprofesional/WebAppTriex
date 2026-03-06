@@ -53,6 +53,7 @@ export const AdminPassengers: React.FC = () => {
         passengers,
         loading,
         error,
+        totalCount,
         refetch,
         archivePassenger,
         restorePassenger,
@@ -92,29 +93,25 @@ export const AdminPassengers: React.FC = () => {
         fetchPassengerTypes();
     }, []);
 
-    // Refetch passengers when showArchived toggle changes
+    // Refetch passengers when pagination/search/archived toggle changes
+    // Add small debounce for search
     useEffect(() => {
-        refetch(showArchived);
-    }, [showArchived]);
+        const timeoutId = setTimeout(() => {
+            refetch(currentPage, ITEMS_PER_PAGE, searchTerm, showArchived);
+        }, 300);
+        return () => clearTimeout(timeoutId);
+    }, [currentPage, ITEMS_PER_PAGE, searchTerm, showArchived, refetch]);
 
-    // Reset pagination when search or filter changes
+    // Reset pagination when search changes
     useEffect(() => {
         setCurrentPage(1);
     }, [searchTerm, filterType]);
 
-    const filteredPassengers = passengers.filter(p => {
-        const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
-        const matchesSearch = fullName.includes(searchTerm.toLowerCase()) ||
-            (p.passenger_email?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
-        const matchesType = filterType === 'all' || p.type_code?.toLowerCase() === filterType.toLowerCase();
-        return matchesSearch && matchesType;
+    // Local filtering for type
+    const paginatedPassengers = passengers.filter(p => {
+        const matchesType = filterType === 'all' || p.type_name?.toLowerCase().includes(filterType.toLowerCase());
+        return matchesType;
     });
-
-    // Pagination calculations
-    const totalPages = Math.ceil(filteredPassengers.length / ITEMS_PER_PAGE);
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const endIndex = startIndex + ITEMS_PER_PAGE;
-    const paginatedPassengers = filteredPassengers.slice(startIndex, endIndex);
 
     const handleEdit = (passenger: PassengerListView) => {
         setEditingPassenger(passenger);
@@ -196,7 +193,7 @@ export const AdminPassengers: React.FC = () => {
                         </span>
                         <input
                             type="text"
-                            placeholder="Buscar pasajeros..."
+                            placeholder="Buscar por nombre, doc, tel o email..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
@@ -240,7 +237,7 @@ export const AdminPassengers: React.FC = () => {
             </div>
 
             {/* Empty State */}
-            {filteredPassengers.length === 0 && (
+            {paginatedPassengers.length === 0 && !loading && (
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 p-12 text-center">
                     <span className="material-symbols-outlined text-6xl text-zinc-300 dark:text-zinc-700 mb-4 block">
                         person_off
@@ -257,7 +254,7 @@ export const AdminPassengers: React.FC = () => {
             )}
 
             {/* Table */}
-            {filteredPassengers.length > 0 && (
+            {paginatedPassengers.length > 0 && !loading && (
                 <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 shadow-sm overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full">
@@ -273,7 +270,7 @@ export const AdminPassengers: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
-                                {filteredPassengers.map((passenger) => {
+                                {paginatedPassengers.map((passenger) => {
                                     const initials = `${passenger.first_name[0]}${passenger.last_name[0]}`;
                                     const fullName = `${passenger.first_name} ${passenger.last_name}`;
 
@@ -387,7 +384,7 @@ export const AdminPassengers: React.FC = () => {
                     {/* Footer */}
                     <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
                         <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                            Mostrando {filteredPassengers.length} de {passengers.length} pasajeros
+                            Mostrando {paginatedPassengers.length} de {totalCount} pasajeros
                         </p>
                     </div>
                 </div>
@@ -453,7 +450,7 @@ export const AdminPassengers: React.FC = () => {
 
             {/* Pagination */}
             <Pagination
-                totalItems={filteredPassengers.length}
+                totalItems={totalCount}
                 itemsPerPage={ITEMS_PER_PAGE}
                 currentPage={currentPage}
                 onPageChange={setCurrentPage}

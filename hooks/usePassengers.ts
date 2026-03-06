@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Database } from '../types/database.types';
 import toast from 'react-hot-toast';
@@ -12,32 +12,48 @@ export const usePassengers = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const fetchPassengers = async (includeArchived = false) => {
+    const [totalCount, setTotalCount] = useState(0);
+
+    const fetchPassengers = useCallback(async (
+        page: number = 1,
+        pageSize: number = 20,
+        searchTerm: string = '',
+        includeArchived = false
+    ) => {
         try {
             setLoading(true);
             setError(null);
 
             let query = supabase
                 .from('v_admin_passengers_list')
-                .select('*')
-                .order('created_at', { ascending: false });
+                .select('*', { count: 'exact' });
 
             if (!includeArchived) {
                 query = query.is('archived_at', null);
             }
 
-            const { data, error: fetchError } = await query;
+            if (searchTerm) {
+                query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,passenger_email.ilike.%${searchTerm}%`);
+            }
+
+            const from = (page - 1) * pageSize;
+            const to = from + pageSize - 1;
+
+            query = query.order('created_at', { ascending: false }).range(from, to);
+
+            const { data, count, error: fetchError } = await query;
 
             if (fetchError) throw fetchError;
 
             setPassengers(data || []);
+            setTotalCount(count || 0);
         } catch (err: any) {
             console.error('Error fetching passengers:', err);
             setError(err.message || 'Error al cargar pasajeros');
         } finally {
             setLoading(false);
         }
-    };
+    }, [supabase]);
 
     const createPassenger = async (passenger: PassengerInsert) => {
         try {
@@ -133,6 +149,18 @@ export const usePassengers = () => {
             if (rpcError) throw rpcError;
             if (!data.success) throw new Error(data.error);
 
+            // LOG AUDIT
+            const { data: authData } = await supabase.auth.getUser();
+            if (authData.user) {
+                await supabase.from('audit_log').insert({
+                    user_id: authData.user.id,
+                    action: 'DELETE_PASSENGER_CASCADE',
+                    entity_type: 'passengers',
+                    entity_id: id,
+                    details: { reason: 'permanent delete via RPC' }
+                });
+            }
+
             await fetchPassengers();
             return { error: null, data };
         } catch (err: any) {
@@ -143,6 +171,13 @@ export const usePassengers = () => {
 
     const deletePassenger = async (id: string) => {
         try {
+            // Verify admin role before hard-delete — same guard as permanentDeletePassenger
+            const { data: roleData, error: roleError } = await supabase.rpc('get_my_role');
+            if (roleError) throw roleError;
+            if (roleData !== 'admin') {
+                throw new Error('Solo los administradores pueden eliminar pasajeros permanentemente');
+            }
+
             const { error: deleteError } = await supabase
                 .from('passengers')
                 .delete()
@@ -150,7 +185,19 @@ export const usePassengers = () => {
 
             if (deleteError) throw deleteError;
 
-            await fetchPassengers(); // Refresh list
+            // LOG AUDIT
+            const { data: authData } = await supabase.auth.getUser();
+            if (authData.user) {
+                await supabase.from('audit_log').insert({
+                    user_id: authData.user.id,
+                    action: 'DELETE_PASSENGER_HARD',
+                    entity_type: 'passengers',
+                    entity_id: id,
+                    details: { reason: 'hard delete' }
+                });
+            }
+
+            await fetchPassengers();
             return { error: null };
         } catch (err: any) {
             console.error('Error deleting passenger:', err);
@@ -166,6 +213,7 @@ export const usePassengers = () => {
         passengers,
         loading,
         error,
+        totalCount,
         refetch: fetchPassengers,
         createPassenger,
         updatePassenger,

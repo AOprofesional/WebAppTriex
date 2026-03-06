@@ -6,7 +6,7 @@ import { CreateNotificationModal } from '../../components/admin/CreateNotificati
 import { Pagination } from '../../components/Pagination';
 
 export const AdminCommunications: React.FC = () => {
-    const { notifications, loading, fetchAllNotifications } = useAdminNotifications();
+    const { notifications, loading, totalCount, fetchAllNotifications } = useAdminNotifications();
     const { settings: autoSettings, loading: settingsLoading, updateSetting } = useAutoNotificationSettings();
     const [filter, setFilter] = useState('all');
     const [showConfig, setShowConfig] = useState(false);
@@ -15,10 +15,16 @@ export const AdminCommunications: React.FC = () => {
     const ITEMS_PER_PAGE = 20;
 
     useEffect(() => {
-        fetchAllNotifications({
-            limit: 50,
+        fetchAllNotifications(currentPage, ITEMS_PER_PAGE, {
+            type: filter === 'all' || filter === 'unread' ? undefined : filter,
+            readStatus: filter === 'unread' ? 'unread' : 'all'
         });
-    }, []);
+    }, [currentPage, filter]);
+
+    // Reset page to 1 on filter change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filter]);
 
     const typeStyles: Record<string, { icon: string; bg: string }> = {
         success: { icon: 'check_circle', bg: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400' },
@@ -52,18 +58,17 @@ export const AdminCommunications: React.FC = () => {
     const handleModalClose = () => {
         setIsModalOpen(false);
         // Refresh notifications after modal closes
-        fetchAllNotifications({ limit: 50 });
+        fetchAllNotifications(currentPage, ITEMS_PER_PAGE, {
+            type: filter === 'all' || filter === 'unread' ? undefined : filter,
+            readStatus: filter === 'unread' ? 'unread' : 'all'
+        });
     };
 
-    // Filter and paginate notifications
-    const filteredNotifications = notifications.filter(n => {
-        if (filter === 'all') return true;
-        if (filter === 'unread') return !n.is_read;
-        return n.type === filter;
-    });
-
-    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-    const paginatedNotifications = filteredNotifications.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+    // Unused, filter is done DB side for main categories, 
+    // but calculating unreadCount might be tricky since we only have the paginated slice.
+    // However, the unread count in the DB could be useful if fetched separately, 
+    // for now we'll just show "Sin leer" as a filter option without a count 
+    // or rely on totalCount when filtered by unread.
 
     return (
         <div className="space-y-6">
@@ -75,8 +80,8 @@ export const AdminCommunications: React.FC = () => {
                         onChange={(e) => setFilter(e.target.value)}
                         className="px-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm"
                     >
-                        <option value="all">Todas ({notifications.length})</option>
-                        <option value="unread">Sin leer ({unreadCount})</option>
+                        <option value="all">Todas</option>
+                        <option value="unread">Sin leer</option>
                         <option value="success">Éxito</option>
                         <option value="warning">Advertencias</option>
                     </select>
@@ -187,12 +192,22 @@ export const AdminCommunications: React.FC = () => {
 
             {/* Pagination */}
             {!showConfig && (
-                <Pagination
-                    totalItems={filteredNotifications.length}
-                    itemsPerPage={ITEMS_PER_PAGE}
-                    currentPage={currentPage}
-                    onPageChange={setCurrentPage}
-                />
+                <div className="pt-2">
+                    <Pagination
+                        totalItems={totalCount}
+                        itemsPerPage={ITEMS_PER_PAGE}
+                        currentPage={currentPage}
+                        onPageChange={setCurrentPage}
+                    />
+                    <div className="flex justify-between items-center text-sm text-zinc-500 mt-4 px-2">
+                        <span>
+                            Mostrando <strong className="text-zinc-800 dark:text-zinc-200">{notifications.length}</strong> de <strong className="text-zinc-800 dark:text-zinc-200">{totalCount}</strong> notificaciones
+                        </span>
+                        <span>
+                            Última actualización: {new Date().toLocaleTimeString('es-AR')}
+                        </span>
+                    </div>
+                </div>
             )}
         </div>
     );

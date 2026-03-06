@@ -5,13 +5,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useConfirm } from '../../components/ConfirmDialog';
 import { TripStatusBadge } from '../../components/TripStatusBadge';
 import { TripFormModal } from '../../components/TripFormModal';
+import { Pagination } from '../../components/Pagination';
 import { calculateTripStatus } from '../../utils/dateUtils';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
 export const AdminTrips: React.FC = () => {
     const navigate = useNavigate();
-    const { trips, loading, error, fetchTrips, archiveTrip, restoreTrip, deleteTrip, duplicateTrip } = useTrips();
+    const { trips, loading, error, totalCount, fetchTrips, archiveTrip, restoreTrip, deleteTrip, duplicateTrip } = useTrips();
 
     const [isFormModalOpen, setIsFormModalOpen] = useState(false);
     const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
@@ -24,6 +25,9 @@ export const AdminTrips: React.FC = () => {
     const [filterEndDate, setFilterEndDate] = useState('');
 
     const [filterStatus, setFilterStatus] = useState<'active' | 'archived'>('active');
+
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 20;
 
     const [viewMode, setViewMode] = useState<'list' | 'grid'>(() => {
         return (localStorage.getItem('adminTripsViewMode') as 'list' | 'grid') || 'grid';
@@ -38,20 +42,28 @@ export const AdminTrips: React.FC = () => {
 
     // Apply filters whenever they change
     useEffect(() => {
-        const filters: any = {};
+        const timeoutId = setTimeout(() => {
+            const filters: any = {};
 
-        if (searchTerm) filters.searchTerm = searchTerm;
-        if (filterStatusCommercial !== 'all') filters.statusCommercial = filterStatusCommercial;
-        if (filterStatusOperational !== 'all') filters.statusOperational = filterStatusOperational;
-        if (filterBrandSub !== 'all') filters.brandSub = filterBrandSub;
-        if (filterStartDate) filters.startDate = filterStartDate;
-        if (filterEndDate) filters.endDate = filterEndDate;
+            if (searchTerm) filters.searchTerm = searchTerm;
+            if (filterStatusCommercial !== 'all') filters.statusCommercial = filterStatusCommercial;
+            if (filterStatusOperational !== 'all') filters.statusOperational = filterStatusOperational;
+            if (filterBrandSub !== 'all') filters.brandSub = filterBrandSub;
+            if (filterStartDate) filters.startDate = filterStartDate;
+            if (filterEndDate) filters.endDate = filterEndDate;
 
-        // Add Status filter
-        filters.status = filterStatus;
+            // Add Status filter
+            filters.status = filterStatus;
 
-        fetchTrips(Object.keys(filters).length > 0 ? filters : { status: filterStatus });
-    }, [searchTerm, filterStatusCommercial, filterStatusOperational, filterBrandSub, filterStartDate, filterEndDate, filterStatus, fetchTrips]);
+            fetchTrips(currentPage, ITEMS_PER_PAGE, Object.keys(filters).length > 0 ? filters : { status: filterStatus });
+        }, 300);
+        return () => clearTimeout(timeoutId);
+    }, [searchTerm, filterStatusCommercial, filterStatusOperational, filterBrandSub, filterStartDate, filterEndDate, filterStatus, currentPage, fetchTrips]);
+
+    // Reset pagination when search or filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, filterStatusCommercial, filterStatusOperational, filterBrandSub, filterStartDate, filterEndDate, filterStatus]);
 
     const { confirm } = useConfirm();
 
@@ -651,16 +663,24 @@ export const AdminTrips: React.FC = () => {
                 )}
             </div>
 
-            {/* Stats Footer */}
+            {/* Stats Footer & Pagination */}
             {
                 !loading && trips.length > 0 && (
-                    <div className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400 px-2">
-                        <span>
-                            Mostrando <strong className="text-triex-grey dark:text-white">{trips.length}</strong> viaje{trips.length !== 1 ? 's' : ''}
-                        </span>
-                        <span className="text-xs">
-                            Última actualización: {new Date().toLocaleTimeString('es-AR')}
-                        </span>
+                    <div className="space-y-4 px-2">
+                        <Pagination
+                            totalItems={totalCount}
+                            itemsPerPage={ITEMS_PER_PAGE}
+                            currentPage={currentPage}
+                            onPageChange={setCurrentPage}
+                        />
+                        <div className="flex items-center justify-between text-sm text-zinc-500 dark:text-zinc-400">
+                            <span>
+                                Mostrando <strong className="text-triex-grey dark:text-white">{trips.length}</strong> de {totalCount} viaje{totalCount !== 1 ? 's' : ''}
+                            </span>
+                            <span className="text-xs">
+                                Última actualización: {new Date().toLocaleTimeString('es-AR')}
+                            </span>
+                        </div>
                     </div>
                 )
             }

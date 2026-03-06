@@ -88,34 +88,50 @@ export const useDocuments = () => {
         try {
             setLoading(true);
 
-            // Get existing required_documents IDs before deletion
-            const { data: existingReqs } = await supabase
+            // -------------------------------------------------------
+            // DIFFERENTIAL UPSERT — preserves documents already uploaded
+            // -------------------------------------------------------
+
+            // 1. Fetch existing requirements for this trip
+            const { data: existingReqs, error: fetchExistingError } = await supabase
                 .from('required_documents')
-                .select('id')
+                .select('id, doc_type_id, is_required, description, due_date')
                 .eq('trip_id', tripId);
 
-            const existingReqIds = existingReqs?.map(r => r.id) || [];
+            if (fetchExistingError) throw fetchExistingError;
 
-            // Delete existing requirements
-            await supabase
-                .from('required_documents')
-                .delete()
-                .eq('trip_id', tripId);
+            const existing = existingReqs || [];
+            const existingIds = existing.map(r => r.id);
 
-            // Delete passenger_documents that referenced the deleted requirements
-            // This prevents duplicates when re-saving requirements
-            if (existingReqIds.length > 0) {
+            // Requirements coming from the UI that already have an `id` are kept/updated.
+            // Requirements without an `id` are new.
+            const incomingIds = requirements.map(r => (r as any).id).filter(Boolean) as string[];
+
+            // 2. Determine which existing requirements were REMOVED by the admin
+            const removedIds = existingIds.filter(id => !incomingIds.includes(id));
+
+            // 3. Delete ONLY the removed requirements AND their passenger_documents
+            //    (preserves documents for kept requirements)
+            if (removedIds.length > 0) {
+                // Delete passenger_documents only for removed requirement IDs
                 await supabase
                     .from('passenger_documents')
                     .delete()
-                    .in('required_document_id', existingReqIds)
+                    .in('required_document_id', removedIds)
                     .eq('trip_id', tripId);
+
+                // Delete the removed required_documents
+                await supabase
+                    .from('required_documents')
+                    .delete()
+                    .in('id', removedIds);
             }
 
+            // 4. Insert brand-new requirements (those without an id)
+            const newRequirements = requirements.filter(r => !(r as any).id);
 
-            // Insert new requirements
-            if (requirements.length > 0) {
-                const cleanRequirements = requirements.map(req => ({
+            if (newRequirements.length > 0) {
+                const cleanRequirements = newRequirements.map(req => ({
                     trip_id: tripId,
                     doc_type_id: req.doc_type_id,
                     is_required: req.is_required,
@@ -123,27 +139,26 @@ export const useDocuments = () => {
                     due_date: req.due_date
                 }));
 
-                const { data: insertedReqs, error } = await supabase
+                const { data: insertedReqs, error: insertError } = await supabase
                     .from('required_documents')
                     .insert(cleanRequirements)
                     .select();
 
-                if (error) throw error;
+                if (insertError) throw insertError;
 
-                // Get all passengers assigned to this trip
+                // 5. Create passenger_documents for each assigned passenger + each NEW requirement
                 const { data: tripPassengers } = await supabase
                     .from('trip_passengers')
-                    .select('passenger_id, passengers(user_id)')
+                    .select('passenger_id, passengers(profile_id)')
                     .eq('trip_id', tripId);
 
-                // Create passenger_documents for each passenger and each new requirement
                 if (tripPassengers && tripPassengers.length > 0 && insertedReqs) {
-                    const passengerDocuments = [];
-                    const userIds = [];
+                    const newPassengerDocuments: object[] = [];
+                    const userIds: string[] = [];
 
                     for (const tripPassenger of tripPassengers) {
                         for (const req of insertedReqs) {
-                            passengerDocuments.push({
+                            newPassengerDocuments.push({
                                 trip_id: tripId,
                                 passenger_id: tripPassenger.passenger_id,
                                 required_document_id: req.id,
@@ -151,23 +166,21 @@ export const useDocuments = () => {
                                 format: 'pdf'
                             });
                         }
-                        // Collect user IDs for notification
                         const passenger = tripPassenger.passengers as any;
-                        if (passenger?.user_id && !userIds.includes(passenger.user_id)) {
-                            userIds.push(passenger.user_id);
+                        if (passenger?.profile_id && !userIds.includes(passenger.profile_id)) {
+                            userIds.push(passenger.profile_id);
                         }
                     }
 
-                    if (passengerDocuments.length > 0) {
+                    if (newPassengerDocuments.length > 0) {
                         await supabase
                             .from('passenger_documents')
-                            .insert(passengerDocuments);
+                            .insert(newPassengerDocuments);
                     }
 
-                    // Send push notifications to passengers
+                    // Send push notifications only for truly new documents
                     if (userIds.length > 0 && await checkNotificationEnabled('document_assigned')) {
                         try {
-                            // Get trip info for notification
                             const { data: trip } = await supabase
                                 .from('trips')
                                 .select('name')
@@ -184,7 +197,7 @@ export const useDocuments = () => {
                                 }
                             });
                         } catch (notifError) {
-                            console.error('Error sending notification:', notifError);
+                            console.error('Error sending push notification:', notifError);
                         }
                     }
                 }
@@ -193,7 +206,7 @@ export const useDocuments = () => {
             await fetchRequiredDocuments(tripId);
             return { error: null };
         } catch (err: any) {
-            console.error('Error setting required documents:', err);
+            console.error('Error saving required documents:', err);
             return { error: err.message };
         } finally {
             setLoading(false);

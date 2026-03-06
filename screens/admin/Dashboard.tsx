@@ -81,12 +81,14 @@ const ActivityItem: React.FC<{
 
 import { CreatePassengerModal } from '../../components/CreatePassengerModal';
 import { VoucherFormModal } from '../../components/modals/VoucherFormModal';
+import { TripFormModal } from '../../components/TripFormModal';
 import { NotificationPermissionBanner } from '../../components/NotificationPermissionBanner';
 
 export const AdminDashboard: React.FC = () => {
     const navigate = useNavigate();
     const [isPassengerModalOpen, setIsPassengerModalOpen] = useState(false);
     const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+    const [isTripModalOpen, setIsTripModalOpen] = useState(false);
 
     const { stats, upcomingTrips, recentActivity, loading } = useDashboardData();
 
@@ -114,7 +116,7 @@ export const AdminDashboard: React.FC = () => {
 
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-3">
-                <QuickAction label="Crear viaje" icon="add" onClick={() => navigate('/admin/trips/new')} />
+                <QuickAction label="Crear viaje" icon="add" onClick={() => setIsTripModalOpen(true)} />
                 <QuickAction label="Crear pasajero" icon="person_add" onClick={() => setIsPassengerModalOpen(true)} />
                 <QuickAction label="Cargar voucher" icon="upload_file" onClick={() => setIsVoucherModalOpen(true)} />
             </div>
@@ -274,6 +276,10 @@ export const AdminDashboard: React.FC = () => {
                 isOpen={isVoucherModalOpen}
                 onClose={() => setIsVoucherModalOpen(false)}
                 onSuccess={() => setIsVoucherModalOpen(false)}
+            />
+            <TripFormModal
+                isOpen={isTripModalOpen}
+                onClose={() => setIsTripModalOpen(false)}
             />
         </div>
     );

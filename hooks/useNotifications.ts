@@ -26,20 +26,40 @@ export const useNotifications = () => {
         isFirstFetch.current = true;
         fetchNotifications();
 
-        // Usar ID aleatorio para evitar conflictos entre múltiples instancias del hook
-        const channelId = `notifications-${user.id}-${Math.random().toString(36).substring(7)}`;
-        const channel = supabase
-            .channel(channelId)
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'notifications' },
-                () => {
-                    isFirstFetch.current = false; // Background refresh — sin spinner
-                    fetchNotifications();
-                }
-            )
-            .subscribe();
+        // Resolve the passenger ID first, then subscribe to a filtered channel.
+        // This prevents re-fetches triggered by notifications of OTHER passengers.
+        let channel: ReturnType<typeof supabase.channel> | null = null;
 
-        return () => { supabase.removeChannel(channel); };
+        const setupChannel = async () => {
+            const { data: passengerData } = await supabase
+                .from('passengers')
+                .select('id')
+                .eq('profile_id', user.id)
+                .maybeSingle();
+
+            if (!passengerData?.id) return;
+
+            const channelId = `notifications-${user.id}-${Math.random().toString(36).substring(7)}`;
+            channel = supabase
+                .channel(channelId)
+                .on('postgres_changes',
+                    {
+                        event: '*',
+                        schema: 'public',
+                        table: 'notifications',
+                        filter: `passenger_id=eq.${passengerData.id}`,
+                    },
+                    () => {
+                        isFirstFetch.current = false;
+                        fetchNotifications();
+                    }
+                )
+                .subscribe();
+        };
+
+        setupChannel();
+
+        return () => { if (channel) supabase.removeChannel(channel); };
     }, [user?.id]);
 
     const fetchNotifications = async () => {

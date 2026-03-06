@@ -37,6 +37,7 @@ export const useAdminVouchers = () => {
     const [vouchers, setVouchers] = useState<AdminVoucher[]>([]);
     const [voucherTypes, setVoucherTypes] = useState<VoucherType[]>([]);
     const [loading, setLoading] = useState(false);
+    const [totalCount, setTotalCount] = useState(0);
 
     const fetchVoucherTypes = async () => {
         try {
@@ -55,13 +56,18 @@ export const useAdminVouchers = () => {
         }
     };
 
-    const fetchAllVouchers = async (filters?: {
-        typeId?: string;
-        format?: string;
-        tripId?: string;
-        passengerId?: string;
-        status?: string;
-    }) => {
+    const fetchAllVouchers = async (
+        page: number = 1,
+        pageSize: number = 15,
+        filters?: {
+            typeId?: string;
+            format?: string;
+            tripId?: string;
+            passengerId?: string;
+            status?: string;
+            searchTerm?: string;
+        }
+    ) => {
         try {
             setLoading(true);
             let query = supabase
@@ -71,8 +77,7 @@ export const useAdminVouchers = () => {
                     voucher_types(name),
                     trips(name, destination),
                     passengers(first_name, last_name)
-                `)
-                .order('created_at', { ascending: false });
+                `, { count: 'exact' });
 
             if (filters?.status) {
                 query = query.eq('status', filters.status);
@@ -85,10 +90,20 @@ export const useAdminVouchers = () => {
             if (filters?.tripId) query = query.eq('trip_id', filters.tripId);
             if (filters?.passengerId) query = query.eq('passenger_id', filters.passengerId);
 
-            const { data, error } = await query;
+            if (filters?.searchTerm) {
+                query = query.ilike('title', `%${filters.searchTerm}%`);
+            }
+
+            const from = (page - 1) * pageSize;
+            const to = from + pageSize - 1;
+
+            query = query.order('created_at', { ascending: false }).range(from, to);
+
+            const { data, count, error } = await query;
 
             if (error) throw error;
             setVouchers(data || []);
+            setTotalCount(count || 0);
             return { data, error: null };
         } catch (err: any) {
             console.error('Error fetching vouchers:', err);
@@ -345,6 +360,7 @@ export const useAdminVouchers = () => {
         vouchers,
         voucherTypes,
         loading,
+        totalCount,
         fetchVoucherTypes,
         fetchAllVouchers,
         createVoucher,

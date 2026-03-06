@@ -30,25 +30,28 @@ export const useAdminNotifications = () => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [totalCount, setTotalCount] = useState(0);
     const { sendEmail } = useEmailService();
 
     useEffect(() => {
         fetchAllNotifications();
     }, []);
 
-    const fetchAllNotifications = async (filters?: {
-        type?: string;
-        readStatus?: 'all' | 'read' | 'unread';
-        limit?: number;
-    }) => {
+    const fetchAllNotifications = async (
+        page: number = 1,
+        pageSize: number = 20,
+        filters?: {
+            type?: string;
+            readStatus?: 'all' | 'read' | 'unread';
+        }
+    ) => {
         try {
             setLoading(true);
             setError(null);
 
             let query = supabase
                 .from('notifications')
-                .select('*, passengers(first_name, last_name, email)')
-                .order('created_at', { ascending: false });
+                .select('*, passengers(first_name, last_name, email)', { count: 'exact' });
 
             if (filters?.type && filters.type !== 'all') {
                 query = query.eq('type', filters.type);
@@ -60,15 +63,17 @@ export const useAdminNotifications = () => {
                 query = query.eq('is_read', false);
             }
 
-            if (filters?.limit) {
-                query = query.limit(filters.limit);
-            }
+            const from = (page - 1) * pageSize;
+            const to = from + pageSize - 1;
 
-            const { data, error: fetchError } = await query;
+            query = query.order('created_at', { ascending: false }).range(from, to);
+
+            const { data, count, error: fetchError } = await query;
 
             if (fetchError) throw fetchError;
 
             setNotifications(data || []);
+            setTotalCount(count || 0);
             return { data, error: null };
         } catch (err: any) {
             setError(err.message);
@@ -256,6 +261,7 @@ export const useAdminNotifications = () => {
         notifications,
         loading,
         error,
+        totalCount,
         fetchAllNotifications,
         createNotification,
         createBulkNotifications,

@@ -12,28 +12,32 @@ export const useTrips = () => {
     const [trips, setTrips] = useState<Trip[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [totalCount, setTotalCount] = useState(0);
 
     useEffect(() => {
         fetchTrips();
     }, []);
 
-    const fetchTrips = useCallback(async (filters?: {
-        statusOperational?: string;
-        statusCommercial?: string;
-        brandSub?: string;
-        searchTerm?: string;
-        startDate?: string;
-        endDate?: string;
-        status?: 'active' | 'archived' | 'all';
-    }) => {
+    const fetchTrips = useCallback(async (
+        page: number = 1,
+        pageSize: number = 20,
+        filters?: {
+            statusOperational?: string;
+            statusCommercial?: string;
+            brandSub?: string;
+            searchTerm?: string;
+            startDate?: string;
+            endDate?: string;
+            status?: 'active' | 'archived' | 'all';
+        }
+    ) => {
         try {
             setLoading(true);
             setError(null);
 
             let query = supabase
                 .from('trips')
-                .select('*, trip_passengers(count)')
-                .order('start_date', { ascending: false });
+                .select('*, trip_passengers(count)', { count: 'exact' });
 
             // Status filter (active by default)
             const status = filters?.status || 'active';
@@ -42,12 +46,8 @@ export const useTrips = () => {
             } else if (status === 'archived') {
                 query = query.not('archived_at', 'is', null);
             }
-            // 'all' includes both (no filter on archived_at)
 
             if (filters) {
-                // REMOVED: status_operational database filter
-                // We'll filter by calculated status after fetching
-
                 if (filters.statusCommercial && filters.statusCommercial !== 'all') {
                     query = query.eq('status_commercial', filters.statusCommercial);
                 }
@@ -63,22 +63,39 @@ export const useTrips = () => {
                 if (filters.endDate) {
                     query = query.lte('end_date', filters.endDate);
                 }
+
+                // Operational Status Filtering (Server-side)
+                if (filters.statusOperational && filters.statusOperational !== 'all') {
+                    // We construct a simple date constraint based on today's start/end
+                    const nowStart = new Date();
+                    nowStart.setHours(0, 0, 0, 0);
+                    const nowStartISO = nowStart.toISOString();
+
+                    const nowEnd = new Date();
+                    nowEnd.setHours(23, 59, 59, 999);
+                    const nowEndISO = nowEnd.toISOString();
+
+                    if (filters.statusOperational === 'PREVIO') {
+                        query = query.gt('start_date', nowStartISO);
+                    } else if (filters.statusOperational === 'EN_CURSO') {
+                        query = query.lte('start_date', nowStartISO).gte('end_date', nowEndISO);
+                    } else if (filters.statusOperational === 'FINALIZADO') {
+                        query = query.lt('end_date', nowStartISO);
+                    }
+                }
             }
 
-            const { data, error: fetchError } = await query;
+            const from = (page - 1) * pageSize;
+            const to = from + pageSize - 1;
+
+            query = query.order('start_date', { ascending: false }).range(from, to);
+
+            const { data, count, error: fetchError } = await query;
 
             if (fetchError) throw fetchError;
 
-            // Filter by calculated status (client-side)
-            let filteredData = data || [];
-            if (filters?.statusOperational && filters.statusOperational !== 'all') {
-                filteredData = filteredData.filter(trip => {
-                    const calculatedStatus = calculateTripStatus(trip.start_date, trip.end_date);
-                    return calculatedStatus === filters.statusOperational;
-                });
-            }
-
-            setTrips(filteredData);
+            setTrips(data || []);
+            setTotalCount(count || 0);
         } catch (err: any) {
             setError(err.message);
             console.error('Error fetching trips:', err);
@@ -288,6 +305,7 @@ export const useTrips = () => {
         trips,
         loading,
         error,
+        totalCount,
         fetchTrips,
         createTrip,
         updateTrip,
