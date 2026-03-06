@@ -912,7 +912,7 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                                         {/* SECCIÓN 2: CONFIG. AVANZADA */}
                                         <div className="border-t border-zinc-200 dark:border-zinc-800 pt-8">
                                             <div className="space-y-6">
-                                                <h3 className="text-md font-bold text-triex-grey dark:text-white mb-4 flex items-center gap-2"><span className="material-symbols-outlined text-primary">contacts</span>Contactos del Viaje</h3>
+                                                <h3 className="text-md font-bold text-triex-grey dark:text-white mb-4 flex items-center gap-2"><span className="material-symbols-outlined text-primary">contacts</span>Contacto del Agente de Viaje</h3>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                     <div>
                                                         <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Nombre agente de ventas</label>
