@@ -48,7 +48,7 @@ interface TripFormModalProps {
     tripId?: string | null;
 }
 
-type TabType = 'general' | 'itinerary' | 'settings';
+type TabType = 'general' | 'itinerary' | 'passengers' | 'settings';
 
 export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, tripId }) => {
     const { createTrip, updateTrip, getTripById, assignPassengers } = useTrips();
@@ -579,6 +579,7 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
     const tabs = [
         { id: 'general', label: 'Info General', icon: 'info' },
         { id: 'itinerary', label: 'Itinerario', icon: 'list_alt' },
+        { id: 'passengers', label: 'Pasajeros', icon: 'group' },
         { id: 'settings', label: 'Configuración', icon: 'tune' },
     ] as const;
 
@@ -1009,58 +1010,70 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                                             </div>
                                         </div>
 
-                                        {/* SECCIÓN 3: PASAJEROS */}
-                                        <div className="border-t border-zinc-200 dark:border-zinc-800 pt-8">
-                                            <h3 className="text-md font-bold text-triex-grey dark:text-white mb-4 flex items-center gap-2"><span className="material-symbols-outlined text-primary">group</span>Asignación de Pasajeros</h3>
-                                            <div className="relative mb-4">
-                                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">search</span>
-                                                <input type="text" placeholder="Buscar pasajeros..." value={passengerSearch} onChange={(e) => setPassengerSearch(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                    </div>
+                                </div>
+
+                                {/* TAB 4: PASAJEROS */}
+                                <div className={activeTab === 'passengers' ? 'block' : 'hidden'}>
+                                    <div className="space-y-5">
+                                        <div className="flex items-center gap-3 mb-2">
+                                            <span className="material-symbols-outlined text-primary text-2xl">group</span>
+                                            <div>
+                                                <h3 className="text-base font-bold text-triex-grey dark:text-white">Asignación de Pasajeros</h3>
+                                                <p className="text-xs text-zinc-500 mt-0.5">Seleccioná los pasajeros que integran este viaje</p>
                                             </div>
-                                            <div className="mb-4 px-3 py-2 bg-primary/10 text-primary rounded-lg text-sm font-semibold">
-                                                {selectedPassengers.length} pasajero{selectedPassengers.length !== 1 ? 's' : ''} seleccionado{selectedPassengers.length !== 1 ? 's' : ''}
-                                            </div>
-                                            <div className="max-h-96 overflow-y-auto space-y-2 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800">
-                                                {filteredPassengers.length === 0 ? (
-                                                    <p className="text-center text-zinc-500 py-8">No se encontraron pasajeros</p>
-                                                ) : (
-                                                    filteredPassengers.map(passenger => {
-                                                        const passengerDocs = passengerDocuments.filter(pd => pd.passenger_id === passenger.id);
-                                                        const requiredDocs = requiredDocuments.filter(rd => rd.is_required);
-                                                        const isComplete = requiredDocs.length > 0 && requiredDocs.every(req => {
-                                                            const doc = passengerDocs.find(pd => pd.required_document_id === req.id);
-                                                            return doc && (doc.status === 'approved' || doc.status === 'uploaded');
-                                                        });
-                                                        const hasPending = passengerDocs.some(pd => pd.status === 'uploaded');
-                                                        const hasRejected = passengerDocs.some(pd => pd.status === 'rejected');
+                                        </div>
 
-                                                        let statusColor = 'text-zinc-400';
-                                                        let statusIcon = 'check_circle';
-                                                        let statusText = 'Sin datos';
+                                        <div className="relative">
+                                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">search</span>
+                                            <input type="text" placeholder="Buscar por nombre o email..." value={passengerSearch} onChange={(e) => setPassengerSearch(e.target.value)} className="w-full pl-10 pr-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                                        </div>
 
-                                                        if (requiredDocs.length === 0) { statusText = 'No requiere doc.'; }
-                                                        else if (isComplete) { statusColor = 'text-green-500'; statusText = 'Completo'; }
-                                                        else if (hasRejected) { statusColor = 'text-red-500'; statusIcon = 'error'; statusText = 'Rechazado'; }
-                                                        else if (hasPending) { statusColor = 'text-amber-500'; statusIcon = 'schedule'; statusText = 'Pendiente revisión'; }
-                                                        else { statusText = 'Incompleto'; }
+                                        <div className="px-3 py-2 bg-primary/10 text-primary rounded-lg text-sm font-semibold">
+                                            {selectedPassengers.length} pasajero{selectedPassengers.length !== 1 ? 's' : ''} seleccionado{selectedPassengers.length !== 1 ? 's' : ''}
+                                        </div>
 
-                                                        return (
-                                                            <label key={passenger.id} className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-900 rounded-lg cursor-pointer hover:bg-zinc-50 transition-colors">
-                                                                <input type="checkbox" checked={selectedPassengers.includes(passenger.id)} onChange={() => togglePassenger(passenger.id)} className="w-5 h-5 text-primary border-zinc-300 rounded focus:ring-2 focus:ring-primary/20" />
-                                                                <div className="flex-1">
-                                                                    <div className="font-semibold text-triex-grey dark:text-white text-sm">{passenger.first_name} {passenger.last_name}</div>
-                                                                    <div className="text-xs text-zinc-500">{passenger.email}</div>
+                                        <div className="max-h-[420px] overflow-y-auto space-y-2 border border-zinc-200 dark:border-zinc-700 rounded-xl p-3 bg-zinc-50 dark:bg-zinc-800">
+                                            {filteredPassengers.length === 0 ? (
+                                                <p className="text-center text-zinc-500 py-8">No se encontraron pasajeros</p>
+                                            ) : (
+                                                filteredPassengers.map(passenger => {
+                                                    const passengerDocs = passengerDocuments.filter(pd => pd.passenger_id === passenger.id);
+                                                    const requiredDocs = requiredDocuments.filter(rd => rd.is_required);
+                                                    const isComplete = requiredDocs.length > 0 && requiredDocs.every(req => {
+                                                        const doc = passengerDocs.find(pd => pd.required_document_id === req.id);
+                                                        return doc && (doc.status === 'approved' || doc.status === 'uploaded');
+                                                    });
+                                                    const hasPending = passengerDocs.some(pd => pd.status === 'uploaded');
+                                                    const hasRejected = passengerDocs.some(pd => pd.status === 'rejected');
+
+                                                    let statusColor = 'text-zinc-400';
+                                                    let statusIcon = 'check_circle';
+                                                    let statusText = 'Sin datos';
+
+                                                    if (requiredDocs.length === 0) { statusText = 'No requiere doc.'; }
+                                                    else if (isComplete) { statusColor = 'text-green-500'; statusText = 'Completo'; }
+                                                    else if (hasRejected) { statusColor = 'text-red-500'; statusIcon = 'error'; statusText = 'Rechazado'; }
+                                                    else if (hasPending) { statusColor = 'text-amber-500'; statusIcon = 'schedule'; statusText = 'Pendiente revisión'; }
+                                                    else { statusText = 'Incompleto'; }
+
+                                                    return (
+                                                        <label key={passenger.id} className="flex items-center gap-3 p-3 bg-white dark:bg-zinc-900 rounded-lg cursor-pointer hover:bg-zinc-50 transition-colors">
+                                                            <input type="checkbox" checked={selectedPassengers.includes(passenger.id)} onChange={() => togglePassenger(passenger.id)} className="w-5 h-5 text-primary border-zinc-300 rounded focus:ring-2 focus:ring-primary/20" />
+                                                            <div className="flex-1">
+                                                                <div className="font-semibold text-triex-grey dark:text-white text-sm">{passenger.first_name} {passenger.last_name}</div>
+                                                                <div className="text-xs text-zinc-500">{passenger.email}</div>
+                                                            </div>
+                                                            {tripId && selectedPassengers.includes(passenger.id) && (
+                                                                <div className={`flex items-center gap-1 text-xs font-semibold ${statusColor}`} title={statusText}>
+                                                                    <span className="material-symbols-outlined text-base">{statusIcon}</span>
+                                                                    <span className="hidden sm:inline">{statusText}</span>
                                                                 </div>
-                                                                {tripId && selectedPassengers.includes(passenger.id) && (
-                                                                    <div className={`flex items-center gap-1 text-xs font-semibold ${statusColor}`} title={statusText}>
-                                                                        <span className="material-symbols-outlined text-base">{statusIcon}</span>
-                                                                        <span className="hidden sm:inline">{statusText}</span>
-                                                                    </div>
-                                                                )}
-                                                            </label>
-                                                        );
-                                                    })
-                                                )}
-                                            </div>
+                                                            )}
+                                                        </label>
+                                                    );
+                                                })
+                                            )}
                                         </div>
                                     </div>
                                 </div>
