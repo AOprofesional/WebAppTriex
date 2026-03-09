@@ -36,13 +36,8 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
         )
 
-        const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
-        if (!user) {
-            return new Response(
-                JSON.stringify({ error: 'Unauthorized', details: userError?.message }),
-                { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-        }
+        // Try to get user, but don't fail if we can't (to support webhook callers)
+        const { data: { user } } = await supabaseClient.auth.getUser()
 
         const payload: PushPayload = await req.json()
 
@@ -65,7 +60,15 @@ serve(async (req) => {
         )
 
         // Get subscriptions
-        const targetUserIds = payload.userIds || (payload.userId ? [payload.userId] : [user.id])
+        const targetUserIds = payload.userIds || (payload.userId ? [payload.userId] : (user ? [user.id] : []))
+
+        if (targetUserIds.length === 0) {
+            return new Response(
+                JSON.stringify({ error: 'No target users specified and no authenticated user found' }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+        }
+
         const { data: subscriptions, error: subscriptionsError } = await supabaseAdmin
             .from('push_subscriptions')
             .select('*')
