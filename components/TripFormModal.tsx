@@ -10,6 +10,40 @@ import { uploadTripBanner, deleteTripBanner, validateImageFile } from '../utils/
 import { useToast } from './Toast';
 import { useConfirm } from './ConfirmDialog';
 
+const DayFieldInput = ({
+    initialValue,
+    placeholder,
+    type = 'text',
+    onSave,
+}: {
+    initialValue: string;
+    placeholder?: string;
+    type?: string;
+    onSave: (value: string) => void;
+}) => {
+    const [value, setValue] = useState(initialValue);
+
+    // Update local state if external initialValue changes (e.g. switching selected day)
+    useEffect(() => {
+        setValue(initialValue);
+    }, [initialValue]);
+
+    return (
+        <input
+            type={type}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onBlur={() => {
+                if (value !== initialValue) {
+                    onSave(value);
+                }
+            }}
+            className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+            placeholder={placeholder}
+        />
+    );
+};
+
 interface TripFormData {
     name: string;
     internal_code: string;
@@ -804,21 +838,18 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <div>
                                                             <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-1">Título del día (opcional)</label>
-                                                            <input
-                                                                type="text"
-                                                                value={days.find(d => d.id === selectedDayId)?.title || ''}
-                                                                onChange={(e) => updateDay(selectedDayId, { title: e.target.value })}
-                                                                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                            <DayFieldInput
+                                                                initialValue={days.find(d => d.id === selectedDayId)?.title || ''}
+                                                                onSave={(val) => updateDay(selectedDayId, { title: val })}
                                                                 placeholder="Ej: Llegada a Cancún"
                                                             />
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-1">Fecha (opcional)</label>
-                                                            <input
+                                                            <DayFieldInput
                                                                 type="date"
-                                                                value={days.find(d => d.id === selectedDayId)?.date || ''}
-                                                                onChange={(e) => updateDay(selectedDayId, { date: e.target.value })}
-                                                                className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                                initialValue={days.find(d => d.id === selectedDayId)?.date || ''}
+                                                                onSave={(val) => updateDay(selectedDayId, { date: val })}
                                                             />
                                                         </div>
                                                     </div>

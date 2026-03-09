@@ -288,30 +288,27 @@ export const Itinerary: React.FC = () => {
 
               {selectedActivity.meetingPoint && (
                 <div className="mb-8">
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-lg font-bold text-[#1F2937] dark:text-white">Punto de encuentro</h3>
+                  <h3 className="text-lg font-bold text-[#1F2937] dark:text-white mb-3">Punto de encuentro</h3>
+                  <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50 flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-full shadow-sm shrink-0 border border-zinc-100 dark:border-zinc-800">
+                        <span className="material-symbols-outlined text-[#F97316] font-fill">location_on</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[#1F2937] dark:text-zinc-200 leading-snug break-words">
+                          {selectedActivity.meetingPoint.name}
+                        </p>
+                      </div>
+                    </div>
                     <a
                       href={selectedActivity.meetingPoint.mapUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs font-bold text-[#F97316] hover:underline"
+                      className="shrink-0 w-full sm:w-auto px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-[#F97316] rounded-lg text-xs font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center sm:justify-start gap-1.5 shadow-sm"
                     >
-                      Ver en Google Maps
+                      <span className="material-symbols-outlined text-[16px]">map</span>
+                      Ver en mapa
                     </a>
-                  </div>
-                  <div className="rounded-2xl overflow-hidden border border-zinc-100 dark:border-zinc-800 relative h-44">
-                    <img alt="Meeting point map" className="w-full h-full object-cover" src={selectedActivity.meetingPoint.mapUrl} />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="bg-[#F97316] p-2 rounded-full shadow-lg text-white">
-                        <span className="material-symbols-outlined font-fill">location_on</span>
-                      </div>
-                    </div>
-                    <div className="absolute bottom-3 left-3 right-3 bg-white/95 dark:bg-zinc-800/95 p-3 rounded-xl shadow-sm border border-zinc-100 dark:border-zinc-800">
-                      <div className="flex items-center gap-2 text-xs font-medium text-[#1F2937] dark:text-zinc-300">
-                        <span className="material-symbols-outlined text-zinc-400 text-sm">apartment</span>
-                        <span>{selectedActivity.meetingPoint.name}</span>
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}
