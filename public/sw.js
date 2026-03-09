@@ -13,10 +13,10 @@ self.addEventListener('activate', (event) => {
 
 // Handle push events
 self.addEventListener('push', (event) => {
-    console.log('[Service Worker] Push received', event);
+    console.log('[Service Worker] Push received');
 
-    let notificationData = {
-        title: 'Triex',
+    let title = 'Triex';
+    let options = {
         body: 'Tienes una nueva notificación',
         icon: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/archivos-sistema/favicon-192.png',
         badge: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/archivos-sistema/favicon-192.png',
@@ -29,12 +29,16 @@ self.addEventListener('push', (event) => {
     if (event.data) {
         try {
             const payload = event.data.json();
-            notificationData = {
-                title: payload.title || notificationData.title,
-                body: payload.body || notificationData.body,
-                icon: payload.icon || notificationData.icon,
-                badge: payload.badge || notificationData.badge,
-                data: payload.data || notificationData.data,
+            console.log('[Service Worker] Push payload:', payload);
+
+            if (payload.title) title = payload.title;
+
+            options = {
+                ...options,
+                body: payload.body || options.body,
+                icon: payload.icon || options.icon,
+                badge: payload.badge || options.badge,
+                data: payload.data || options.data,
                 tag: payload.tag,
                 requireInteraction: payload.requireInteraction || false
             };
@@ -45,14 +49,7 @@ self.addEventListener('push', (event) => {
 
     // Show notification
     event.waitUntil(
-        self.registration.showNotification(notificationData.title, {
-            body: notificationData.body,
-            icon: notificationData.icon,
-            badge: notificationData.badge,
-            data: notificationData.data,
-            tag: notificationData.tag,
-            requireInteraction: notificationData.requireInteraction
-        })
+        self.registration.showNotification(title, options)
     );
 });
 
