@@ -107,6 +107,18 @@ export const AdminDocumentReview: React.FC = () => {
 
     const primaryDoc = selectedGroup[0] ?? null;
 
+    // Group documents by passenger and required document to avoid duplicate rows for front/back photos
+    const groupedDocuments = Array.from(
+        passengerDocuments.reduce((map: Map<string, any>, doc: any) => {
+            const key = `${doc.passenger_id}-${doc.required_document_id}`;
+            // Keep the most recent document status if there are multiple
+            if (!map.has(key)) {
+                map.set(key, doc);
+            }
+            return map;
+        }, new Map()).values()
+    );
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -181,13 +193,19 @@ export const AdminDocumentReview: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                                {passengerDocuments.map((doc: any) => (
+                                {groupedDocuments.map((doc: any) => (
                                     <tr key={doc.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors">
                                         <td className="px-6 py-4 text-sm text-zinc-700 dark:text-zinc-300">
                                             {doc.passengers?.first_name} {doc.passengers?.last_name}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-zinc-700 dark:text-zinc-300">
                                             {doc.required_documents?.document_types?.name}
+                                            {/* Show badge if there are multiple files for this requirement */}
+                                            {passengerDocuments.filter((d: any) => d.passenger_id === doc.passenger_id && d.required_document_id === doc.required_document_id).length > 1 && (
+                                                <span className="ml-2 inline-flex items-center justify-center bg-blue-100 text-blue-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                                    2 fotos
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${doc.status === 'approved' ? 'bg-green-50 text-green-600' :
