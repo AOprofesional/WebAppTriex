@@ -122,64 +122,123 @@ export const useDashboardData = () => {
                 totalPoints = 0;
             }
 
-            // Get recent document activity (last 10 actions)
-            const { data: recentDocs, error: recentActivityError } = await supabase
-                .from('passenger_documents')
-                .select(`
-                    id, 
-                    status, 
-                    updated_at, 
-                    passengers (first_name, last_name), 
-                    required_documents (
-                        document_types (name)
-                    )
-                `)
-                .in('status', ['uploaded', 'approved', 'rejected'])
-                .order('updated_at', { ascending: false })
-                .limit(10);
+            // Fetch recent activities from multiple sources
+            const [docsRes, passengersRes, vouchersRes] = await Promise.all([
+                supabase
+                    .from('passenger_documents')
+                    .select(`
+                        id, 
+                        status, 
+                        updated_at, 
+                        passengers (first_name, last_name), 
+                        required_documents (
+                            document_types (name)
+                        )
+                    `)
+                    .in('status', ['uploaded', 'approved', 'rejected'])
+                    .order('updated_at', { ascending: false })
+                    .limit(10),
+                supabase
+                    .from('passengers')
+                    .select('id, first_name, last_name, created_at')
+                    .order('created_at', { ascending: false })
+                    .limit(10),
+                supabase
+                    .from('vouchers')
+                    .select('id, title, passengers(first_name, last_name), created_at')
+                    .order('created_at', { ascending: false })
+                    .limit(10)
+            ]);
 
-            if (recentActivityError) {
-                console.error('Error fetching recent activity:', recentActivityError);
+            const activityItems: (RecentActivity & { rawDate: Date })[] = [];
+
+            // 1. Process Documents
+            if (docsRes.data) {
+                docsRes.data.forEach((doc: any) => {
+                    const passenger = doc.passengers;
+                    const passengerName = passenger
+                        ? `${passenger.first_name || ''} ${passenger.last_name || ''}`.trim()
+                        : 'Pasajero';
+                    const docType = doc.required_documents?.document_types?.name || 'Documento';
+                    const timeAgo = getTimeAgo(doc.updated_at);
+
+                    let item: RecentActivity & { rawDate: Date };
+
+                    if (doc.status === 'approved') {
+                        item = {
+                            id: doc.id,
+                            title: 'Documento aprobado',
+                            description: `${docType} - ${passengerName}`,
+                            time: timeAgo,
+                            icon: 'check_circle',
+                            iconBg: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400',
+                            rawDate: new Date(doc.updated_at)
+                        };
+                    } else if (doc.status === 'rejected') {
+                        item = {
+                            id: doc.id,
+                            title: 'Documento rechazado',
+                            description: `${docType} - ${passengerName}`,
+                            time: timeAgo,
+                            icon: 'cancel',
+                            iconBg: 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400',
+                            rawDate: new Date(doc.updated_at)
+                        };
+                    } else {
+                        item = {
+                            id: doc.id,
+                            title: 'Documento cargado',
+                            description: `${docType} - ${passengerName}`,
+                            time: timeAgo,
+                            icon: 'upload_file',
+                            iconBg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+                            rawDate: new Date(doc.updated_at)
+                        };
+                    }
+                    activityItems.push(item);
+                });
             }
 
-            // Map to activity items
-            const activity: RecentActivity[] = (recentDocs || []).map((doc: any) => {
-                const passenger = doc.passengers;
-                const passengerName = passenger
-                    ? `${passenger.first_name || ''} ${passenger.last_name || ''}`.trim()
-                    : 'Pasajero';
-                const docType = doc.required_documents?.document_types?.name || 'Documento';
-                const timeAgo = getTimeAgo(doc.updated_at);
+            // 2. Process New Passengers
+            if (passengersRes.data) {
+                passengersRes.data.forEach((p: any) => {
+                    const fullName = `${p.first_name || ''} ${p.last_name || ''}`.trim();
+                    activityItems.push({
+                        id: p.id,
+                        title: 'Nuevo pasajero registrado',
+                        description: fullName || 'Sin nombre',
+                        time: getTimeAgo(p.created_at),
+                        icon: 'person_add',
+                        iconBg: 'bg-orange-50 text-primary dark:bg-orange-900/30 dark:text-primary',
+                        rawDate: new Date(p.created_at)
+                    });
+                });
+            }
 
-                if (doc.status === 'approved') {
-                    return {
-                        id: doc.id,
-                        title: 'Documento aprobado',
-                        description: `${docType} - ${passengerName}`,
-                        time: timeAgo,
-                        icon: 'check_circle',
-                        iconBg: 'bg-green-50 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                    };
-                } else if (doc.status === 'rejected') {
-                    return {
-                        id: doc.id,
-                        title: 'Documento rechazado',
-                        description: `${docType} - ${passengerName}`,
-                        time: timeAgo,
-                        icon: 'cancel',
-                        iconBg: 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                    };
-                } else {
-                    return {
-                        id: doc.id,
-                        title: 'Documento cargado',
-                        description: `${docType} - ${passengerName}`,
-                        time: timeAgo,
-                        icon: 'upload_file',
-                        iconBg: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                    };
-                }
-            });
+            // 3. Process Vouchers
+            if (vouchersRes.data) {
+                vouchersRes.data.forEach((v: any) => {
+                    const passenger = v.passengers;
+                    const passengerName = passenger
+                        ? `${passenger.first_name || ''} ${passenger.last_name || ''}`.trim()
+                        : 'Pasajero';
+                    activityItems.push({
+                        id: v.id,
+                        title: 'Voucher cargado',
+                        description: `${v.title || 'Voucher'} - ${passengerName}`,
+                        time: getTimeAgo(v.created_at),
+                        icon: 'receipt_long',
+                        iconBg: 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+                        rawDate: new Date(v.created_at)
+                    });
+                });
+            }
+
+            // Sort all activities by date descending and take top 10
+            activityItems.sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
+
+            // Remove rawDate before setting state
+            const activity: RecentActivity[] = activityItems.slice(0, 10).map(({ rawDate, ...rest }) => rest);
 
             setStats({
                 activeTrips,
