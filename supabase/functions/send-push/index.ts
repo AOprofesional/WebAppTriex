@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { SignJWT } from 'https://deno.land/x/jose@v4.14.4/index.ts'
+import webpush from 'npm:web-push@3.6.7'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -18,55 +18,6 @@ interface PushPayload {
     url?: string
     tag?: string
     requireInteraction?: boolean
-}
-
-interface PushSubscription {
-    endpoint: string
-    p256dh: string
-    auth: string
-}
-
-// Convert base64url string to Uint8Array
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4)
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/')
-    const rawData = atob(base64)
-    const outputArray = new Uint8Array(rawData.length)
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i)
-    }
-    return outputArray
-}
-
-// Convert Uint8Array to base64url string (for JWK)
-function uint8ArrayToBase64Url(arr: Uint8Array): string {
-    return btoa(String.fromCharCode(...arr))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '')
-}
-
-// Import VAPID private key from base64url raw format to CryptoKey
-async function importVapidPrivateKey(publicKeyB64: string, privateKeyB64: string): Promise<CryptoKey> {
-    // VAPID public key is an uncompressed EC point: 0x04 | x (32 bytes) | y (32 bytes) = 65 bytes total
-    const publicKeyBytes = urlBase64ToUint8Array(publicKeyB64)
-    const privateKeyBytes = urlBase64ToUint8Array(privateKeyB64)
-
-    if (publicKeyBytes.length !== 65 || publicKeyBytes[0] !== 0x04) {
-        throw new Error(`Invalid VAPID public key length: ${publicKeyBytes.length}, expected 65 bytes starting with 0x04`)
-    }
-
-    const x = uint8ArrayToBase64Url(publicKeyBytes.slice(1, 33))
-    const y = uint8ArrayToBase64Url(publicKeyBytes.slice(33, 65))
-    const d = uint8ArrayToBase64Url(privateKeyBytes)
-
-    return await crypto.subtle.importKey(
-        'jwk',
-        { kty: 'EC', crv: 'P-256', x, y, d, ext: true },
-        { name: 'ECDSA', namedCurve: 'P-256' },
-        false,
-        ['sign']
-    )
 }
 
 serve(async (req) => {
@@ -107,8 +58,11 @@ serve(async (req) => {
         const vapidKeys = settings.value
         if (!vapidKeys?.publicKey || !vapidKeys?.privateKey) throw new Error('VAPID keys not configured')
 
-        // Import private key properly (fix for ECDSA P-256)
-        const privateKey = await importVapidPrivateKey(vapidKeys.publicKey, vapidKeys.privateKey)
+        webpush.setVapidDetails(
+            'mailto:no_reply@triexviajes.com.ar',
+            vapidKeys.publicKey,
+            vapidKeys.privateKey
+        )
 
         // Get subscriptions
         const targetUserIds = payload.userIds || (payload.userId ? [payload.userId] : [user.id])
@@ -138,46 +92,28 @@ serve(async (req) => {
         }
 
         const results = await Promise.allSettled(
-            subscriptions.map(async (sub: PushSubscription) => {
+            subscriptions.map(async (sub) => {
                 try {
-                    const url = new URL(sub.endpoint)
-                    const audience = `${url.protocol}//${url.host}`
-
-                    const jwt = await new SignJWT({
-                        aud: audience,
-                        sub: 'mailto:no_reply@triexviajes.com.ar'
-                    })
-                        .setProtectedHeader({ typ: 'JWT', alg: 'ES256' })
-                        .setIssuedAt()
-                        .setExpirationTime('12h')
-                        .sign(privateKey)
-
-                    const vapidAuthHeader = `vapid t=${jwt}, k=${vapidKeys.publicKey}`
-
-                    const response = await fetch(sub.endpoint, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': vapidAuthHeader,
-                            'Content-Type': 'application/json',
-                            'TTL': '86400',
-                        },
-                        body: JSON.stringify(notificationData)
-                    })
-
-                    const responseText = await response.text()
-                    console.log(`Push HTTP ${response.status}: ${responseText}`)
-
-                    if (!response.ok) {
-                        if (response.status === 410 || response.status === 404) {
-                            await supabaseAdmin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
-                            console.log('Removed expired subscription')
+                    const pushSubscription = {
+                        endpoint: sub.endpoint,
+                        keys: {
+                            p256dh: sub.p256dh,
+                            auth: sub.auth
                         }
-                        throw new Error(`Push service: ${response.status} - ${responseText}`)
                     }
+
+                    await webpush.sendNotification(
+                        pushSubscription,
+                        JSON.stringify(notificationData)
+                    )
 
                     return { success: true, endpoint: sub.endpoint }
                 } catch (error: any) {
-                    console.error('Push failed:', error.message)
+                    console.error('Push failed:', error.message || error.body)
+                    if (error.statusCode === 410 || error.statusCode === 404) {
+                        await supabaseAdmin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint)
+                        console.log('Removed expired subscription')
+                    }
                     return { success: false, endpoint: sub.endpoint, error: error.message }
                 }
             })
