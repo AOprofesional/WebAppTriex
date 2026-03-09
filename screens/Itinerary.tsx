@@ -39,7 +39,7 @@ export const Itinerary: React.FC = () => {
     instructions: item.instructions_text ? [item.instructions_text] : [],
     meetingPoint: item.location_name ? {
       name: item.location_name,
-      mapUrl: item.location_detail || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location_name)}`
+      mapUrl: item.location_detail || undefined
     } : undefined
   }));
 
@@ -300,15 +300,17 @@ export const Itinerary: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                    <a
-                      href={selectedActivity.meetingPoint.mapUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="shrink-0 w-full sm:w-auto px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-[#F97316] rounded-lg text-xs font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center sm:justify-start gap-1.5 shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-[16px]">map</span>
-                      Ver en mapa
-                    </a>
+                    {selectedActivity.meetingPoint.mapUrl && (
+                      <a
+                        href={selectedActivity.meetingPoint.mapUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0 w-full sm:w-auto px-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-[#F97316] rounded-lg text-xs font-bold hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center sm:justify-start gap-1.5 shadow-sm"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">map</span>
+                        Ver en mapa
+                      </a>
+                    )}
                   </div>
                 </div>
               )}

@@ -12,7 +12,7 @@ export interface Activity {
   instructions?: string[];
   meetingPoint?: {
     name: string;
-    mapUrl: string;
+    mapUrl?: string; // Made optional
   };
 }
 
