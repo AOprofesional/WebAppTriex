@@ -17,22 +17,7 @@ export const Notifications: React.FC = () => {
   const { redemptionHistory, pointsHistory } = useOrangePass(passenger?.id);
   const [selectedNotification, setSelectedNotification] = React.useState<any | null>(null);
 
-  // Marcar todas como leídas cuando el usuario realmente SALE de la pantalla.
-  // Usamos un timer cancelable para evitar que React StrictMode dispare markAllAsRead
-  // al montar/desmontar en desarrollo (StrictMode remonta en < 50ms, una navegación real tarda más).
-  const cleanupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    // Cancelar cualquier timer pendiente del ciclo anterior (StrictMode remount)
-    if (cleanupTimer.current) {
-      clearTimeout(cleanupTimer.current);
-      cleanupTimer.current = null;
-    }
-    return () => {
-      cleanupTimer.current = setTimeout(() => {
-        markAllAsRead();
-      }, 300); // 300ms: suficiente para StrictMode pero inmediato para el usuario
-    };
-  }, []);
+  // The user needs to manually select each notification to mark it as read
 
   // Group notifications by date
   const groupedNotifications = React.useMemo(() => {
