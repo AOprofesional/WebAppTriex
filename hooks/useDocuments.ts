@@ -192,7 +192,7 @@ export const useDocuments = () => {
                                     userIds,
                                     title: '📄 Nuevos documentos requeridos',
                                     body: `Se han asignado ${insertedReqs.length} documento(s) para ${trip?.name || 'tu viaje'}`,
-                                    url: '/my-documents',
+                                    url: '/#/my-documents',
                                     tag: 'document-required'
                                 }
                             });
@@ -435,7 +435,7 @@ export const useDocuments = () => {
                                     userId: passenger.user_id,
                                     title: pushTitle,
                                     body: pushBody,
-                                    url: '/my-documents',
+                                    url: '/#/my-documents',
                                     tag: `document-${status}`,
                                     requireInteraction: status === 'rejected' // Keep rejected notifications visible
                                 }

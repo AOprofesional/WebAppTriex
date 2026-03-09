@@ -89,7 +89,7 @@ serve(async (req) => {
             body: payload.body,
             icon: payload.icon || ICON_URL,
             badge: ICON_URL,
-            data: { url: payload.url || '/' },
+            data: { url: payload.url || '/#/' },
             tag: payload.tag,
             requireInteraction: payload.requireInteraction || false,
         }

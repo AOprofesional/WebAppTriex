@@ -123,7 +123,7 @@ export const useAdminNotifications = () => {
                             userId: passenger.profile_id,
                             title: params.title,
                             body: params.message,
-                            url: '/notificaciones',
+                            url: '/#/notifications',
                         },
                     }).catch((pushErr) => console.warn('Push no enviado (notificación creada igual):', pushErr));
                 }
@@ -194,7 +194,7 @@ export const useAdminNotifications = () => {
                             userIds: profileIds,
                             title: params.title,
                             body: params.message,
-                            url: '/notificaciones',
+                            url: '/#/notifications',
                         },
                     }).catch((pushErr) => console.warn('Push masivo no enviado:', pushErr));
                 }
