@@ -145,7 +145,7 @@ serve(async (req) => {
             const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
                 payload.email,
                 {
-                    redirectTo: `${req.headers.get('origin') || 'http://localhost:3000'}/update-password`
+                    redirectTo: `${req.headers.get('origin') || 'http://localhost:3000'}/#/update-password`
                 }
             )
             if (resetError) {

@@ -48,7 +48,7 @@ export const useCreatePassengerWithInvite = () => {
             const { error: inviteError } = await supabase.auth.signInWithOtp({
                 email: data.email,
                 options: {
-                    emailRedirectTo: window.location.origin,
+                    emailRedirectTo: `${window.location.origin}/#/auth/callback`,
                     data: {
                         passenger_id: passenger.id,
                         invited_by: 'admin'
