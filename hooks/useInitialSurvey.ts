@@ -1,76 +1,78 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Json } from '../types/database.types';
 
-export interface SurveyData {
-    rating_general: number;
-    destination_expectation: string;
-    services_ratings: Record<string, number | 'N/A'>;
-    had_incident: boolean;
-    incident_comment?: string;
-    would_buy_again: string;
+export interface InitialSurveyData {
+    rating_attention: number;
+    info_clear: 'Sí' | 'Parcialmente' | 'No';
+    understood_needs: 'Sí totalmente' | 'Más o menos' | 'No';
+    booking_ease: number;
+    nps: number;
+    comment?: string;
 }
 
-export interface ExistingSurvey {
+export interface ExistingInitialSurvey {
     id: string;
-    rating_general: number | null;
+    nps: number;
+    rating_attention: number;
+    info_clear: string;
+    understood_needs: string;
+    booking_ease: number;
+    comment: string | null;
     responded_at: string;
 }
 
-export const useSurvey = (tripId: string | null, passengerId: string | null) => {
-    const [existingSurvey, setExistingSurvey] = useState<ExistingSurvey | null>(null);
+export const useInitialSurvey = (passengerId: string | null) => {
+    const [existingSurvey, setExistingSurvey] = useState<ExistingInitialSurvey | null>(null);
     const [loading, setLoading] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (tripId && passengerId) {
+        if (passengerId) {
             checkExistingSurvey();
         }
-    }, [tripId, passengerId]);
+    }, [passengerId]);
 
     const checkExistingSurvey = async () => {
-        if (!tripId || !passengerId) return;
+        if (!passengerId) return;
         try {
             setLoading(true);
             const { data, error: err } = await supabase
-                .from('trip_surveys')
-                .select('id, rating_general, responded_at')
-                .eq('trip_id', tripId)
+                .from('initial_surveys')
+                .select('*')
                 .eq('passenger_id', passengerId)
                 .maybeSingle();
 
             if (err) throw err;
             setExistingSurvey(data ?? null);
         } catch (err: any) {
-            console.error('Error checking survey:', err);
+            console.error('Error checking initial survey:', err);
         } finally {
             setLoading(false);
         }
     };
 
-    const submitSurvey = async (data: SurveyData): Promise<boolean> => {
-        if (!tripId || !passengerId) return false;
+    const submitSurvey = async (data: InitialSurveyData): Promise<boolean> => {
+        if (!passengerId) return false;
         try {
             setSubmitting(true);
             setError(null);
 
             const { error: insertError } = await supabase
-                .from('trip_surveys')
+                .from('initial_surveys')
                 .insert({
-                    trip_id: tripId,
                     passenger_id: passengerId,
-                    rating_general: data.rating_general,
-                    destination_expectation: data.destination_expectation,
-                    services_ratings: data.services_ratings as Json,
-                    had_incident: data.had_incident,
-                    incident_comment: data.incident_comment?.trim() || null,
-                    would_buy_again: data.would_buy_again,
+                    rating_attention: data.rating_attention,
+                    info_clear: data.info_clear,
+                    understood_needs: data.understood_needs,
+                    booking_ease: data.booking_ease,
+                    nps: data.nps,
+                    comment: data.comment?.trim() || null,
                 });
 
             if (insertError) {
                 if (insertError.code === '23505' || (insertError as any).status === 409) {
-                    throw new Error('Ya has enviado una encuesta para este viaje.');
+                    throw new Error('Ya has enviado una encuesta inicial.');
                 }
                 throw insertError;
             }
@@ -79,7 +81,7 @@ export const useSurvey = (tripId: string | null, passengerId: string | null) => 
             await checkExistingSurvey();
             return true;
         } catch (err: any) {
-            console.error('Error submitting survey:', err);
+            console.error('Error submitting initial survey:', err);
             setError(err.message || 'No se pudo enviar la encuesta. Intente de nuevo.');
             return false;
         } finally {

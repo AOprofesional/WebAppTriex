@@ -1028,32 +1028,50 @@ export type Database = {
         Row: {
           comment: string | null
           id: string
-          nps: number
+          nps: number | null
           passenger_id: string
-          rating_attention: number
-          rating_organization: number
+          rating_attention: number | null
+          rating_organization: number | null
           responded_at: string
           trip_id: string
+          rating_general: number | null
+          destination_expectation: string | null
+          services_ratings: Json | null
+          had_incident: boolean | null
+          incident_comment: string | null
+          would_buy_again: string | null
         }
         Insert: {
           comment?: string | null
           id?: string
-          nps: number
+          nps?: number | null
           passenger_id: string
-          rating_attention: number
-          rating_organization: number
+          rating_attention?: number | null
+          rating_organization?: number | null
           responded_at?: string
           trip_id: string
+          rating_general?: number | null
+          destination_expectation?: string | null
+          services_ratings?: Json | null
+          had_incident?: boolean | null
+          incident_comment?: string | null
+          would_buy_again?: string | null
         }
         Update: {
           comment?: string | null
           id?: string
-          nps?: number
+          nps?: number | null
           passenger_id?: string
-          rating_attention?: number
-          rating_organization?: number
+          rating_attention?: number | null
+          rating_organization?: number | null
           responded_at?: string
           trip_id?: string
+          rating_general?: number | null
+          destination_expectation?: string | null
+          services_ratings?: Json | null
+          had_incident?: boolean | null
+          incident_comment?: string | null
+          would_buy_again?: string | null
         }
         Relationships: [
           {

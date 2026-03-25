@@ -34,6 +34,7 @@ import { useNotifications } from './hooks/useNotifications';
 import { ArchivedAccountScreen } from './screens/ArchivedAccount';
 import { NotificationListener } from './components/NotificationListener';
 import { InstallAppBanner } from './components/InstallAppBanner';
+import { GlobalSurveyWrapper } from './components/GlobalSurveyWrapper';
 
 // Admin imports
 import { AdminLayout } from './screens/admin/AdminLayout';
@@ -143,6 +144,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
         {/* PWA Install Banner - shows only when app can be installed */}
         {showNav && <InstallAppBanner />}
+
+        {/* Global pre-trip survey */}
+        <GlobalSurveyWrapper />
 
         {/* Create Password Modal - Only for Magic Link users */}
         <CreatePasswordModal
