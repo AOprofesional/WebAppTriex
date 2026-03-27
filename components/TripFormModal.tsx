@@ -946,15 +946,15 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                                                 <h3 className="text-md font-bold text-triex-grey dark:text-white mb-4 flex items-center gap-2"><span className="material-symbols-outlined text-primary">contacts</span>Contacto del Agente de Viaje</h3>
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                     <div>
-                                                        <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Nombre agente de ventas</label>
+                                                        <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Nombre contacto de ventas</label>
                                                         <input type="text" value={formData.coordinator_name} onChange={(e) => handleInputChange('coordinator_name', e.target.value)} className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="Juan Pérez" />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Teléfono agente de ventas</label>
+                                                        <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Teléfono contacto de ventas</label>
                                                         <input type="tel" value={formData.coordinator_phone} onChange={(e) => handleInputChange('coordinator_phone', e.target.value)} className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="+54 9 11 1234-5678" />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Email agente de ventas</label>
+                                                        <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Email contacto de ventas</label>
                                                         <input type="email" value={formData.coordinator_email} onChange={(e) => handleInputChange('coordinator_email', e.target.value)} className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" placeholder="agente@triex.com" />
                                                     </div>
                                                     <div>
@@ -986,7 +986,7 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Título *</label>
-                                                                    <input type="text" value={formData.next_step_title_override} onChange={(e) => handleInputChange('next_step_title_override', e.target.value)} className={`w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border ${errors.next_step_title_override ? 'border-red-500' : 'border-zinc-200 dark:border-zinc-700'} rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary`} placeholder="Urgente: Contactar agente de ventas" />
+                                                                    <input type="text" value={formData.next_step_title_override} onChange={(e) => handleInputChange('next_step_title_override', e.target.value)} className={`w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border ${errors.next_step_title_override ? 'border-red-500' : 'border-zinc-200 dark:border-zinc-700'} rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary`} placeholder="Urgente: Contactar con Equipo" />
                                                                     {errors.next_step_title_override && <p className="mt-1 text-sm text-red-500">{errors.next_step_title_override}</p>}
                                                                 </div>
                                                             </div>

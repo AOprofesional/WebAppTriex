@@ -150,7 +150,7 @@ export const EditPersonalInfo: React.FC = () => {
                                     onClick={() => setShowContactModal(true)}
                                     className="underline font-semibold hover:text-blue-800 dark:hover:text-blue-200 transition-colors inline"
                                 >
-                                    Contactá a tu agente de ventas
+                                    Contactar con Equipo
                                 </button>
                                 {' '}si necesitás cambiarlo.
                             </p>

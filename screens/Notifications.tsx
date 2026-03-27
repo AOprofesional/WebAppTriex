@@ -237,7 +237,7 @@ export const Notifications: React.FC = () => {
           className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all"
         >
           <span className="material-symbols-outlined text-2xl">support_agent</span>
-          Contactar agente de ventas
+          Contactar con Equipo
         </button>
       </div>
 

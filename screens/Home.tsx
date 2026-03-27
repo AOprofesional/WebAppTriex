@@ -153,7 +153,7 @@ export const Home: React.FC = () => {
                 onClick={() => setShowContactModal(true)}
                 className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors"
               >
-                <span className="underline decoration-zinc-300 dark:decoration-zinc-600 underline-offset-4 font-bold">Contactá a tu agente de ventas</span> para más información
+                <span className="underline decoration-zinc-300 dark:decoration-zinc-600 underline-offset-4 font-bold">Contactar con Equipo</span> para más información
               </button>
             </div>
           )}

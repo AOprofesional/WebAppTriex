@@ -9,14 +9,14 @@ export interface SalesAgent {
 }
 
 const SALES_AGENTS: SalesAgent[] = [
-  { id: '1', name: 'Agostina Melica', role: 'Administración', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/AGOSTINA%20MELICA%20ADMINISTRACION.jpg' },
+  { id: '1', name: 'Agostina Melica', role: 'Administración', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/AGOSTINA%20MELICA%20ADMINISTRACION.jpg', phone: '5492612455808' },
   { id: '2', name: 'Benjamín Arrojo', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/BENJAMIN%20ARROJO%20VENTAS.jpg' },
   { id: '3', name: 'Celeste Garro', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/CELESTE%20GARRO%20VENTAS.jpg' },
-  { id: '4', name: 'Eliana Rivero', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/ELIANA%20RIVERO%20VENTAS.jpg' },
-  { id: '5', name: 'Florencia Benavides', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/FLORENCIA%20BENAVIDES%20VENTAS.jpg' },
-  { id: '6', name: 'Hugo Fisigaro', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/HUGO%20FISIGARO%20VENTAS.jpg' },
-  { id: '7', name: 'Nicolás Cozzani', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/NICOLAS%20COZZANI%20VENTAS.jpg' },
-  { id: '8', name: 'Victoria Amaya', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/VICTORIA%20AMAYA%20VENTAS.jpg' },
+  { id: '4', name: 'Eliana Rivero', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/ELIANA%20RIVERO%20VENTAS.jpg', phone: '5492612469416' },
+  { id: '5', name: 'Florencia Benavides', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/FLORENCIA%20BENAVIDES%20VENTAS.jpg', phone: '5492613378514' },
+  { id: '6', name: 'Hugo Fisigaro', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/HUGO%20FISIGARO%20VENTAS.jpg', phone: '5492613343492' },
+  { id: '7', name: 'Nicolás Cozzani', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/NICOLAS%20COZZANI%20VENTAS.jpg', phone: '5492613460978' },
+  { id: '8', name: 'Victoria Amaya', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/VICTORIA%20AMAYA%20VENTAS.jpg', phone: '5492616569000' },
 ];
 
 interface SalesTeamModalProps {

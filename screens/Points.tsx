@@ -175,9 +175,9 @@ export const Points: React.FC = () => {
               <span className="material-symbols-outlined text-orange-500">share</span>
               Tu Código de Referido
             </h2>
-            <div className="flex items-center gap-4">
-              <div className="flex-1 bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4 border-2 border-dashed border-orange-300 dark:border-orange-700">
-                <p className="text-3xl font-bold text-center text-orange-600 dark:text-orange-400 tracking-widest font-mono">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+              <div className="flex-1 bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4 border-2 border-dashed border-orange-300 dark:border-orange-700 flex items-center justify-center">
+                <p className="text-2xl sm:text-3xl font-bold text-center text-orange-600 dark:text-orange-400 tracking-widest font-mono">
                   {passenger.orange_referral_code}
                 </p>
               </div>
@@ -186,7 +186,7 @@ export const Points: React.FC = () => {
                   navigator.clipboard.writeText(passenger.orange_referral_code || '');
                   toast.success('Código copiado', 'Tu código de referido ha sido copiado al portapapeles.');
                 }}
-                className="px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold transition-colors flex items-center gap-2"
+                className="w-full sm:w-auto px-6 py-4 sm:py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined">content_copy</span>
                 Copiar

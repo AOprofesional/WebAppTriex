@@ -104,7 +104,7 @@ export const MyTrip: React.FC = () => {
             onClick={() => setShowContactModal(true)}
             className="text-zinc-500 dark:text-zinc-400 mb-8 hover:text-zinc-800 dark:hover:text-white transition-colors block mx-auto underline decoration-zinc-300 dark:decoration-zinc-600 underline-offset-4 font-bold"
           >
-            Contactá a tu agente de ventas para más información
+            Contactar con Equipo para más información
           </button>
           <button
             onClick={() => navigate('/')}
@@ -278,7 +278,7 @@ export const MyTrip: React.FC = () => {
           <div className="bg-white dark:bg-zinc-900 rounded-[32px] p-7 shadow-sm border border-zinc-100 dark:border-zinc-800">
             <h3 className="text-[20px] font-extrabold text-triex-grey dark:text-white mb-5 flex items-center gap-3">
               <span className="material-symbols-outlined text-[26px]">contact_phone</span>
-              Agente de Ventas
+              Contacto
             </h3>
             <div className="space-y-3">
               {trip.coordinator_name && (
@@ -295,7 +295,7 @@ export const MyTrip: React.FC = () => {
                   <a
                     href={`tel:${trip.coordinator_phone}`}
                     className="text-[15px] font-semibold text-[#E0592A] hover:underline"
-                    aria-label={`Llamar al agente de ventas al ${trip.coordinator_phone}`}
+                    aria-label={`Llamar al contacto al ${trip.coordinator_phone}`}
                   >
                     {trip.coordinator_phone}
                   </a>
@@ -307,7 +307,7 @@ export const MyTrip: React.FC = () => {
                   <a
                     href={`mailto:${trip.coordinator_email}`}
                     className="text-[15px] font-semibold text-[#E0592A] hover:underline"
-                    aria-label={`Enviar email al agente de ventas a ${trip.coordinator_email}`}
+                    aria-label={`Enviar email al contacto a ${trip.coordinator_email}`}
                   >
                     {trip.coordinator_email}
                   </a>
