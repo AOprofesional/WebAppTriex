@@ -63,17 +63,29 @@ serve(async (req) => {
     }
 
     try {
-        // Verificar autenticación del usuario
-        const supabaseClient = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-            { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-        )
+        const authHeader = req.headers.get('Authorization')
+        let isAuthorized = false;
+        let authError = 'Unauthorized';
 
-        const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
-        if (!user) {
+        if (authHeader === `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`) {
+            isAuthorized = true;
+        } else {
+            const supabaseClient = createClient(
+                Deno.env.get('SUPABASE_URL') ?? '',
+                Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+                { global: { headers: { Authorization: authHeader || '' } } }
+            )
+            const { data: { user }, error: userError } = await supabaseClient.auth.getUser()
+            if (user) {
+                isAuthorized = true;
+            } else {
+                authError = userError?.message || 'Unauthorized';
+            }
+        }
+
+        if (!isAuthorized) {
             return new Response(
-                JSON.stringify({ error: 'Unauthorized', details: userError?.message }),
+                JSON.stringify({ error: authError }),
                 { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }

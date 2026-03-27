@@ -157,20 +157,7 @@ export const useAdminNotifications = () => {
                 }
             }
 
-            // Enviar email (no bloqueante)
-            if (passenger?.email) {
-                const html = buildGenericEmailHtml({
-                    firstName: passenger.first_name || 'Pasajero',
-                    title: params.title,
-                    message: params.message,
-                    type: params.type,
-                });
-                sendEmail({
-                    to: passenger.email,
-                    subject: params.title,
-                    html,
-                }).catch((emailErr) => console.warn('Email no enviado (notificación creada igual):', emailErr));
-            }
+
 
             await fetchAllNotifications();
             return { data, error: null };
@@ -227,22 +214,7 @@ export const useAdminNotifications = () => {
                     }).catch((pushErr) => console.warn('Push masivo no enviado:', pushErr));
                 }
 
-                // Enviar email a cada pasajero (no bloqueante)
-                passengers.forEach((passenger) => {
-                    if (passenger.email) {
-                        const html = buildGenericEmailHtml({
-                            firstName: passenger.first_name || 'Pasajero',
-                            title: params.title,
-                            message: params.message,
-                            type: params.type,
-                        });
-                        sendEmail({
-                            to: passenger.email,
-                            subject: params.title,
-                            html,
-                        }).catch((emailErr) => console.warn('Email no enviado para', passenger.email, emailErr));
-                    }
-                });
+
             }
 
             await fetchAllNotifications();

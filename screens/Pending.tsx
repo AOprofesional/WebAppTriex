@@ -29,7 +29,7 @@ export const Pending: React.FC = () => {
 
                 <div className="space-y-3">
                     <a
-                        href="https://wa.me/5491112345678?text=Hola,%20necesito%20ayuda%20con%20mi%20cuenta%20TRIEX"
+                        href="https://wa.me/5492615908839?text=Hola,%20necesito%20ayuda%20con%20mi%20cuenta%20TRIEX"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-all shadow-md hover:shadow-lg"

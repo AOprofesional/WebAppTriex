@@ -31,7 +31,7 @@ export const SalesTeamModal: React.FC<SalesTeamModalProps> = ({ isOpen, onClose,
   const handleWhatsApp = (agent: SalesAgent) => {
     // If we have a specific coordinator phone we could use it, but they want to contact the specific agent.
     // If agent phone is missing, fallback to coordinatorPhone or a default.
-    const phone = agent.phone || coordinatorPhone?.replace(/\D/g, '') || '5491123456789';
+    const phone = agent.phone || coordinatorPhone?.replace(/\D/g, '') || '5492615908839';
     window.open(`https://wa.me/${phone}?text=Hola%20${encodeURIComponent(agent.name)},%20necesito%20ayuda%20con%20mi%20viaje`, '_blank');
     onClose();
   };

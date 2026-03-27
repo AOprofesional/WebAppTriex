@@ -64,7 +64,7 @@ export const AuthCallback: React.FC = () => {
 
                     <div className="space-y-3">
                         <a
-                            href="https://wa.me/5491112345678?text=Hola,%20tengo%20un%20problema%20con%20mi%20cuenta"
+                            href="https://wa.me/5492615908839?text=Hola,%20tengo%20un%20problema%20con%20mi%20cuenta"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition"

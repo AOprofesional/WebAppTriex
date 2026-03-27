@@ -3,12 +3,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { Database } from '../types/database.types';
 import { calculateTripStatus } from '../utils/dateUtils';
+import { useEmailService, buildTripWelcomeEmailHtml } from './useEmailService';
 
 type Trip = Database['public']['Tables']['trips']['Row'];
 type TripInsert = Database['public']['Tables']['trips']['Insert'];
 type TripUpdate = Database['public']['Tables']['trips']['Update'];
 
 export const useTrips = () => {
+    const { sendEmail } = useEmailService();
     const [trips, setTrips] = useState<Trip[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -292,6 +294,42 @@ export const useTrips = () => {
                     .insert(toAdd.map(pid => ({ trip_id: tripId, passenger_id: pid })));
 
                 if (insertError) throw insertError;
+
+                // Send Welcome emails (non-blocking)
+                try {
+                    const { data: trip } = await supabase
+                        .from('trips')
+                        .select('name, destination, start_date, end_date')
+                        .eq('id', tripId)
+                        .single();
+
+                    if (trip) {
+                        const { data: addPassengers } = await supabase
+                            .from('passengers')
+                            .select('email, first_name')
+                            .in('id', toAdd);
+
+                        if (addPassengers && addPassengers.length > 0) {
+                            addPassengers.forEach(p => {
+                                if (p.email) {
+                                    sendEmail({
+                                        to: p.email,
+                                        subject: '¡Viaje Asignado! 🎉',
+                                        html: buildTripWelcomeEmailHtml({
+                                            firstName: p.first_name || 'Pasajero',
+                                            tripName: trip.name,
+                                            destination: trip.destination,
+                                            startDate: new Date(trip.start_date || '').toLocaleDateString('es-AR'),
+                                            endDate: new Date(trip.end_date || '').toLocaleDateString('es-AR')
+                                        })
+                                    }).catch(err => console.error('Error sending welcome email to:', p.email, err));
+                                }
+                            });
+                        }
+                    }
+                } catch (emailErr) {
+                    console.error('Error in welcome email dispatch:', emailErr);
+                }
             }
 
             return { error: null };

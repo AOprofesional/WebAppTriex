@@ -164,6 +164,59 @@ export function buildGenericEmailHtml(params: {
     `.trim();
 }
 
+
+interface TripWelcomeEmailParams {
+    firstName: string;
+    tripName: string;
+    destination: string;
+    startDate: string;
+    endDate: string;
+}
+
+export function buildTripWelcomeEmailHtml(params: TripWelcomeEmailParams): string {
+    return `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+    body{margin:0;padding:24px;background:#f4f4f5;font-family:'Outfit',sans-serif;}
+  </style>
+</head>
+<body>
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.05);">
+    <tr>
+      <td style="padding:40px 40px 32px;text-align:center;">
+        <h1 style="margin:0 0 16px;color:#18181b;font-size:24px;font-weight:700;letter-spacing:-0.5px;">¡Viaje Asignado! 🎉</h1>
+        <p style="margin:0 0 16px;color:#71717a;font-size:16px;">¡Hola, <strong style="color:#18181b;">${params.firstName}</strong>! Te damos la bienvenida a tu próximo viaje.</p>
+        <div style="background:#fff7ed;border:1.5px solid #fdba74;border-radius:10px;padding:20px 24px;margin-bottom:24px;text-align:left;">
+          <h2 style="margin:0 0 8px;color:#f97316;font-size:18px;font-weight:700;">${params.tripName}</h2>
+          <p style="margin:0;color:#3f3f46;font-size:14px;line-height:1.7;">
+            <strong>Destino:</strong> ${params.destination}<br>
+             <strong>Fecha de Inicio:</strong> ${params.startDate}<br>
+             <strong>Fecha de Regreso:</strong> ${params.endDate}
+          </p>
+        </div>
+        <p style="color:#71717a;font-size:15px;line-height:1.6;margin:0;">
+          Podés ver todos los detalles de tu itinerario en la app de Triex Viajes. ¡Preparate para disfrutar!
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:16px 40px 28px;border-top:1px solid #f4f4f5;">
+        <p style="margin:0;color:#a1a1aa;font-size:12px;text-align:center;">
+          Email automático de Triex Viajes · No responder<br>
+          © 2025 Triex Viajes
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `.trim();
+}
+
 // Hook para enviar emails vía Edge Function send-email
 export const useEmailService = () => {
     const sendEmail = async (params: {

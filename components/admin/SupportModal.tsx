@@ -15,7 +15,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
 
     const handleWhatsAppSupport = () => {
         // Placeholder number, replace with actual support number
-        window.open("https://wa.me/5491112345678", "_blank");
+        window.open("https://wa.me/5492615908839", "_blank");
     };
 
     return (
