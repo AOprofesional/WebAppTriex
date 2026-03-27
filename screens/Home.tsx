@@ -11,6 +11,7 @@ import { useDocuments } from '../hooks/useDocuments';
 import { useOrangePass } from '../hooks/useOrangePass';
 import { formatPoints } from '../utils/orangePassHelpers';
 import { NotificationPermissionBanner } from '../components/NotificationPermissionBanner';
+import { SalesTeamModal } from '../components/SalesTeamModal';
 
 export const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ export const Home: React.FC = () => {
   } = useDocuments();
 
   const { balance, loading: loadingPoints } = useOrangePass(passenger?.id);
+  const [showContactModal, setShowContactModal] = React.useState(false);
 
   React.useEffect(() => {
     if (primaryTrip) {
@@ -147,9 +149,12 @@ export const Home: React.FC = () => {
               <h3 className="text-lg font-bold text-zinc-800 dark:text-white mb-2">
                 No hay viajes programados
               </h3>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                Contactá a tu agente de ventas para más información
-              </p>
+              <button
+                onClick={() => setShowContactModal(true)}
+                className="text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-white transition-colors"
+              >
+                <span className="underline decoration-zinc-300 dark:decoration-zinc-600 underline-offset-4 font-bold">Contactá a tu agente de ventas</span> para más información
+              </button>
             </div>
           )}
         </section>
@@ -252,6 +257,10 @@ export const Home: React.FC = () => {
         </section>
       </div>
 
+      <SalesTeamModal
+        isOpen={showContactModal}
+        onClose={() => setShowContactModal(false)}
+      />
     </div>
   );
 };

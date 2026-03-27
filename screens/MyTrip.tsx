@@ -7,6 +7,7 @@ import { PageLoading } from '../components/PageLoading';
 import { useNextActivity } from '../hooks/useNextActivity';
 import { useSurvey } from '../hooks/useSurvey';
 import { SurveyModal } from '../components/SurveyModal';
+import { SalesTeamModal } from '../components/SalesTeamModal';
 
 export const MyTrip: React.FC = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export const MyTrip: React.FC = () => {
   const { nextActivity } = useNextActivity(trip?.id);
   const [openingVoucher, setOpeningVoucher] = useState<string | null>(null);
   const [showSurveyModal, setShowSurveyModal] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
 
   // Survey hook — only active when trip is FINALIZADO
   const isFinished = trip?.status_operational === 'FINALIZADO';
@@ -98,9 +100,12 @@ export const MyTrip: React.FC = () => {
           <h2 className="text-2xl font-bold text-zinc-800 dark:text-white mb-3">
             No hay viajes disponibles
           </h2>
-          <p className="text-zinc-500 dark:text-zinc-400 mb-8">
+          <button
+            onClick={() => setShowContactModal(true)}
+            className="text-zinc-500 dark:text-zinc-400 mb-8 hover:text-zinc-800 dark:hover:text-white transition-colors block mx-auto underline decoration-zinc-300 dark:decoration-zinc-600 underline-offset-4 font-bold"
+          >
             Contactá a tu agente de ventas para más información
-          </p>
+          </button>
           <button
             onClick={() => navigate('/')}
             className="px-8 py-3 bg-[#3D3935] hover:bg-black/90 text-white rounded-[20px] font-bold transition-all"
@@ -502,6 +507,11 @@ export const MyTrip: React.FC = () => {
           onSubmitSuccess={handleSurveySubmitSuccess}
         />
       )}
+
+      <SalesTeamModal
+        isOpen={showContactModal}
+        onClose={() => setShowContactModal(false)}
+      />
     </div>
   );
 };

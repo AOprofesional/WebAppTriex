@@ -2,6 +2,18 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { calculateTripStatus } from '../utils/dateUtils';
 
+/** Returns current user's uid and role from profiles. */
+const getCurrentUserRole = async (): Promise<{ uid: string | null; role: string | null }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { uid: null, role: null };
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+    return { uid: user.id, role: profile?.role ?? null };
+};
+
 export interface DashboardStats {
     activeTrips: number;
     upcomingTrips: number;
@@ -100,54 +112,83 @@ export const useDashboardData = () => {
                     status_commercial: trip.status_commercial
                 }));
 
-            // Get pending documents count
-            const { count: pendingDocs, error: docsError } = await supabase
+            // Determine role for operator scoping
+            const { uid, role } = await getCurrentUserRole();
+            const isOperator = role === 'operator';
+
+            // If operator, fetch their assigned passenger IDs first
+            let assignedPassengerIds: string[] = [];
+            if (isOperator && uid) {
+                const { data: ap } = await supabase
+                    .from('passengers')
+                    .select('id')
+                    .eq('assigned_to', uid)
+                    .is('archived_at', null);
+                assignedPassengerIds = (ap || []).map(p => p.id);
+            }
+            const noPassengers = isOperator && assignedPassengerIds.length === 0;
+
+            // Get pending documents count (operator: only their passengers)
+            let pendingDocsQuery = supabase
                 .from('passenger_documents')
                 .select('*', { count: 'exact', head: true })
                 .eq('status', 'uploaded');
+            if (isOperator) {
+                pendingDocsQuery = noPassengers
+                    ? pendingDocsQuery.in('passenger_id', ['00000000-0000-0000-0000-000000000000'])
+                    : pendingDocsQuery.in('passenger_id', assignedPassengerIds);
+            }
+            const { count: pendingDocs, error: docsError } = await pendingDocsQuery;
 
             if (docsError) console.error('Error fetching documents:', docsError);
 
-            // Get total active points via SQL SUM (avoids loading all rows into JS)
+            // Puntos: operators always show 0 (not their metric — it belongs to passengers)
             let totalPoints = 0;
-            try {
-                const { data: pointsData, error: pointsError } = await supabase
-                    .rpc('get_total_active_points');
-
-                if (!pointsError && pointsData !== null) {
-                    totalPoints = Number(pointsData);
+            if (!isOperator) {
+                try {
+                    const { data: pointsData, error: pointsError } = await supabase
+                        .rpc('get_total_active_points');
+                    if (!pointsError && pointsData !== null) {
+                        totalPoints = Number(pointsData);
+                    }
+                } catch (err) {
+                    console.error('Error fetching ledger points:', err);
                 }
-            } catch (err) {
-                console.error('Error fetching ledger points:', err);
-                totalPoints = 0;
             }
 
-            // Fetch recent activities from multiple sources
+            // Fetch recent activities (operator: scoped to their passengers)
+            let docsQuery = supabase
+                .from('passenger_documents')
+                .select(`id, status, updated_at,
+                    passengers (first_name, last_name),
+                    required_documents (document_types (name))`)
+                .in('status', ['uploaded', 'approved', 'rejected'])
+                .order('updated_at', { ascending: false })
+                .limit(10);
+
+            let passengersQuery = supabase
+                .from('passengers')
+                .select('id, first_name, last_name, created_at')
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            let vouchersQuery = supabase
+                .from('vouchers')
+                .select('id, title, passengers(first_name, last_name), created_at')
+                .order('created_at', { ascending: false })
+                .limit(10);
+
+            if (isOperator) {
+                const safeIds = noPassengers ? ['00000000-0000-0000-0000-000000000000'] : assignedPassengerIds;
+                docsQuery = docsQuery.in('passenger_id', safeIds);
+                passengersQuery = passengersQuery.in('id', safeIds);
+                vouchersQuery = vouchersQuery.in('passenger_id', safeIds);
+            }
+
             const [docsRes, passengersRes, vouchersRes] = await Promise.all([
-                supabase
-                    .from('passenger_documents')
-                    .select(`
-                        id, 
-                        status, 
-                        updated_at, 
-                        passengers (first_name, last_name), 
-                        required_documents (
-                            document_types (name)
-                        )
-                    `)
-                    .in('status', ['uploaded', 'approved', 'rejected'])
-                    .order('updated_at', { ascending: false })
-                    .limit(10),
-                supabase
-                    .from('passengers')
-                    .select('id, first_name, last_name, created_at')
-                    .order('created_at', { ascending: false })
-                    .limit(10),
-                supabase
-                    .from('vouchers')
-                    .select('id, title, passengers(first_name, last_name), created_at')
-                    .order('created_at', { ascending: false })
-                    .limit(10)
+                docsQuery,
+                passengersQuery,
+                vouchersQuery
             ]);
 
             const activityItems: (RecentActivity & { rawDate: Date })[] = [];

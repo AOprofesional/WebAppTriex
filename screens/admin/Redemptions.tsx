@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { PageLoading } from '../../components/PageLoading';
 import { useToast } from '../../components/Toast';
 import { useConfirm } from '../../components/ConfirmDialog';
@@ -23,6 +24,7 @@ interface RedemptionRequest {
 }
 
 export const Redemptions: React.FC = () => {
+    const { role } = useAuth();
     const [requests, setRequests] = useState<RedemptionRequest[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'COMPLETED' | 'REJECTED'>('PENDING');
@@ -33,6 +35,23 @@ export const Redemptions: React.FC = () => {
     const fetchRequests = async () => {
         setLoading(true);
         try {
+            const isOperator = role === 'operator';
+            
+            let allowedMemberIds: string[] = [];
+            if (isOperator) {
+                const { data: membersData } = await supabase
+                    .from('passengers')
+                    .select('id')
+                    .eq('is_orange_member', true);
+                allowedMemberIds = membersData?.map(m => m.id) || [];
+                
+                if (allowedMemberIds.length === 0) {
+                    setRequests([]);
+                    setLoading(false);
+                    return;
+                }
+            }
+
             let query = supabase
                 .from('redemption_requests')
                 .select(`
@@ -49,6 +68,10 @@ export const Redemptions: React.FC = () => {
             if (filter !== 'ALL') {
                 query = query.eq('status', filter);
             }
+            
+            if (isOperator && allowedMemberIds.length > 0) {
+                query = query.in('passenger_id', allowedMemberIds);
+            }
 
             const { data, error } = await query;
 
@@ -63,8 +86,10 @@ export const Redemptions: React.FC = () => {
     };
 
     useEffect(() => {
-        fetchRequests();
-    }, [filter]);
+        if (role) {
+            fetchRequests();
+        }
+    }, [filter, role]);
 
     const handleProcessRequest = async (id: string, status: 'COMPLETED' | 'REJECTED', adminComment?: string) => {
         const result = await confirm({

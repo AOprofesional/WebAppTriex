@@ -453,6 +453,7 @@ export type Database = {
       passengers: {
         Row: {
           archived_at: string | null
+          assigned_to: string | null
           avatar_url: string | null
           birth_date: string | null
           created_at: string | null
@@ -481,6 +482,7 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          assigned_to?: string | null
           avatar_url?: string | null
           birth_date?: string | null
           created_at?: string | null
@@ -509,6 +511,7 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          assigned_to?: string | null
           avatar_url?: string | null
           birth_date?: string | null
           created_at?: string | null
@@ -536,6 +539,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "passengers_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "passengers_passenger_type_id_fkey"
             columns: ["passenger_type_id"]
@@ -575,30 +585,36 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
           banned_until: string | null
           created_at: string | null
           email: string | null
           full_name: string | null
           id: string
-          role: string
+          phone: string | null
+          role: Database["public"]["Enums"]["user_role"]
           updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
           banned_until?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id: string
-          role?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
           banned_until?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
           id?: string
-          role?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string | null
         }
         Relationships: []
@@ -1370,6 +1386,7 @@ export type Database = {
       v_admin_passengers_list: {
         Row: {
           archived_at: string | null
+          assigned_to: string | null
           created_at: string | null
           document_number: string | null
           document_type: string | null
@@ -1377,6 +1394,7 @@ export type Database = {
           id: string | null
           is_recurrent: boolean | null
           last_name: string | null
+          operator_name: string | null
           passenger_email: string | null
           phone: string | null
           type_code: string | null

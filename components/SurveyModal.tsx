@@ -174,7 +174,7 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
                 {screen === 'intro' && (
                     <div className="flex flex-col items-center justify-center p-10 text-center">
                         <div className="w-24 h-24 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mb-6 shadow-inner">
-                            <span className="text-4xl">🍊</span>
+                            <img src="https://i.imgur.com/4UYsBB4.png" alt="Triex" className="w-12 h-12 object-contain drop-shadow-sm" />
                         </div>
                         <h2 className="text-2xl font-extrabold text-zinc-800 dark:text-white mb-2 leading-tight">
                             ¡Queremos conocer<br/>tu experiencia!
@@ -199,8 +199,8 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
 
                 {/* ── SUCCESS SCREEN ── */}
                 {screen === 'success' && (
-                    <div className="p-10 flex flex-col items-center text-center">
-                        <div className="w-24 h-24 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-6 relative">
+                    <div className="p-10 flex flex-col items-center text-center overflow-y-auto max-h-[100%]">
+                        <div className="w-24 h-24 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0 mb-6 relative">
                             <span className="material-symbols-outlined text-green-500 text-[48px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                                 check_circle
                             </span>
@@ -239,9 +239,9 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
 
                 {/* ── FORM SCREEN ── */}
                 {screen === 'form' && (
-                    <div className="flex flex-col h-full bg-white dark:bg-zinc-900">
+                    <>
                         {/* Header Fixed */}
-                        <div className="flex-none bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 px-6 py-4 flex items-center justify-between z-10">
+                        <div className="flex-none shrink-0 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 px-6 py-4 flex items-center justify-between z-10">
                             <div>
                                 <h2 className="text-lg font-extrabold text-zinc-800 dark:text-white">Opiná sobre tu viaje</h2>
                                 <p className="text-xs text-zinc-500">Completá todos los campos para sumar puntos</p>
@@ -255,7 +255,7 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
                         </div>
 
                         {/* Scrollable Form Content */}
-                        <div className="flex-1 overflow-y-auto px-6 py-6 space-y-8">
+                        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6 space-y-8">
                             
                             {/* 1. Experiencia general */}
                             <section>
@@ -367,7 +367,7 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
                         </div>
 
                         {/* Footer / Submit fixed at bottom */}
-                        <div className="flex-none bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800 p-6 pt-4">
+                        <div className="flex-none shrink-0 bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800 p-6 pt-4">
                             <button
                                 onClick={handleSubmit}
                                 disabled={!isFormValid || submitting}
@@ -387,7 +387,7 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
                                 )}
                             </button>
                         </div>
-                    </div>
+                    </>
                 )}
             </div>
         </div>

@@ -11,6 +11,7 @@ interface User {
     last_sign_in_at: string | null;
     email_confirmed_at: string | null;
     banned_until: string | null;
+    phone: string | null;
 }
 
 export const useUsers = () => {
@@ -31,8 +32,10 @@ export const useUsers = () => {
                     role,
                     created_at,
                     updated_at,
-                    banned_until
-                `)
+                    banned_until,
+                    phone
+                `);
+            query = query
                 .in('role', ['operator', 'admin', 'superadmin'])
                 .order('created_at', { ascending: false });
 
@@ -67,20 +70,20 @@ export const useUsers = () => {
         }
     };
 
-    const createUser = async (userData: {
-        email: string;
-        full_name: string;
-        role: 'operator' | 'admin' | 'superadmin';
-        sendInvite?: boolean;
-    }) => {
+    const createUser = async (data: { email: string; full_name: string; role: 'operator' | 'admin' | 'superadmin'; sendInvite?: boolean; phone?: string | null }) => {
         try {
             setLoading(true);
 
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError || !session) {
+                throw new Error('No hay sesión activa');
+            }
+
             // Force refresh session to get a fresh access token
             const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-            const session = refreshData?.session;
+            const currentSession = refreshData?.session;
 
-            if (refreshError || !session) {
+            if (refreshError || !currentSession) {
                 throw new Error('No active session or could not refresh token');
             }
 
@@ -90,22 +93,22 @@ export const useUsers = () => {
                 {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${session.access_token}`,
+                        'Authorization': `Bearer ${currentSession.access_token}`,
                         'apikey': supabaseAnonKey,
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(userData),
+                    body: JSON.stringify(data),
                 }
             );
 
-            const data = await response.json();
+            const responseData = await response.json();
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to create user');
+                throw new Error(responseData.error || 'Failed to create user');
             }
 
             await fetchUsers();
-            return { data: data.user, error: null };
+            return { data: responseData.user, error: null };
         } catch (err: any) {
             console.error('Error creating user:', err);
             return { data: null, error: err.message };
@@ -116,22 +119,25 @@ export const useUsers = () => {
 
     const updateUser = async (
         userId: string,
-        updates: {
+        data: {
             full_name?: string;
             role?: 'operator' | 'admin' | 'superadmin';
+            phone?: string | null;
         }
     ) => {
         try {
             setLoading(true);
 
             // Verify current user's role before updating to superadmin
-            if (updates.role === 'superadmin') {
+            if (data.role === 'superadmin') {
                 const { data: currentUser } = await supabase.auth.getUser();
-                const { data: profile } = await supabase
+                const { data: profile, error: profileError } = await supabase
                     .from('profiles')
                     .select('role')
                     .eq('id', currentUser.user?.id)
                     .single();
+
+                if (profileError) throw profileError;
 
                 if (profile?.role !== 'superadmin') {
                     throw new Error('Solo un Super Administrador puede asignar el rol de Super Administrador');
@@ -141,8 +147,9 @@ export const useUsers = () => {
             const { error } = await supabase
                 .from('profiles')
                 .update({
-                    ...updates,
-                    updated_at: new Date().toISOString()
+                    full_name: data.full_name,
+                    role: data.role as any,
+                    phone: data.phone
                 })
                 .eq('id', userId);
 

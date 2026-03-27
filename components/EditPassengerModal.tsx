@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useOrangePass } from '../hooks/useOrangePass';
+import { useRole } from '../hooks/useRole';
 
 interface PassengerData {
     id: string;
@@ -14,6 +15,7 @@ interface PassengerData {
     passenger_type_id: number | null;  // For updates
     is_recurrent: boolean | null;
     referred_by_passenger_id?: string | null; // Optional, might need fetching
+    assigned_to?: string | null; // Admin assignment
 }
 
 interface EditPassengerModalProps {
@@ -30,6 +32,7 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
     onSave
 }) => {
     const { validateReferralCode } = useOrangePass();
+    const { isAdmin } = useRole();
     const [formData, setFormData] = useState({
         first_name: '',
         last_name: '',
@@ -41,7 +44,12 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
         is_recurrent: false,
         referral_code: '',
         referred_by_passenger_id: null as string | null,
+        assigned_to: '' as string | null,
     });
+    
+    // Operators for assignment
+    const [operators, setOperators] = useState<{ id: string; full_name: string; email: string }[]>([]);
+    const [loadingOperators, setLoadingOperators] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [referralCodeValid, setReferralCodeValid] = useState<boolean | null>(null);
     const [validatingCode, setValidatingCode] = useState(false);
@@ -50,6 +58,23 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
 
     // Tabs state
     const [activeTab, setActiveTab] = useState<'personal' | 'contact' | 'orangepass'>('personal');
+
+    // Fetch operators for admin assignment
+    useEffect(() => {
+        if (isOpen && isAdmin) {
+            const fetchOperators = async () => {
+                setLoadingOperators(true);
+                const { data, error } = await supabase
+                    .from('profiles')
+                    .select('id, full_name, email')
+                    .eq('role', 'operator')
+                    .order('full_name');
+                if (!error) setOperators(data || []);
+                setLoadingOperators(false);
+            };
+            fetchOperators();
+        }
+    }, [isOpen, isAdmin]);
 
     useEffect(() => {
         if (passenger) {
@@ -65,9 +90,13 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
             const fetchReferralInfo = async () => {
                 const { data } = await supabase
                     .from('passengers')
-                    .select('referred_by_passenger_id, referred_by_code_raw')
+                    .select('referred_by_passenger_id, referred_by_code_raw, assigned_to')
                     .eq('id', passenger.id)
                     .single();
+
+                if (data?.assigned_to) {
+                    setFormData(prev => ({ ...prev, assigned_to: data.assigned_to }));
+                }
 
                 if (data?.referred_by_passenger_id) {
                     setFormData(prev => ({
@@ -108,6 +137,7 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                 is_recurrent: passenger.is_recurrent || false,
                 referral_code: '', // Will be populated by fetchReferralInfo
                 referred_by_passenger_id: null,
+                assigned_to: passenger.assigned_to || '',
             });
             setReferrerName(null);
             setReferralCodeValid(null);
@@ -181,6 +211,10 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                 is_recurrent: formData.is_recurrent,
                 referred_by_code_raw: formData.referral_code || null,
             };
+
+            if (isAdmin) {
+                updates.assigned_to = formData.assigned_to || null;
+            }
 
             // Only update referral link if valid code is present and different
             if (formData.referred_by_passenger_id) {
@@ -357,6 +391,32 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                                 Marcar como pasajero recurrente
                             </label>
                         </div>
+                        
+                        {isAdmin && (
+                            <div className="bg-primary/5 dark:bg-primary/10 p-5 rounded-xl border border-primary/20 mt-6">
+                                <label className="block text-sm font-bold text-primary dark:text-primary mb-2 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-[18px]">assignment_ind</span>
+                                    Asignar Operador (Opcional)
+                                </label>
+                                <select
+                                    value={formData.assigned_to || ''}
+                                    onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                                    className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition text-sm"
+                                >
+                                    <option value="">-- Sin asignar (Visible para todos si eres Admin) --</option>
+                                    {loadingOperators ? (
+                                        <option disabled>Cargando operadores...</option>
+                                    ) : (
+                                        operators.map(op => (
+                                            <option key={op.id} value={op.id}>{op.full_name || op.email}</option>
+                                        ))
+                                    )}
+                                </select>
+                                <p className="text-xs text-zinc-500 mt-2">
+                                    Si asignas un operador, sólo él (y los administradores) podrán gestionar este pasajero.
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Tab: Contacto */}

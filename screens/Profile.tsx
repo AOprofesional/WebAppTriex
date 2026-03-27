@@ -7,7 +7,7 @@ import { PageLoading } from '../components/PageLoading';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/Toast';
 import { useConfirm } from '../components/ConfirmDialog';
-import { ContactCoordinatorModal } from '../components/ContactCoordinatorModal';
+import { SalesTeamModal } from '../components/SalesTeamModal';
 
 export const Profile: React.FC = () => {
   const navigate = useNavigate();
@@ -187,11 +187,10 @@ export const Profile: React.FC = () => {
         Contactar agente de ventas
       </button>
 
-      <ContactCoordinatorModal
+      <SalesTeamModal
         isOpen={showContactModal}
         onClose={() => setShowContactModal(false)}
         coordinatorPhone={primaryTrip?.coordinator_phone}
-        coordinatorEmail={primaryTrip?.coordinator_email}
       />
 
       {/* Logout */}

@@ -1,0 +1,1365 @@
+﻿diff --git a/components/SurveyModal.tsx b/components/SurveyModal.tsx
+index 388e633..8e19224 100644
+--- a/components/SurveyModal.tsx
++++ b/components/SurveyModal.tsx
+@@ -174,7 +174,7 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
+                 {screen === 'intro' && (
+                     <div className="flex flex-col items-center justify-center p-10 text-center">
+                         <div className="w-24 h-24 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center mb-6 shadow-inner">
+-                            <span className="text-4xl">­ƒìè</span>
++                            <img src="https://i.imgur.com/4UYsBB4.png" alt="Triex" className="w-12 h-12 object-contain drop-shadow-sm" />
+                         </div>
+                         <h2 className="text-2xl font-extrabold text-zinc-800 dark:text-white mb-2 leading-tight">
+                             ┬íQueremos conocer<br/>tu experiencia!
+@@ -199,8 +199,8 @@ export const SurveyModal: React.FC<SurveyModalProps> = ({
+ 
+                 {/* ÔöÇÔöÇ SUCCESS SCREEN ÔöÇÔöÇ */}
+                 {screen === 'success' && (
+-                    <div className="p-10 flex flex-col items-center text-center">
+-                        <div className="w-24 h-24 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-6 relative">
++                    <div className="p-10 flex flex-col items-center text-center overflow-y-auto max-h-[100%]">
++                        <div className="w-24 h-24 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0 mb-6 relative">
+                             <span className="material-symbols-outlined text-green-500 text-[48px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                 check_circle
+                             </span>
+diff --git a/components/admin/AdminSidebar.tsx b/components/admin/AdminSidebar.tsx
+index 9de5a3c..d5746f6 100644
+--- a/components/admin/AdminSidebar.tsx
++++ b/components/admin/AdminSidebar.tsx
+@@ -6,9 +6,11 @@ import { useAuth } from '../../contexts/AuthContext';
+ 
+ interface AdminSidebarProps {
+     collapsed?: boolean;
++    isOpen?: boolean;
++    onClose?: () => void;
+ }
+ 
+-export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false }) => {
++export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false, isOpen = false, onClose }) => {
+     const navigate = useNavigate();
+     const location = useLocation();
+     const { signOut } = useAuth();
+@@ -45,10 +47,16 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false })
+     const isVouchersActive = vouchersSubItems.some(item => isActive(item.path));
+ 
+     return (
+-        <aside className="w-64 h-screen flex flex-col fixed left-0 top-0 z-50" style={{ backgroundColor: '#1a1a1a' }}>
++        <aside 
++            className={`w-64 h-screen flex flex-col fixed left-0 top-0 z-50 transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}
++            style={{ backgroundColor: '#1a1a1a' }}
++        >
+             {/* Logo */}
+-            <div className="h-20 flex items-center px-6">
++            <div className="h-20 flex items-center justify-between px-6">
+                 <img src={LOGO_URL} alt="Triex" className="h-10" />
++                <button onClick={onClose} className="md:hidden text-zinc-400 hover:text-white p-2 -mr-2 transition-colors">
++                    <span className="material-symbols-outlined">close</span>
++                </button>
+             </div>
+ 
+             {/* Section Title */}
+@@ -57,7 +65,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false })
+             </div>
+ 
+             {/* Navigation */}
+-            <nav className="flex-1 overflow-y-auto px-4">
++            <nav className="flex-1 overflow-y-auto px-4 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#333] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#444]">
+                 <div className="space-y-1">
+                     {/* Dashboard, Pasajeros, Viajes */}
+                     {menuItems.slice(0, 3).map((item) => {
+diff --git a/hooks/useAdminSurveys.ts b/hooks/useAdminSurveys.ts
+index 93c9691..9f8d775 100644
+--- a/hooks/useAdminSurveys.ts
++++ b/hooks/useAdminSurveys.ts
+@@ -5,10 +5,18 @@ export interface SurveyRecord {
+     id: string;
+     trip_id: string;
+     passenger_id: string;
+-    nps: number;
+-    rating_organization: number;
+-    rating_attention: number;
++    // V1 legacy
++    nps: number | null;
++    rating_organization: number | null;
++    rating_attention: number | null;
+     comment: string | null;
++    // V2 new fields
++    rating_general: number | null;
++    destination_expectation: string | null;
++    services_ratings: Record<string, number | 'N/A'> | null;
++    had_incident: boolean | null;
++    incident_comment: string | null;
++    would_buy_again: string | null;
+     responded_at: string;
+     // Joined fields
+     passenger_name: string;
+@@ -18,17 +26,21 @@ export interface SurveyRecord {
+ 
+ export interface SurveyStats {
+     total: number;
++    avg_general: number;
+     avg_nps: number;
+-    pct_promoters: number;   // NPS 8-10
+-    pct_neutral: number;     // NPS 7
+-    pct_detractors: number;  // NPS 1-6
++    pct_promoters: number;
++    pct_neutral: number;
++    pct_detractors: number;
+     avg_organization: number;
+     avg_attention: number;
++    pct_would_buy_again: number;
++    avg_services: Record<string, number>;
+ }
+ 
+ export type NpsCategory = 'promoter' | 'neutral' | 'detractor';
+ 
+-export const getNpsCategory = (nps: number): NpsCategory => {
++export const getNpsCategory = (nps: number | null): NpsCategory => {
++    if (!nps) return 'detractor';
+     if (nps >= 8) return 'promoter';
+     if (nps >= 7) return 'neutral';
+     return 'detractor';
+@@ -73,6 +85,12 @@ export const useAdminSurveys = () => {
+                     rating_organization,
+                     rating_attention,
+                     comment,
++                    rating_general,
++                    destination_expectation,
++                    services_ratings,
++                    had_incident,
++                    incident_comment,
++                    would_buy_again,
+                     responded_at,
+                     passengers (
+                         first_name,
+@@ -95,6 +113,12 @@ export const useAdminSurveys = () => {
+                 rating_organization: row.rating_organization,
+                 rating_attention: row.rating_attention,
+                 comment: row.comment,
++                rating_general: row.rating_general,
++                destination_expectation: row.destination_expectation,
++                services_ratings: row.services_ratings,
++                had_incident: row.had_incident,
++                incident_comment: row.incident_comment,
++                would_buy_again: row.would_buy_again,
+                 responded_at: row.responded_at,
+                 passenger_name: `${row.passengers?.first_name || ''} ${row.passengers?.last_name || ''}`.trim(),
+                 trip_destination: row.trips?.destination || 'Sin destino',
+@@ -114,7 +138,7 @@ export const useAdminSurveys = () => {
+         let result = [...surveys];
+ 
+         if (filterOnlyDetractors) {
+-            result = result.filter(s => s.nps <= 6);
++            result = result.filter(s => s.nps !== null && s.nps <= 6);
+         }
+         if (filterTripId) {
+             result = result.filter(s => s.trip_id === filterTripId);
+@@ -138,8 +162,8 @@ export const useAdminSurveys = () => {
+ 
+         // Sort
+         result.sort((a, b) => {
+-            const aVal = sortField === 'nps' ? a.nps : a.responded_at;
+-            const bVal = sortField === 'nps' ? b.nps : b.responded_at;
++            const aVal = sortField === 'nps' ? (a.nps ?? 0) : a.responded_at;
++            const bVal = sortField === 'nps' ? (b.nps ?? 0) : b.responded_at;
+             if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+             if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+             return 0;
+@@ -148,29 +172,63 @@ export const useAdminSurveys = () => {
+         setFilteredSurveys(result);
+ 
+         // Compute stats from the filtered set
+-        if (result.length === 0) {
+-            setStats({ total: 0, avg_nps: 0, pct_promoters: 0, pct_neutral: 0, pct_detractors: 0, avg_organization: 0, avg_attention: 0 });
++        const sourceForStats = filterOnlyDetractors ? result : surveys;
++        const n = sourceForStats.length;
++
++        if (n === 0) {
++            setStats({ total: 0, avg_general: 0, avg_nps: 0, pct_promoters: 0, pct_neutral: 0, pct_detractors: 0, avg_organization: 0, avg_attention: 0, pct_would_buy_again: 0, avg_services: {} });
+             return;
+         }
+ 
+-        // Stats are always computed from the FULL dataset (non-filtered), unless only-detractors is on
+-        const sourceForStats = filterOnlyDetractors ? result : surveys;
+-        const n = sourceForStats.length;
+-        const promoters = sourceForStats.filter(s => s.nps >= 8).length;
+-        const neutrals = sourceForStats.filter(s => s.nps === 7).length;
+-        const detractors = sourceForStats.filter(s => s.nps <= 6).length;
+-        const avgNps = sourceForStats.reduce((acc, s) => acc + s.nps, 0) / n;
+-        const avgOrg = sourceForStats.reduce((acc, s) => acc + s.rating_organization, 0) / n;
+-        const avgAtt = sourceForStats.reduce((acc, s) => acc + s.rating_attention, 0) / n;
++        const withNps = sourceForStats.filter(s => s.nps !== null);
++        const promoters = withNps.filter(s => (s.nps ?? 0) >= 8).length;
++        const neutrals = withNps.filter(s => s.nps === 7).length;
++        const detractors = withNps.filter(s => (s.nps ?? 0) <= 6).length;
++        const avgNps = withNps.length ? withNps.reduce((acc, s) => acc + (s.nps ?? 0), 0) / withNps.length : 0;
++
++        const withGeneral = sourceForStats.filter(s => s.rating_general !== null);
++        const avgGeneral = withGeneral.length ? withGeneral.reduce((acc, s) => acc + (s.rating_general ?? 0), 0) / withGeneral.length : 0;
++
++        const withOrg = sourceForStats.filter(s => s.rating_organization !== null);
++        const avgOrg = withOrg.length ? withOrg.reduce((acc, s) => acc + (s.rating_organization ?? 0), 0) / withOrg.length : 0;
++
++        const withAtt = sourceForStats.filter(s => s.rating_attention !== null);
++        const avgAtt = withAtt.length ? withAtt.reduce((acc, s) => acc + (s.rating_attention ?? 0), 0) / withAtt.length : 0;
++
++        const withWBA = sourceForStats.filter(s => s.would_buy_again !== null);
++        const wbaYes = withWBA.filter(s => s.would_buy_again === 'S├¡').length;
++        const pctWBA = withWBA.length ? Math.round((wbaYes / withWBA.length) * 100) : 0;
++
++        // Avg services ratings
++        const avgServices: Record<string, number> = {};
++        const serviceAccum: Record<string, { sum: number; count: number }> = {};
++        sourceForStats.forEach(s => {
++            if (s.services_ratings) {
++                Object.entries(s.services_ratings).forEach(([svc, val]) => {
++                    if (typeof val === 'number') {
++                        if (!serviceAccum[svc]) serviceAccum[svc] = { sum: 0, count: 0 };
++                        serviceAccum[svc].sum += val;
++                        serviceAccum[svc].count++;
++                    }
++                });
++            }
++        });
++        Object.entries(serviceAccum).forEach(([svc, { sum, count }]) => {
++            avgServices[svc] = Math.round((sum / count) * 10) / 10;
++        });
+ 
++        const npsBase = withNps.length || 1;
+         setStats({
+             total: n,
++            avg_general: Math.round(avgGeneral * 10) / 10,
+             avg_nps: Math.round(avgNps * 10) / 10,
+-            pct_promoters: Math.round((promoters / n) * 100),
+-            pct_neutral: Math.round((neutrals / n) * 100),
+-            pct_detractors: Math.round((detractors / n) * 100),
++            pct_promoters: Math.round((promoters / npsBase) * 100),
++            pct_neutral: Math.round((neutrals / npsBase) * 100),
++            pct_detractors: Math.round((detractors / npsBase) * 100),
+             avg_organization: Math.round(avgOrg * 10) / 10,
+             avg_attention: Math.round(avgAtt * 10) / 10,
++            pct_would_buy_again: pctWBA,
++            avg_services: avgServices,
+         });
+     };
+ 
+diff --git a/screens/admin/AdminLayout.tsx b/screens/admin/AdminLayout.tsx
+index e204156..c628c2b 100644
+--- a/screens/admin/AdminLayout.tsx
++++ b/screens/admin/AdminLayout.tsx
+@@ -20,6 +20,7 @@ export const AdminLayout: React.FC = () => {
+     const location = useLocation();
+     const navigate = useNavigate();
+     const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
++    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+ 
+     const getPageTitle = () => {
+         // Check for exact match first
+@@ -36,17 +37,35 @@ export const AdminLayout: React.FC = () => {
+     };
+ 
+     return (
+-        <div className="min-h-screen bg-[#F5F6FA] dark:bg-zinc-950">
+-            <AdminSidebar />
++        <div className="min-h-screen bg-[#F5F6FA] dark:bg-zinc-950 flex">
++            {/* Sidebar Overlay (Mobile only) */}
++            {isSidebarOpen && (
++                <div 
++                    className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
++                    onClick={() => setIsSidebarOpen(false)}
++                />
++            )}
++
++            <AdminSidebar 
++                isOpen={isSidebarOpen} 
++                onClose={() => setIsSidebarOpen(false)} 
++            />
+ 
+             {/* Main Content */}
+-            <div className="ml-64">
++            <div className="flex-1 min-w-0 transition-all duration-300 ml-0 md:ml-64 relative">
+                 {/* Top Header */}
+-                <header className="h-16 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between px-8 sticky top-0 z-40">
+-                    <div>
+-                        <h1 className="text-xl font-bold text-zinc-800 dark:text-white">{getPageTitle()}</h1>
++                <header className="h-16 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
++                    <div className="flex items-center gap-3">
++                        <button
++                            onClick={() => setIsSidebarOpen(true)}
++                            className="p-2 -ml-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg md:hidden transition-colors"
++                            aria-label="Abrir men├║"
++                        >
++                            <span className="material-symbols-outlined">menu</span>
++                        </button>
++                        <h1 className="text-xl font-bold text-zinc-800 dark:text-white truncate">{getPageTitle()}</h1>
+                     </div>
+-                    <div className="flex items-center gap-4">
++                    <div className="flex items-center gap-2 md:gap-4">
+                         <button
+                             onClick={() => navigate('/admin/communications')}
+                             className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 relative transition-colors"
+@@ -66,7 +85,7 @@ export const AdminLayout: React.FC = () => {
+                 </header>
+ 
+                 {/* Page Content */}
+-                <main className="p-8">
++                <main className="p-4 md:p-8">
+                     <Outlet />
+                 </main>
+             </div>
+diff --git a/screens/admin/Surveys.tsx b/screens/admin/Surveys.tsx
+index 06d25bd..5257b40 100644
+--- a/screens/admin/Surveys.tsx
++++ b/screens/admin/Surveys.tsx
+@@ -1,26 +1,20 @@
+ import React, { useState, useEffect, useRef } from 'react';
+-import { useAdminSurveys, getNpsCategory, SurveyRecord, NpsCategory } from '../../hooks/useAdminSurveys';
++import { useAdminSurveys, SurveyRecord, NpsCategory, getNpsCategory } from '../../hooks/useAdminSurveys';
++import { useAdminInitialSurveys, InitialSurveyRecord } from '../../hooks/useAdminInitialSurveys';
+ import { useSurveySettings, SurveySettings } from '../../hooks/useSurveySettings';
+ 
+-// ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-// Helpers
+-// ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
++// ÔöÇÔöÇÔöÇ Shared helpers ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+ const NPS_BADGE: Record<NpsCategory, { label: string; className: string }> = {
+-    promoter: { label: 'Promotor', className: 'bg-green-100  dark:bg-green-900/30  text-green-700  dark:text-green-400' },
+-    neutral: { label: 'Neutro', className: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' },
+-    detractor: { label: 'Detractor', className: 'bg-red-100    dark:bg-red-900/30    text-red-700    dark:text-red-400' },
++    promoter: { label: 'Promotor', className: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' },
++    neutral:  { label: 'Neutro',   className: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' },
++    detractor:{ label: 'Detractor',className: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' },
+ };
+ 
+-const Stars: React.FC<{ value: number; max?: number }> = ({ value, max = 5 }) => (
++const Stars: React.FC<{ value: number | null; max?: number }> = ({ value, max = 5 }) => (
+     <span className="flex items-center gap-0.5">
+         {Array.from({ length: max }, (_, i) => (
+-            <span
+-                key={i}
+-                className="material-symbols-outlined text-[16px]"
+-                style={{ color: i < value ? '#F59E0B' : '#d1d5db', fontVariationSettings: "'FILL' 1" }}
+-            >
+-                star
+-            </span>
++            <span key={i} className="material-symbols-outlined text-[16px]"
++                style={{ color: i < (value ?? 0) ? '#F59E0B' : '#d1d5db', fontVariationSettings: "'FILL' 1" }}>star</span>
+         ))}
+     </span>
+ );
+@@ -35,69 +29,200 @@ const StatCard: React.FC<{ label: string; value: string | number; sub?: string;
+     </div>
+ );
+ 
+-// ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-// Detail Modal
+-// ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-const SurveyDetailModal: React.FC<{ survey: SurveyRecord | null; onClose: () => void }> = ({ survey, onClose }) => {
++const Badge: React.FC<{ text: string; color?: string }> = ({ text, color = 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300' }) => (
++    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${color}`}>{text}</span>
++);
++
++// ÔöÇÔöÇÔöÇ Settings Tab ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
++const SurveySettingsTab: React.FC = () => {
++    const { settings, loading, error, updating, updateSettings } = useSurveySettings();
++    const [formData, setFormData] = useState<SurveySettings | null>(null);
++    const [saved, setSaved] = useState(false);
++
++    useEffect(() => { if (settings && !formData) setFormData(settings); }, [settings, formData]);
++
++    if (loading) return <div className="flex items-center justify-center p-12"><div className="w-8 h-8 border-2 border-[#E0592A] border-t-transparent rounded-full animate-spin" /></div>;
++    if (error) return <div className="p-6 text-red-500">Error: {error}</div>;
++    if (!formData) return null;
++
++    const handleChange = (field: keyof SurveySettings, value: any) => { setFormData(prev => prev ? { ...prev, [field]: value } : null); setSaved(false); };
++    const handleSave = async () => { if (!formData) return; const res = await updateSettings(formData); if (res.success) { setSaved(true); setTimeout(() => setSaved(false), 3000); } };
++
++    const Field: React.FC<{ label: string; field: keyof SurveySettings }> = ({ label, field }) => (
++        <div>
++            <label className="block text-[13px] font-bold text-zinc-700 dark:text-zinc-300 mb-2">{label}</label>
++            <input type="text" value={(formData as any)[field] || ''} onChange={e => handleChange(field, e.target.value)}
++                className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#E0592A]/30 focus:border-[#E0592A] transition-all" />
++        </div>
++    );
++
++    return (
++        <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 md:p-8 shadow-sm border border-zinc-100 dark:border-zinc-800 max-w-3xl">
++            <div className="mb-6 pb-6 border-b border-zinc-100 dark:border-zinc-800">
++                <h3 className="text-lg font-bold text-zinc-800 dark:text-white mb-1">Textos de la Encuesta Post-Viaje</h3>
++                <p className="text-sm text-zinc-500 dark:text-zinc-400">URL de Google Reviews y textos personalizables.</p>
++            </div>
++            <div className="space-y-5">
++                <Field label="Pregunta 1 (NPS - legado)" field="q1_text" />
++                <Field label="Pregunta 2 (Organizaci├│n - legado)" field="q2_text" />
++                <Field label="Pregunta 3 (Atenci├│n - legado)" field="q3_text" />
++                <Field label="Placeholder del Comentario" field="comment_placeholder" />
++                <div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800">
++                    <label className="block text-[13px] font-bold text-zinc-700 dark:text-zinc-300 mb-2">URL de Rese├▒a en Google</label>
++                    <div className="flex items-center gap-3">
++                        <span className="material-symbols-outlined text-[20px] text-zinc-400">link</span>
++                        <input type="text" value={formData.google_review_url || ''} onChange={e => handleChange('google_review_url', e.target.value)}
++                            placeholder="https://g.page/r/..." className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#E0592A]/30 focus:border-[#E0592A] transition-all" />
++                    </div>
++                </div>
++            </div>
++            <div className="mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-800 flex justify-end items-center gap-4">
++                {saved && <span className="text-sm font-bold text-green-600 dark:text-green-400 flex items-center gap-1"><span className="material-symbols-outlined text-[18px]">check_circle</span>┬íGuardado!</span>}
++                <button onClick={handleSave} disabled={updating} className="px-6 py-2.5 bg-[#E0592A] hover:bg-[#F06A3B] text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 flex items-center gap-2">
++                    {updating ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Guardando...</> : 'Guardar Cambios'}
++                </button>
++            </div>
++        </div>
++    );
++};
++
++// ÔöÇÔöÇÔöÇ Post-Trip Detail Modal ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
++const PostTripDetailModal: React.FC<{ survey: SurveyRecord | null; onClose: () => void }> = ({ survey, onClose }) => {
+     if (!survey) return null;
++    const isV2 = survey.rating_general !== null;
+     const cat = getNpsCategory(survey.nps);
+     const badge = NPS_BADGE[cat];
+ 
+     return (
+-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
++        <div className="fixed inset-0 z-50 flex items-center justify-center p-6" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+             <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+-            <div className="relative bg-white dark:bg-zinc-900 rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden">
+-                {/* Header */}
+-                <div className="bg-gradient-to-br from-[#E0592A] to-[#F97316] px-7 pt-7 pb-5">
++            <div className="relative bg-white dark:bg-zinc-900 rounded-[24px] shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
++                <div className="bg-gradient-to-br from-[#E0592A] to-[#F97316] px-7 pt-7 pb-5 flex-shrink-0">
+                     <button onClick={onClose} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors">
+                         <span className="material-symbols-outlined text-[18px]">close</span>
+                     </button>
+-                    <p className="text-[11px] font-bold text-white/70 uppercase tracking-widest mb-1">Encuesta</p>
++                    <p className="text-[11px] font-bold text-white/70 uppercase tracking-widest mb-1">Encuesta Post-Viaje {isV2 ? 'V2' : 'V1'}</p>
+                     <h2 className="text-xl font-extrabold text-white">{survey.passenger_name}</h2>
+-                    <p className="text-sm text-white/80 mt-0.5">{survey.trip_destination}</p>
++                    <p className="text-sm text-white/80 mt-0.5">{survey.trip_destination} {survey.trip_internal_code && `┬À ${survey.trip_internal_code}`}</p>
+                 </div>
++                <div className="overflow-y-auto px-7 py-6 space-y-5">
++                    <p className="text-xs text-zinc-400">{new Date(survey.responded_at).toLocaleDateString('es-AR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+ 
+-                {/* Body */}
+-                <div className="px-7 py-6 space-y-5">
+-                    <div className="flex items-center gap-3">
+-                        <div className="flex-1">
+-                            <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Fecha de respuesta</p>
+-                            <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+-                                {new Date(survey.responded_at).toLocaleDateString('es-AR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+-                            </p>
+-                        </div>
+-                        <span className={`text-[12px] font-bold px-3 py-1.5 rounded-full ${badge.className}`}>{badge.label}</span>
+-                    </div>
+-
+-                    <div className="h-px bg-zinc-100 dark:bg-zinc-800" />
++                    {isV2 ? (
++                        <>
++                            <div className="grid grid-cols-2 gap-3">
++                                <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-center">
++                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Experiencia General</p>
++                                    <p className="text-3xl font-extrabold text-yellow-500">{survey.rating_general}</p>
++                                    <Stars value={survey.rating_general} />
++                                </div>
++                                <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-center">
++                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Expectativas Destino</p>
++                                    <p className="text-lg font-bold text-zinc-700 dark:text-white mt-2">{survey.destination_expectation ?? 'ÔÇö'}</p>
++                                </div>
++                            </div>
++                            <div className="grid grid-cols-2 gap-3">
++                                <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-center">
++                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">┬┐Volver├¡a a elegirnos?</p>
++                                    <p className="text-lg font-bold text-zinc-700 dark:text-white mt-2">{survey.would_buy_again ?? 'ÔÇö'}</p>
++                                </div>
++                                <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-center">
++                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">┬┐Tuvo incidente?</p>
++                                    <p className={`text-lg font-bold mt-2 ${survey.had_incident ? 'text-red-500' : 'text-green-600'}`}>{survey.had_incident === null ? 'ÔÇö' : survey.had_incident ? 'S├¡' : 'No'}</p>
++                                </div>
++                            </div>
++                            {survey.incident_comment && (
++                                <div>
++                                    <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wide mb-2">Descripci├│n del Incidente</p>
++                                    <p className="text-sm text-zinc-600 dark:text-zinc-300 bg-red-50 dark:bg-red-900/20 rounded-2xl px-4 py-3">{survey.incident_comment}</p>
++                                </div>
++                            )}
++                            {survey.services_ratings && Object.keys(survey.services_ratings).length > 0 && (
++                                <div>
++                                    <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wide mb-3">Evaluaci├│n de Servicios</p>
++                                    <div className="space-y-2">
++                                        {Object.entries(survey.services_ratings).map(([svc, val]) => (
++                                            <div key={svc} className="flex items-center justify-between py-1.5 border-b border-zinc-100 dark:border-zinc-800 last:border-0">
++                                                <span className="text-sm text-zinc-600 dark:text-zinc-300">{svc}</span>
++                                                {val === 'N/A' ? <Badge text="N/A" /> : <Stars value={val as number} />}
++                                            </div>
++                                        ))}
++                                    </div>
++                                </div>
++                            )}
++                        </>
++                    ) : (
++                        <>
++                            <div className="grid grid-cols-3 gap-3">
++                                <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-center">
++                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">NPS</p>
++                                    <p className="text-3xl font-extrabold text-zinc-700 dark:text-white">{survey.nps}</p>
++                                    <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${badge.className}`}>{badge.label}</span>
++                                </div>
++                                <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-center">
++                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Organizaci├│n</p>
++                                    <Stars value={survey.rating_organization} />
++                                </div>
++                                <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-center">
++                                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Atenci├│n</p>
++                                    <Stars value={survey.rating_attention} />
++                                </div>
++                            </div>
++                            {survey.comment && <p className="text-sm text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800 rounded-2xl px-4 py-3">"{survey.comment}"</p>}
++                        </>
++                    )}
++                </div>
++            </div>
++        </div>
++    );
++};
+ 
++// ÔöÇÔöÇÔöÇ Initial Survey Detail Modal ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
++const InitialDetailModal: React.FC<{ survey: InitialSurveyRecord | null; onClose: () => void }> = ({ survey, onClose }) => {
++    if (!survey) return null;
++    return (
++        <div className="fixed inset-0 z-50 flex items-center justify-center p-6" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
++            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
++            <div className="relative bg-white dark:bg-zinc-900 rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden">
++                <div className="bg-gradient-to-br from-blue-500 to-blue-600 px-7 pt-7 pb-5">
++                    <button onClick={onClose} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/20 hover:bg-white/30 text-white transition-colors">
++                        <span className="material-symbols-outlined text-[18px]">close</span>
++                    </button>
++                    <p className="text-[11px] font-bold text-white/70 uppercase tracking-widest mb-1">Encuesta Inicial (Pre-Viaje)</p>
++                    <h2 className="text-xl font-extrabold text-white">{survey.passenger_name}</h2>
++                    <p className="text-xs text-white/70 mt-1">{new Date(survey.responded_at).toLocaleDateString('es-AR', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
++                </div>
++                <div className="px-7 py-6 space-y-5">
+                     <div className="grid grid-cols-3 gap-3">
+                         <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-center">
+                             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">NPS</p>
+                             <p className="text-3xl font-extrabold text-zinc-700 dark:text-white">{survey.nps}</p>
+                             <p className="text-[10px] text-zinc-400">/10</p>
+                         </div>
+-                        <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-center">
+-                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Organizaci├│n</p>
+-                            <p className="text-2xl font-extrabold text-yellow-500">{survey.rating_organization}</p>
+-                            <Stars value={survey.rating_organization} />
+-                        </div>
+                         <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-center">
+                             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Atenci├│n</p>
+-                            <p className="text-2xl font-extrabold text-yellow-500">{survey.rating_attention}</p>
+                             <Stars value={survey.rating_attention} />
+                         </div>
++                        <div className="bg-zinc-50 dark:bg-zinc-800 rounded-2xl p-4 text-center">
++                            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">Facilidad</p>
++                            <Stars value={survey.booking_ease} />
++                        </div>
++                    </div>
++                    <div className="h-px bg-zinc-100 dark:bg-zinc-800" />
++                    <div className="space-y-3">
++                        <div className="flex items-center justify-between">
++                            <p className="text-sm text-zinc-500 dark:text-zinc-400">┬┐Info clara y completa?</p>
++                            <Badge text={survey.info_clear} color={survey.info_clear === 'S├¡' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : survey.info_clear === 'Parcialmente' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'} />
++                        </div>
++                        <div className="flex items-center justify-between">
++                            <p className="text-sm text-zinc-500 dark:text-zinc-400">┬┐Entendiste lo que buscabas?</p>
++                            <Badge text={survey.understood_needs} color={survey.understood_needs === 'S├¡ totalmente' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'} />
++                        </div>
+                     </div>
+-
+                     {survey.comment && (
+                         <>
+                             <div className="h-px bg-zinc-100 dark:bg-zinc-800" />
+-                            <div>
+-                                <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-wide mb-2">Comentario</p>
+-                                <p className="text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed bg-zinc-50 dark:bg-zinc-800 rounded-2xl px-4 py-3">
+-                                    "{survey.comment}"
+-                                </p>
+-                            </div>
++                            <p className="text-sm text-zinc-600 dark:text-zinc-300 bg-zinc-50 dark:bg-zinc-800 rounded-2xl px-4 py-3">"{survey.comment}"</p>
+                         </>
+                     )}
+                 </div>
+@@ -106,356 +231,98 @@ const SurveyDetailModal: React.FC<{ survey: SurveyRecord | null; onClose: () =>
+     );
+ };
+ 
+-// ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-// Settings Tab Component
+-// ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-const SurveySettingsTab: React.FC = () => {
+-    const { settings, loading, error, updating, updateSettings } = useSurveySettings();
+-    const [formData, setFormData] = useState<SurveySettings | null>(null);
+-    const [saved, setSaved] = useState(false);
+-
+-    useEffect(() => {
+-        if (settings && !formData) {
+-            setFormData(settings);
+-        }
+-    }, [settings, formData]);
+-
+-    if (loading) {
+-        return (
+-            <div className="flex items-center justify-center p-12">
+-                <div className="w-8 h-8 border-2 border-[#E0592A] border-t-transparent rounded-full animate-spin" />
+-            </div>
+-        );
+-    }
+-    if (error) return <div className="p-6 text-red-500">Error: {error}</div>;
+-    if (!formData) return null;
+-
+-    const handleChange = (field: keyof SurveySettings, value: any) => {
+-        setFormData(prev => prev ? { ...prev, [field]: value } : null);
+-        setSaved(false);
+-    };
+-
+-    const handleSave = async () => {
+-        if (!formData) return;
+-        const res = await updateSettings(formData);
+-        if (res.success) {
+-            setSaved(true);
+-            setTimeout(() => setSaved(false), 3000);
+-        }
+-    };
+-
+-    return (
+-        <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 md:p-8 shadow-sm border border-zinc-100 dark:border-zinc-800 max-w-3xl">
+-            <div className="mb-6 pb-6 border-b border-zinc-100 dark:border-zinc-800">
+-                <h3 className="text-lg font-bold text-zinc-800 dark:text-white mb-1">Textos de la Encuesta</h3>
+-                <p className="text-sm text-zinc-500 dark:text-zinc-400">Personaliz├í las preguntas que los pasajeros ver├ín al finalizar su viaje.</p>
+-            </div>
+-
+-            <div className="space-y-5">
+-                <div>
+-                    <label className="block text-[13px] font-bold text-zinc-700 dark:text-zinc-300 mb-2">Pregunta 1 (NPS)</label>
+-                    <input
+-                        type="text"
+-                        value={formData.q1_text}
+-                        onChange={e => handleChange('q1_text', e.target.value)}
+-                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#E0592A]/30 focus:border-[#E0592A] transition-all"
+-                    />
+-                </div>
+-                <div>
+-                    <label className="block text-[13px] font-bold text-zinc-700 dark:text-zinc-300 mb-2">Pregunta 2 (Organizaci├│n)</label>
+-                    <input
+-                        type="text"
+-                        value={formData.q2_text}
+-                        onChange={e => handleChange('q2_text', e.target.value)}
+-                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#E0592A]/30 focus:border-[#E0592A] transition-all"
+-                    />
+-                </div>
+-                <div>
+-                    <label className="block text-[13px] font-bold text-zinc-700 dark:text-zinc-300 mb-2">Pregunta 3 (Atenci├│n)</label>
+-                    <input
+-                        type="text"
+-                        value={formData.q3_text}
+-                        onChange={e => handleChange('q3_text', e.target.value)}
+-                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#E0592A]/30 focus:border-[#E0592A] transition-all"
+-                    />
+-                </div>
+-                <div>
+-                    <label className="block text-[13px] font-bold text-zinc-700 dark:text-zinc-300 mb-2">Placeholder del Comentario</label>
+-                    <input
+-                        type="text"
+-                        value={formData.comment_placeholder}
+-                        onChange={e => handleChange('comment_placeholder', e.target.value)}
+-                        className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#E0592A]/30 focus:border-[#E0592A] transition-all"
+-                    />
+-                </div>
+-                <div className="pt-4 mt-4 border-t border-zinc-100 dark:border-zinc-800">
+-                    <label className="block text-[13px] font-bold text-zinc-700 dark:text-zinc-300 mb-2">URL de Rese├▒a en Google</label>
+-                    <div className="flex items-center gap-3">
+-                        <span className="material-symbols-outlined text-[20px] text-zinc-400">link</span>
+-                        <input
+-                            type="text"
+-                            value={formData.google_review_url || ''}
+-                            onChange={e => handleChange('google_review_url', e.target.value)}
+-                            placeholder="https://g.page/r/..."
+-                            className="flex-1 px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/50 text-sm text-zinc-800 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#E0592A]/30 focus:border-[#E0592A] transition-all"
+-                        />
+-                    </div>
+-                    <p className="text-xs text-zinc-500 mt-2 ml-8">Esta URL aparecer├í como un bot├│n ├║nicamente para pasajeros clasificados como <strong>Promotores</strong> (NPS 8 a 10).</p>
+-                </div>
+-            </div>
+-
+-            <div className="mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-800 flex justify-end items-center gap-4">
+-                {saved && (
+-                    <span className="text-sm font-bold text-green-600 dark:text-green-400 flex items-center gap-1 animate-in fade-in duration-300">
+-                        <span className="material-symbols-outlined text-[18px]">check_circle</span>
+-                        ┬íGuardado!
+-                    </span>
+-                )}
+-                <button
+-                    onClick={handleSave}
+-                    disabled={updating}
+-                    className="px-6 py-2.5 bg-[#E0592A] hover:bg-[#F06A3B] text-white rounded-xl text-sm font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+-                >
+-                    {updating ? (
+-                        <>
+-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+-                            Guardando...
+-                        </>
+-                    ) : (
+-                        'Guardar Cambios'
+-                    )}
+-                </button>
+-            </div>
+-        </div>
+-    );
+-};
+-
+-// ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-// Main Screen
+-// ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+-export const AdminSurveys: React.FC = () => {
+-    const {
+-        surveys, stats, loading, error, refetch,
+-        filterDateFrom, setFilterDateFrom,
+-        filterDateTo, setFilterDateTo,
+-        filterSearch, setFilterSearch,
+-        filterOnlyDetractors, setFilterOnlyDetractors,
+-        sortField, sortDir, toggleSortField,
+-    } = useAdminSurveys();
+-
+-    const [activeTab, setActiveTab] = useState<'resumen' | 'listado' | 'configuracion'>('resumen');
++// ÔöÇÔöÇÔöÇ Post-Trip Section ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
++const PostTripSection: React.FC = () => {
++    const { surveys, stats, loading, error, refetch, filterDateFrom, setFilterDateFrom, filterDateTo, setFilterDateTo, filterSearch, setFilterSearch, filterOnlyDetractors, setFilterOnlyDetractors, sortField, sortDir, toggleSortField } = useAdminSurveys();
++    const [activeTab, setActiveTab] = useState<'resumen' | 'listado'>('resumen');
+     const [selectedSurvey, setSelectedSurvey] = useState<SurveyRecord | null>(null);
+     const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+     const tableRef = useRef<HTMLTableElement>(null);
+ 
+     useEffect(() => {
+-        const handleClickOutside = (event: MouseEvent) => {
+-            if (tableRef.current && !tableRef.current.contains(event.target as Node)) {
+-                setOpenDropdownId(null);
+-            }
+-        };
+-        document.addEventListener('mousedown', handleClickOutside);
+-        return () => document.removeEventListener('mousedown', handleClickOutside);
++        const handler = (e: MouseEvent) => { if (tableRef.current && !tableRef.current.contains(e.target as Node)) setOpenDropdownId(null); };
++        document.addEventListener('mousedown', handler);
++        return () => document.removeEventListener('mousedown', handler);
+     }, []);
+ 
+-    const tabs = [
+-        { id: 'resumen' as const, label: 'Resumen', icon: 'bar_chart' },
+-        { id: 'listado' as const, label: 'Listado', icon: 'table_rows' },
+-        { id: 'configuracion' as const, label: 'Configuraci├│n', icon: 'settings' },
+-    ];
+-
+     const SortIcon: React.FC<{ field: 'responded_at' | 'nps' }> = ({ field }) => {
+         if (sortField !== field) return <span className="material-symbols-outlined text-[14px] text-zinc-300">unfold_more</span>;
+-        return (
+-            <span className="material-symbols-outlined text-[14px] text-[#E0592A]">
+-                {sortDir === 'asc' ? 'expand_less' : 'expand_more'}
+-            </span>
+-        );
++        return <span className="material-symbols-outlined text-[14px] text-[#E0592A]">{sortDir === 'asc' ? 'expand_less' : 'expand_more'}</span>;
+     };
+ 
+-    if (loading) {
+-        return (
+-            <div className="flex items-center justify-center h-64">
+-                <div className="w-8 h-8 border-2 border-[#E0592A] border-t-transparent rounded-full animate-spin" />
+-            </div>
+-        );
+-    }
+-
+-    if (error) {
+-        return (
+-            <div className="text-center py-16">
+-                <span className="material-symbols-outlined text-5xl text-red-400 mb-3 block">error</span>
+-                <p className="text-zinc-500 dark:text-zinc-400">{error}</p>
+-                <button onClick={refetch} className="mt-4 px-5 py-2 bg-[#E0592A] text-white rounded-xl text-sm font-bold">Reintentar</button>
+-            </div>
+-        );
+-    }
++    if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-[#E0592A] border-t-transparent rounded-full animate-spin" /></div>;
++    if (error) return <div className="text-center py-16"><span className="material-symbols-outlined text-5xl text-red-400 mb-3 block">error</span><p className="text-zinc-500">{error}</p><button onClick={refetch} className="mt-4 px-5 py-2 bg-[#E0592A] text-white rounded-xl text-sm font-bold">Reintentar</button></div>;
+ 
+     return (
+         <div className="space-y-6">
+-
+-            {/* Page Title Row */}
+-            <div className="flex items-center justify-between">
+-                <div>
+-                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+-                        {stats?.total ?? 0} encuesta{(stats?.total ?? 0) !== 1 ? 's' : ''} recibida{(stats?.total ?? 0) !== 1 ? 's' : ''}
+-                    </p>
+-                </div>
+-                <button
+-                    onClick={refetch}
+-                    className="p-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 dark:text-zinc-400 transition-colors"
+-                    title="Actualizar"
+-                >
+-                    <span className="material-symbols-outlined text-[20px]">refresh</span>
+-                </button>
+-            </div>
+-
+-            {/* ÔöÇÔöÇ Filters ÔöÇÔöÇ */}
++            {/* Filters */}
+             <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 shadow-sm border border-zinc-100 dark:border-zinc-800">
+                 <div className="flex flex-wrap gap-3 items-end">
+                     <div className="flex flex-col gap-1">
+                         <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wide">Desde</label>
+-                        <input
+-                            type="date"
+-                            value={filterDateFrom}
+-                            onChange={(e) => setFilterDateFrom(e.target.value)}
+-                            className="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#E0592A]/30"
+-                        />
++                        <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#E0592A]/30" />
+                     </div>
+                     <div className="flex flex-col gap-1">
+                         <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wide">Hasta</label>
+-                        <input
+-                            type="date"
+-                            value={filterDateTo}
+-                            onChange={(e) => setFilterDateTo(e.target.value)}
+-                            className="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#E0592A]/30"
+-                        />
++                        <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#E0592A]/30" />
+                     </div>
+                     <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
+                         <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wide">Buscar</label>
+                         <div className="relative">
+                             <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] text-zinc-400">search</span>
+-                            <input
+-                                type="text"
+-                                value={filterSearch}
+-                                onChange={(e) => setFilterSearch(e.target.value)}
+-                                placeholder="Pasajero, destino, c├│digoÔÇª"
+-                                className="w-full pl-9 pr-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#E0592A]/30 placeholder-zinc-400"
+-                            />
++                            <input type="text" value={filterSearch} onChange={e => setFilterSearch(e.target.value)} placeholder="Pasajero, destino, c├│digoÔÇª" className="w-full pl-9 pr-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-[#E0592A]/30 placeholder-zinc-400" />
+                         </div>
+                     </div>
+-                    <button
+-                        onClick={() => setFilterOnlyDetractors(!filterOnlyDetractors)}
+-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold transition-all ${filterOnlyDetractors
+-                            ? 'bg-red-600 border-red-600 text-white'
+-                            : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-red-400 hover:text-red-600'
+-                            }`}
+-                    >
+-                        <span className="material-symbols-outlined text-[18px]">sentiment_dissatisfied</span>
+-                        Solo detractores
++                    <button onClick={() => setFilterOnlyDetractors(!filterOnlyDetractors)} className={`flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-bold transition-all ${filterOnlyDetractors ? 'bg-red-600 border-red-600 text-white' : 'bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 hover:border-red-400 hover:text-red-600'}`}>
++                        <span className="material-symbols-outlined text-[18px]">sentiment_dissatisfied</span>Solo detractores
+                     </button>
+                     {(filterDateFrom || filterDateTo || filterSearch || filterOnlyDetractors) && (
+-                        <button
+-                            onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); setFilterSearch(''); setFilterOnlyDetractors(false); }}
+-                            className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 transition-colors"
+-                        >
+-                            <span className="material-symbols-outlined text-[16px]">close</span>
+-                            Limpiar
++                        <button onClick={() => { setFilterDateFrom(''); setFilterDateTo(''); setFilterSearch(''); setFilterOnlyDetractors(false); }} className="flex items-center gap-1 px-3 py-2 rounded-xl text-sm text-zinc-400 hover:text-zinc-600 border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 transition-colors">
++                            <span className="material-symbols-outlined text-[16px]">close</span>Limpiar
+                         </button>
+                     )}
+                 </div>
+             </div>
+ 
+-            {/* ÔöÇÔöÇ Tab Switcher ÔöÇÔöÇ */}
++            {/* Tabs */}
+             <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-2xl p-1 w-fit">
+-                {tabs.map(tab => (
+-                    <button
+-                        key={tab.id}
+-                        onClick={() => setActiveTab(tab.id)}
+-                        className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === tab.id
+-                            ? 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-white shadow-sm'
+-                            : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
+-                            }`}
+-                    >
+-                        <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
+-                        {tab.label}
++                {([['resumen','bar_chart','Resumen'],['listado','table_rows','Listado']] as const).map(([id, icon, label]) => (
++                    <button key={id} onClick={() => setActiveTab(id)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === id ? 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'}`}>
++                        <span className="material-symbols-outlined text-[18px]">{icon}</span>{label}
+                     </button>
+                 ))}
+             </div>
+ 
+-            {/* ÔöÇÔöÇ TAB: RESUMEN ÔöÇÔöÇ */}
++            {/* Resumen Tab */}
+             {activeTab === 'resumen' && (
+                 <div className="space-y-6">
+                     {stats && stats.total > 0 ? (
+                         <>
+-                            {/* NPS Row */}
+                             <div>
+-                                <h3 className="text-[13px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Net Promoter Score</h3>
++                                <h3 className="text-[13px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Experiencia General</h3>
+                                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+-                                    <StatCard
+-                                        label="NPS Promedio"
+-                                        value={stats.avg_nps.toFixed(1)}
+-                                        sub="sobre 10 puntos"
+-                                        colorClass={stats.avg_nps >= 9 ? 'text-green-600' : stats.avg_nps >= 7 ? 'text-yellow-600' : 'text-red-600'}
+-                                    />
+-                                    <StatCard label="Promotores (9ÔÇô10)" value={`${stats.pct_promoters}%`} colorClass="text-green-600 dark:text-green-400" />
+-                                    <StatCard label="Neutros (7ÔÇô8)" value={`${stats.pct_neutral}%`} colorClass="text-yellow-600 dark:text-yellow-400" />
+-                                    <StatCard label="Detractores (0ÔÇô6)" value={`${stats.pct_detractors}%`} colorClass="text-red-600 dark:text-red-400" />
+-                                </div>
+-                            </div>
+-
+-                            {/* Ratings Row */}
+-                            <div>
+-                                <h3 className="text-[13px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Valoraciones</h3>
+-                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+-                                    <StatCard label="Promedio Organizaci├│n" value={`${stats.avg_organization.toFixed(1)} / 5`} colorClass="text-yellow-600 dark:text-yellow-400" />
+-                                    <StatCard label="Promedio Atenci├│n" value={`${stats.avg_attention.toFixed(1)} / 5`} colorClass="text-yellow-600 dark:text-yellow-400" />
+-                                    <StatCard label="Total Encuestas" value={stats.total} sub="respuestas recibidas" />
++                                    <StatCard label="Exp. General Promedio" value={`${stats.avg_general} / 5`} colorClass="text-yellow-600 dark:text-yellow-400" />
++                                    <StatCard label="┬┐Volver├¡a a elegirnos?" value={`${stats.pct_would_buy_again}%`} colorClass="text-green-600 dark:text-green-400" sub="respondieron S├¡" />
++                                    <StatCard label="Total Respuestas" value={stats.total} sub="encuestas completadas" />
++                                    <StatCard label="Promedio Org. (legacy)" value={`${stats.avg_organization} / 5`} colorClass="text-yellow-600 dark:text-yellow-400" />
+                                 </div>
+                             </div>
+-
+-                            {/* Visual NPS bar */}
+-                            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-zinc-100 dark:border-zinc-800">
+-                                <p className="text-[13px] font-bold text-zinc-400 uppercase tracking-widest mb-4">Distribuci├│n NPS</p>
+-                                <div className="flex rounded-xl overflow-hidden h-8 gap-0.5">
+-                                    {stats.pct_promoters > 0 && (
+-                                        <div
+-                                            className="bg-green-500 flex items-center justify-center text-white text-xs font-bold transition-all"
+-                                            style={{ width: `${stats.pct_promoters}%` }}
+-                                        >
+-                                            {stats.pct_promoters}%
+-                                        </div>
+-                                    )}
+-                                    {stats.pct_neutral > 0 && (
+-                                        <div
+-                                            className="bg-yellow-400 flex items-center justify-center text-white text-xs font-bold"
+-                                            style={{ width: `${stats.pct_neutral}%` }}
+-                                        >
+-                                            {stats.pct_neutral}%
+-                                        </div>
+-                                    )}
+-                                    {stats.pct_detractors > 0 && (
+-                                        <div
+-                                            className="bg-red-500 flex items-center justify-center text-white text-xs font-bold"
+-                                            style={{ width: `${stats.pct_detractors}%` }}
+-                                        >
+-                                            {stats.pct_detractors}%
+-                                        </div>
+-                                    )}
+-                                </div>
+-                                <div className="flex items-center gap-5 mt-3">
+-                                    {[
+-                                        { label: 'Promotores', color: 'bg-green-500' },
+-                                        { label: 'Neutros', color: 'bg-yellow-400' },
+-                                        { label: 'Detractores', color: 'bg-red-500' },
+-                                    ].map(item => (
+-                                        <div key={item.label} className="flex items-center gap-2">
+-                                            <div className={`w-3 h-3 rounded-full ${item.color}`} />
+-                                            <span className="text-xs text-zinc-500 dark:text-zinc-400">{item.label}</span>
+-                                        </div>
+-                                    ))}
++                            {Object.keys(stats.avg_services).length > 0 && (
++                                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-zinc-100 dark:border-zinc-800">
++                                    <p className="text-[13px] font-bold text-zinc-400 uppercase tracking-widest mb-4">Promedio por Servicio</p>
++                                    <div className="space-y-3">
++                                        {Object.entries(stats.avg_services).sort((a, b) => (b[1] as number) - (a[1] as number)).map(([svc, avg]) => (
++                                            <div key={svc} className="flex items-center gap-3">
++                                                <p className="text-sm text-zinc-600 dark:text-zinc-300 w-48 truncate">{svc}</p>
++                                                <div className="flex-1 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
++                                                    <div className="h-full bg-[#E0592A] rounded-full transition-all" style={{ width: `${((avg as number) / 5) * 100}%` }} />
++                                                </div>
++                                                <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200 w-10 text-right">{avg as number}</span>
++                                            </div>
++                                        ))}
++                                    </div>
+                                 </div>
+-                            </div>
++                            )}
+                         </>
+                     ) : (
+                         <div className="text-center py-20">
+@@ -467,123 +334,231 @@ export const AdminSurveys: React.FC = () => {
+                 </div>
+             )}
+ 
+-            {/* ÔöÇÔöÇ TAB: LISTADO ÔöÇÔöÇ */}
++            {/* Listado Tab */}
+             {activeTab === 'listado' && (
+                 <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 overflow-hidden">
+                     {surveys.length === 0 ? (
+                         <div className="text-center py-20">
+                             <span className="material-symbols-outlined text-6xl text-zinc-300 dark:text-zinc-600 mb-4 block">search_off</span>
+                             <h3 className="text-lg font-bold text-zinc-400 dark:text-zinc-500 mb-2">Sin resultados</h3>
+-                            <p className="text-sm text-zinc-400 dark:text-zinc-500">Prob├í ajustando los filtros.</p>
+                         </div>
+                     ) : (
+                         <div className="overflow-x-auto">
+                             <table className="w-full" ref={tableRef}>
+                                 <thead>
+                                     <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
+-                                        <th className="px-5 py-4 text-left">
+-                                            <button
+-                                                onClick={() => toggleSortField('responded_at')}
+-                                                className="flex items-center gap-1 text-[11px] font-bold text-zinc-400 uppercase tracking-wider hover:text-zinc-600 dark:hover:text-zinc-300"
+-                                            >
+-                                                Fecha <SortIcon field="responded_at" />
+-                                            </button>
+-                                        </th>
++                                        <th className="px-5 py-4 text-left"><button onClick={() => toggleSortField('responded_at')} className="flex items-center gap-1 text-[11px] font-bold text-zinc-400 uppercase tracking-wider hover:text-zinc-600">Fecha <SortIcon field="responded_at" /></button></th>
+                                         <th className="px-5 py-4 text-left text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Pasajero</th>
+                                         <th className="px-5 py-4 text-left text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Viaje</th>
+-                                        <th className="px-5 py-4 text-left">
+-                                            <button
+-                                                onClick={() => toggleSortField('nps')}
+-                                                className="flex items-center gap-1 text-[11px] font-bold text-zinc-400 uppercase tracking-wider hover:text-zinc-600 dark:hover:text-zinc-300"
+-                                            >
+-                                                NPS <SortIcon field="nps" />
+-                                            </button>
+-                                        </th>
+-                                        <th className="px-5 py-4 text-left text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Org.</th>
+-                                        <th className="px-5 py-4 text-left text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Atenci├│n</th>
+-                                        <th className="px-5 py-4 text-left text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Comentario</th>
++                                        <th className="px-5 py-4 text-left text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Exp. General</th>
++                                        <th className="px-5 py-4 text-left text-[11px] font-bold text-zinc-400 uppercase tracking-wider">┬┐Volver├¡a?</th>
++                                        <th className="px-5 py-4 text-left text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Incidente</th>
+                                         <th className="px-5 py-4 text-right text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Acciones</th>
+                                     </tr>
+                                 </thead>
+                                 <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
+-                                    {surveys.map((survey) => {
+-                                        const cat = getNpsCategory(survey.nps);
+-                                        const badge = NPS_BADGE[cat];
+-                                        return (
+-                                            <tr
+-                                                key={survey.id}
+-                                                className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
+-                                            >
+-                                                <td className="px-5 py-4 text-sm text-zinc-500 dark:text-zinc-400 whitespace-nowrap">
+-                                                    {new Date(survey.responded_at).toLocaleDateString('es-AR')}
+-                                                </td>
+-                                                <td className="px-5 py-4">
+-                                                    <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{survey.passenger_name}</p>
+-                                                </td>
+-                                                <td className="px-5 py-4">
+-                                                    <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 max-w-[160px] truncate">{survey.trip_destination}</p>
+-                                                    {survey.trip_internal_code && (
+-                                                        <p className="text-[11px] text-zinc-400 font-mono">{survey.trip_internal_code}</p>
++                                    {surveys.map(survey => (
++                                        <tr key={survey.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
++                                            <td className="px-5 py-4 text-sm text-zinc-500 whitespace-nowrap">{new Date(survey.responded_at).toLocaleDateString('es-AR')}</td>
++                                            <td className="px-5 py-4"><p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{survey.passenger_name}</p></td>
++                                            <td className="px-5 py-4">
++                                                <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 max-w-[160px] truncate">{survey.trip_destination}</p>
++                                                {survey.trip_internal_code && <p className="text-[11px] text-zinc-400 font-mono">{survey.trip_internal_code}</p>}
++                                            </td>
++                                            <td className="px-5 py-4">
++                                                {survey.rating_general !== null ? <Stars value={survey.rating_general} /> : <span className="text-xs text-zinc-300 italic">V1</span>}
++                                            </td>
++                                            <td className="px-5 py-4">
++                                                {survey.would_buy_again ? <Badge text={survey.would_buy_again} color={survey.would_buy_again === 'S├¡' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'} /> : <span className="text-xs text-zinc-300 italic">ÔÇö</span>}
++                                            </td>
++                                            <td className="px-5 py-4">
++                                                {survey.had_incident === null ? <span className="text-xs text-zinc-300 italic">ÔÇö</span> : survey.had_incident ? <Badge text="S├¡" color="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400" /> : <Badge text="No" color="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400" />}
++                                            </td>
++                                            <td className="px-5 py-4 text-right">
++                                                <div className="relative inline-block">
++                                                    <button onClick={e => { e.stopPropagation(); setOpenDropdownId(openDropdownId === survey.id ? null : survey.id); }} className="p-2 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
++                                                        <span className="material-symbols-outlined text-[20px]">more_vert</span>
++                                                    </button>
++                                                    {openDropdownId === survey.id && (
++                                                        <div className="absolute right-0 mt-1 w-36 bg-white dark:bg-zinc-800 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-700 z-50 py-1 overflow-hidden" onClick={e => e.stopPropagation()}>
++                                                            <button onClick={() => { setSelectedSurvey(survey); setOpenDropdownId(null); }} className="w-full text-left px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 font-medium flex items-center gap-2">
++                                                                <span className="material-symbols-outlined text-[18px]">visibility</span>Ver detalle
++                                                            </button>
++                                                        </div>
+                                                     )}
+-                                                </td>
+-                                                <td className="px-5 py-4">
+-                                                    <div className="flex items-center gap-2">
+-                                                        <span className="text-lg font-extrabold text-zinc-700 dark:text-white">{survey.nps}</span>
+-                                                        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${badge.className}`}>
+-                                                            {badge.label}
+-                                                        </span>
+-                                                    </div>
+-                                                </td>
+-                                                <td className="px-5 py-4">
+-                                                    <Stars value={survey.rating_organization} />
+-                                                </td>
+-                                                <td className="px-5 py-4">
+-                                                    <Stars value={survey.rating_attention} />
+-                                                </td>
+-                                                <td className="px-5 py-4 max-w-[200px]">
+-                                                    {survey.comment ? (
+-                                                        <p className="text-sm text-zinc-500 dark:text-zinc-400 truncate" title={survey.comment}>
+-                                                            {survey.comment.slice(0, 80)}{survey.comment.length > 80 ? 'ÔÇª' : ''}
+-                                                        </p>
+-                                                    ) : (
+-                                                        <span className="text-xs text-zinc-300 dark:text-zinc-600 italic">Sin comentario</span>
+-                                                    )}
+-                                                </td>
+-                                                <td className="px-5 py-4 text-right">
+-                                                    <div className="relative inline-block text-left">
+-                                                        <button
+-                                                            onClick={(e) => {
+-                                                                e.stopPropagation();
+-                                                                setOpenDropdownId(openDropdownId === survey.id ? null : survey.id);
+-                                                            }}
+-                                                            className="p-2 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors"
+-                                                            title="Acciones"
+-                                                        >
+-                                                            <span className="material-symbols-outlined text-[20px]">more_vert</span>
+-                                                        </button>
+-
+-                                                        {openDropdownId === survey.id && (
+-                                                            <div
+-                                                                className="absolute right-0 mt-1 w-36 bg-white dark:bg-zinc-800 rounded-xl shadow-lg border border-zinc-100 dark:border-zinc-700 z-50 py-1 overflow-hidden"
+-                                                                onClick={(e) => e.stopPropagation()}
+-                                                            >
+-                                                                <button
+-                                                                    onClick={() => {
+-                                                                        setSelectedSurvey(survey);
+-                                                                        setOpenDropdownId(null);
+-                                                                    }}
+-                                                                    className="w-full text-left px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 font-medium flex items-center gap-2 transition-colors"
+-                                                                >
+-                                                                    <span className="material-symbols-outlined text-[18px]">visibility</span>
+-                                                                    Ver detalle
+-                                                                </button>
+-                                                            </div>
+-                                                        )}
+-                                                    </div>
+-                                                </td>
+-                                            </tr>
+-                                        );
+-                                    })}
++                                                </div>
++                                            </td>
++                                        </tr>
++                                    ))}
++                                </tbody>
++                            </table>
++                        </div>
++                    )}
++                </div>
++            )}
++
++
++            <PostTripDetailModal survey={selectedSurvey} onClose={() => setSelectedSurvey(null)} />
++        </div>
++    );
++};
++
++// ÔöÇÔöÇÔöÇ Initial Survey Section ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
++const InitialSurveySection: React.FC = () => {
++    const { surveys, stats, loading, error, refetch, filterSearch, setFilterSearch, filterDateFrom, setFilterDateFrom, filterDateTo, setFilterDateTo } = useAdminInitialSurveys();
++    const [activeTab, setActiveTab] = useState<'resumen' | 'listado'>('resumen');
++    const [selectedSurvey, setSelectedSurvey] = useState<InitialSurveyRecord | null>(null);
++
++    if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" /></div>;
++    if (error) return <div className="text-center py-16"><span className="material-symbols-outlined text-5xl text-red-400 mb-3 block">error</span><p className="text-zinc-500">{error}</p><button onClick={refetch} className="mt-4 px-5 py-2 bg-blue-500 text-white rounded-xl text-sm font-bold">Reintentar</button></div>;
++
++    return (
++        <div className="space-y-6">
++            {/* Filters */}
++            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-5 shadow-sm border border-zinc-100 dark:border-zinc-800">
++                <div className="flex flex-wrap gap-3 items-end">
++                    <div className="flex flex-col gap-1">
++                        <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wide">Desde</label>
++                        <input type="date" value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} className="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
++                    </div>
++                    <div className="flex flex-col gap-1">
++                        <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wide">Hasta</label>
++                        <input type="date" value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} className="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30" />
++                    </div>
++                    <div className="flex flex-col gap-1 flex-1 min-w-[180px]">
++                        <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wide">Buscar Pasajero</label>
++                        <div className="relative">
++                            <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[18px] text-zinc-400">search</span>
++                            <input type="text" value={filterSearch} onChange={e => setFilterSearch(e.target.value)} placeholder="Nombre del pasajeroÔÇª" className="w-full pl-9 pr-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-sm text-zinc-700 dark:text-zinc-200 focus:outline-none focus:ring-2 focus:ring-blue-500/30 placeholder-zinc-400" />
++                        </div>
++                    </div>
++                </div>
++            </div>
++
++            {/* Tabs */}
++            <div className="flex gap-1 bg-zinc-100 dark:bg-zinc-800 rounded-2xl p-1 w-fit">
++                {([['resumen','bar_chart','Resumen'],['listado','table_rows','Listado']] as const).map(([id, icon, label]) => (
++                    <button key={id} onClick={() => setActiveTab(id)} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${activeTab === id ? 'bg-white dark:bg-zinc-900 text-zinc-800 dark:text-white shadow-sm' : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'}`}>
++                        <span className="material-symbols-outlined text-[18px]">{icon}</span>{label}
++                    </button>
++                ))}
++            </div>
++
++            {/* Resumen Tab */}
++            {activeTab === 'resumen' && (
++                <div className="space-y-6">
++                    {stats && stats.total > 0 ? (
++                        <>
++                            {/* Row 1: 4 stat cards */}
++                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
++                                <StatCard label="Total Respuestas" value={stats.total} sub="encuestas iniciales" />
++                                <StatCard label="NPS Promedio" value={stats.avg_nps} sub="sobre 10" colorClass={stats.avg_nps >= 9 ? 'text-green-600' : stats.avg_nps >= 7 ? 'text-yellow-600' : 'text-red-600'} />
++                                <StatCard label="Calidad de Atenci├│n" value={`${stats.avg_rating_attention} / 5`} colorClass="text-yellow-600 dark:text-yellow-400" sub="Pregunta 1 ÔÇö escala 1 a 5" />
++                                <StatCard label="Facilidad de Compra" value={`${stats.avg_booking_ease} / 5`} colorClass="text-yellow-600 dark:text-yellow-400" sub="Pregunta 4 ÔÇö escala 1 a 5" />
++                            </div>
++
++                            {/* Row 2: NPS distribution */}
++                            <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-zinc-100 dark:border-zinc-800">
++                                <p className="text-[13px] font-bold text-zinc-400 uppercase tracking-widest mb-4">┬┐Recomendar├¡as la agencia? (NPS 0-10)</p>
++                                <div className="flex rounded-xl overflow-hidden h-8 gap-0.5">
++                                    {stats.pct_promoters > 0 && <div className="bg-green-500 flex items-center justify-center text-white text-xs font-bold" style={{ width: `${stats.pct_promoters}%` }}>{stats.pct_promoters}%</div>}
++                                    {stats.pct_neutral > 0 && <div className="bg-yellow-400 flex items-center justify-center text-white text-xs font-bold" style={{ width: `${stats.pct_neutral}%` }}>{stats.pct_neutral}%</div>}
++                                    {stats.pct_detractors > 0 && <div className="bg-red-400 flex-1 flex items-center justify-center text-white text-xs font-bold">{stats.pct_detractors}%</div>}
++                                </div>
++                                <div className="flex items-center gap-5 mt-3">
++                                    <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-green-500" /><span className="text-xs text-zinc-500">Promotores (9-10) ┬À {stats.pct_promoters}%</span></div>
++                                    <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-yellow-400" /><span className="text-xs text-zinc-500">Neutrales (7-8) ┬À {stats.pct_neutral}%</span></div>
++                                    <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-red-400" /><span className="text-xs text-zinc-500">Detractores (0-6) ┬À {stats.pct_detractors}%</span></div>
++                                </div>
++                            </div>
++
++                            {/* Row 3: info_clear + understood_needs ÔÇö full 3-option breakdown */}
++                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
++                                {/* ┬┐Info clara? */}
++                                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-zinc-100 dark:border-zinc-800">
++                                    <p className="text-[13px] font-bold text-zinc-400 uppercase tracking-widest mb-4">┬┐La informaci├│n brindada fue clara y completa?</p>
++                                    <div className="space-y-3">
++                                        {([
++                                            { label: 'S├¡', pct: stats.pct_info_clear_yes, color: 'bg-green-500' },
++                                            { label: 'Parcialmente', pct: stats.pct_info_clear_parcial, color: 'bg-yellow-400' },
++                                            { label: 'No', pct: stats.pct_info_clear_no, color: 'bg-red-400' },
++                                        ] as const).map(({ label, pct, color }) => (
++                                            <div key={label} className="flex items-center gap-3">
++                                                <p className="text-sm text-zinc-600 dark:text-zinc-300 w-28">{label}</p>
++                                                <div className="flex-1 h-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
++                                                    <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
++                                                </div>
++                                                <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200 w-10 text-right">{pct}%</span>
++                                            </div>
++                                        ))}
++                                    </div>
++                                </div>
++
++                                {/* ┬┐Entendi├│ necesidades? */}
++                                <div className="bg-white dark:bg-zinc-900 rounded-2xl p-6 shadow-sm border border-zinc-100 dark:border-zinc-800">
++                                    <p className="text-[13px] font-bold text-zinc-400 uppercase tracking-widest mb-4">┬┐El asesor entendi├│ lo que buscabas?</p>
++                                    <div className="space-y-3">
++                                        {([
++                                            { label: 'S├¡ totalmente', pct: stats.pct_understood_yes, color: 'bg-blue-500' },
++                                            { label: 'M├ís o menos', pct: stats.pct_understood_more_or_less, color: 'bg-yellow-400' },
++                                            { label: 'No', pct: stats.pct_understood_no, color: 'bg-red-400' },
++                                        ] as const).map(({ label, pct, color }) => (
++                                            <div key={label} className="flex items-center gap-3">
++                                                <p className="text-sm text-zinc-600 dark:text-zinc-300 w-28">{label}</p>
++                                                <div className="flex-1 h-2.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
++                                                    <div className={`h-full ${color} rounded-full transition-all`} style={{ width: `${pct}%` }} />
++                                                </div>
++                                                <span className="text-sm font-bold text-zinc-700 dark:text-zinc-200 w-10 text-right">{pct}%</span>
++                                            </div>
++                                        ))}
++                                    </div>
++                                </div>
++                            </div>
++                        </>
++                    ) : (
++                        <div className="text-center py-20">
++                            <span className="material-symbols-outlined text-6xl text-zinc-300 dark:text-zinc-600 mb-4 block">how_to_reg</span>
++                            <h3 className="text-lg font-bold text-zinc-400 dark:text-zinc-500 mb-2">Sin encuestas iniciales todav├¡a</h3>
++                        </div>
++                    )}
++                </div>
++            )}
++
++            {/* Listado Tab */}
++            {activeTab === 'listado' && (
++                <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-zinc-100 dark:border-zinc-800 overflow-hidden">
++                    {surveys.length === 0 ? (
++                        <div className="text-center py-20"><span className="material-symbols-outlined text-6xl text-zinc-300 mb-4 block">search_off</span><p className="text-zinc-400">Sin resultados</p></div>
++                    ) : (
++                        <div className="overflow-x-auto">
++                            <table className="w-full">
++                                <thead>
++                                    <tr className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/50">
++                                        <th className="px-5 py-4 text-left text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Fecha</th>
++                                        <th className="px-5 py-4 text-left text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Pasajero</th>
++                                        <th className="px-5 py-4 text-left text-[11px] font-bold text-zinc-400 uppercase tracking-wider">NPS</th>
++                                        <th className="px-5 py-4 text-left text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Atenci├│n</th>
++                                        <th className="px-5 py-4 text-left text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Info Clara</th>
++                                        <th className="px-5 py-4 text-left text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Entendi├│</th>
++                                        <th className="px-5 py-4 text-right text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Acciones</th>
++                                    </tr>
++                                </thead>
++                                <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800/50">
++                                    {surveys.map(s => (
++                                        <tr key={s.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors">
++                                            <td className="px-5 py-4 text-sm text-zinc-500 whitespace-nowrap">{new Date(s.responded_at).toLocaleDateString('es-AR')}</td>
++                                            <td className="px-5 py-4"><p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{s.passenger_name}</p></td>
++                                            <td className="px-5 py-4"><span className="text-lg font-extrabold text-zinc-700 dark:text-white">{s.nps}</span><span className="text-xs text-zinc-400 ml-1">/10</span></td>
++                                            <td className="px-5 py-4"><Stars value={s.rating_attention} /></td>
++                                            <td className="px-5 py-4"><Badge text={s.info_clear} color={s.info_clear === 'S├¡' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : s.info_clear === 'Parcialmente' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'} /></td>
++                                            <td className="px-5 py-4"><Badge text={s.understood_needs === 'S├¡ totalmente' ? 'S├¡' : s.understood_needs === 'M├ís o menos' ? 'M├ís o menos' : 'No'} color={s.understood_needs === 'S├¡ totalmente' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'} /></td>
++                                            <td className="px-5 py-4 text-right">
++                                                <button onClick={() => setSelectedSurvey(s)} className="p-2 text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors">
++                                                    <span className="material-symbols-outlined text-[20px]">visibility</span>
++                                                </button>
++                                            </td>
++                                        </tr>
++                                    ))}
+                                 </tbody>
+                             </table>
+                         </div>
+@@ -591,11 +566,44 @@ export const AdminSurveys: React.FC = () => {
+                 </div>
+             )}
+ 
+-            {/* ÔöÇÔöÇ TAB: CONFIGURACI├ôN ÔöÇÔöÇ */}
+-            {activeTab === 'configuracion' && <SurveySettingsTab />}
++            <InitialDetailModal survey={selectedSurvey} onClose={() => setSelectedSurvey(null)} />
++        </div>
++    );
++};
++
++// ÔöÇÔöÇÔöÇ Main Export ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
++export const AdminSurveys: React.FC = () => {
++    const [surveyType, setSurveyType] = useState<'post-trip' | 'initial'>('post-trip');
++
++    return (
++        <div className="space-y-6">
++            {/* Top Header */}
++            <div className="flex items-center justify-between">
++                <div>
++                    <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">Resultados y administraci├│n de encuestas</p>
++                </div>
++            </div>
++
++            {/* Survey Type Switcher */}
++            <div className="flex gap-3">
++                <button
++                    onClick={() => setSurveyType('post-trip')}
++                    className={`flex items-center gap-3 px-5 py-3 rounded-2xl border-2 text-sm font-bold transition-all ${surveyType === 'post-trip' ? 'border-[#E0592A] bg-orange-50 dark:bg-orange-900/20 text-[#E0592A]' : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-zinc-300 bg-white dark:bg-zinc-900'}`}
++                >
++                    <span className="material-symbols-outlined text-[20px]">local_airport</span>
++                    Encuesta Post-Viaje
++                </button>
++                <button
++                    onClick={() => setSurveyType('initial')}
++                    className={`flex items-center gap-3 px-5 py-3 rounded-2xl border-2 text-sm font-bold transition-all ${surveyType === 'initial' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' : 'border-zinc-200 dark:border-zinc-700 text-zinc-500 dark:text-zinc-400 hover:border-zinc-300 bg-white dark:bg-zinc-900'}`}
++                >
++                    <span className="material-symbols-outlined text-[20px]">how_to_reg</span>
++                    Encuesta Inicial (Pre-Viaje)
++                </button>
++            </div>
+ 
+-            {/* Detail Modal */}
+-            <SurveyDetailModal survey={selectedSurvey} onClose={() => setSelectedSurvey(null)} />
++            {/* Content */}
++            {surveyType === 'post-trip' ? <PostTripSection /> : <InitialSurveySection />}
+         </div>
+     );
+ };

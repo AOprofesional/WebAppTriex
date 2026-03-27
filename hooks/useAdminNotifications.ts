@@ -26,6 +26,18 @@ interface CreateBulkNotificationParams {
     message: string;
 }
 
+/** Returns the current user's role and uid from the profiles table. */
+const getCurrentUserRole = async (): Promise<{ uid: string | null; role: string | null }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { uid: null, role: null };
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+    return { uid: user.id, role: profile?.role ?? null };
+};
+
 export const useAdminNotifications = () => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
@@ -49,9 +61,24 @@ export const useAdminNotifications = () => {
             setLoading(true);
             setError(null);
 
+            // Determine role so operators only see their passengers' notifications
+            const { uid, role } = await getCurrentUserRole();
+
             let query = supabase
                 .from('notifications')
-                .select('*, passengers(first_name, last_name, email)', { count: 'exact' });
+                .select('*, passengers(first_name, last_name, email, assigned_to)', { count: 'exact' });
+
+            // Scope to operator's assigned passengers
+            if (role === 'operator' && uid) {
+                const { data: assignedPassengers } = await supabase
+                    .from('passengers')
+                    .select('id')
+                    .eq('assigned_to', uid)
+                    .is('archived_at', null);
+                const ids = (assignedPassengers || []).map(p => p.id);
+                // If no passengers assigned, force empty result
+                query = query.in('passenger_id', ids.length > 0 ? ids : ['00000000-0000-0000-0000-000000000000']);
+            }
 
             if (filters?.type && filters.type !== 'all') {
                 query = query.eq('type', filters.type);
@@ -83,6 +110,7 @@ export const useAdminNotifications = () => {
             setLoading(false);
         }
     };
+
 
     const createNotification = async (params: CreateNotificationParams) => {
         try {
@@ -243,11 +271,19 @@ export const useAdminNotifications = () => {
 
     const getAllPassengerIds = async (): Promise<string[]> => {
         try {
-            const { data, error: fetchError } = await supabase
+            const { uid, role } = await getCurrentUserRole();
+
+            let query = supabase
                 .from('passengers')
                 .select('id')
                 .is('archived_at', null);
 
+            // Operators only get their own assigned passengers
+            if (role === 'operator' && uid) {
+                query = query.eq('assigned_to', uid);
+            }
+
+            const { data, error: fetchError } = await query;
             if (fetchError) throw fetchError;
 
             return (data || []).map(p => p.id);
@@ -256,6 +292,7 @@ export const useAdminNotifications = () => {
             return [];
         }
     };
+
 
     return {
         notifications,

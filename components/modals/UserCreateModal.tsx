@@ -9,6 +9,7 @@ interface UserCreateModalProps {
         full_name: string;
         role: 'operator' | 'admin' | 'superadmin';
         sendInvite: boolean;
+        phone?: string | null;
     }) => Promise<{ error: string | null }>;
 }
 
@@ -17,6 +18,7 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({ isOpen, onClos
     const [email, setEmail] = useState('');
     const [fullName, setFullName] = useState('');
     const [role, setRole] = useState<'operator' | 'admin' | 'superadmin'>('operator');
+    const [phone, setPhone] = useState('');
     const [sendInvite, setSendInvite] = useState(true);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -44,7 +46,8 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({ isOpen, onClos
             email: email.trim(),
             full_name: fullName.trim(),
             role,
-            sendInvite
+            sendInvite,
+            phone: phone.trim() || null
         });
 
         setLoading(false);
@@ -55,6 +58,7 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({ isOpen, onClos
             // Success
             setEmail('');
             setFullName('');
+            setPhone('');
             setRole('operator');
             setSendInvite(true);
             onClose();
@@ -112,6 +116,19 @@ export const UserCreateModal: React.FC<UserCreateModalProps> = ({ isOpen, onClos
                             className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                             placeholder="Juan Pérez"
                             required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                            Teléfono (Opcional)
+                        </label>
+                        <input
+                            type="tel"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            placeholder="+54 9 11 1234-5678"
                         />
                     </div>
 

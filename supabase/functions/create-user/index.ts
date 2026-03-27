@@ -11,6 +11,7 @@ interface CreateUserPayload {
     full_name: string
     role: 'operator' | 'admin' | 'superadmin'
     sendInvite?: boolean
+    phone?: string | null
 }
 
 serve(async (req) => {
@@ -107,11 +108,15 @@ serve(async (req) => {
         )
 
         // Create user using admin client
+        // Pass role and phone in user_metadata so the handle_new_user trigger inserts
+        // the profile with the correct role immediately (no passenger default).
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email: payload.email,
             email_confirm: true,
             user_metadata: {
-                full_name: payload.full_name
+                full_name: payload.full_name,
+                role: payload.role,
+                phone: payload.phone
             }
         })
 
@@ -122,13 +127,14 @@ serve(async (req) => {
 
         console.log('User created:', authData.user.id)
 
-        // Update profile with role and full_name
+        // Update profile with role, full_name, and phone
         const { error: profileUpdateError } = await supabaseAdmin
             .from('profiles')
             .update({
                 full_name: payload.full_name,
                 role: payload.role,
-                email: payload.email
+                email: payload.email,
+                phone: payload.phone
             })
             .eq('id', authData.user.id)
 

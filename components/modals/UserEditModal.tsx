@@ -5,6 +5,7 @@ interface User {
     id: string;
     email: string | null;
     full_name: string | null;
+    phone: string | null;
     role: 'operator' | 'admin' | 'superadmin';
 }
 
@@ -14,6 +15,7 @@ interface UserEditModalProps {
     user: User | null;
     onUpdate: (userId: string, data: {
         full_name?: string;
+        phone?: string | null;
         role?: 'operator' | 'admin' | 'superadmin';
     }) => Promise<{ error: string | null }>;
 }
@@ -21,6 +23,7 @@ interface UserEditModalProps {
 export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, user, onUpdate }) => {
     const { role: currentUserRole } = useRole();
     const [fullName, setFullName] = useState('');
+    const [phone, setPhone] = useState('');
     const [role, setRole] = useState<'operator' | 'admin' | 'superadmin'>('operator');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -30,6 +33,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, u
     useEffect(() => {
         if (user) {
             setFullName(user.full_name || '');
+            setPhone(user.phone || '');
             setRole(user.role);
         }
     }, [user]);
@@ -49,6 +53,7 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, u
         setLoading(true);
         const { error: updateError } = await onUpdate(user.id, {
             full_name: fullName.trim(),
+            phone: phone.trim() || null,
             role
         });
 
@@ -112,6 +117,19 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, u
                             className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                             placeholder="Juan Pérez"
                             required
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                            Teléfono (Opcional)
+                        </label>
+                        <input
+                            type="tel"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            placeholder="+54 9 11 1234-5678"
                         />
                     </div>
 

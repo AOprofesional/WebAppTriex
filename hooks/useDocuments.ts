@@ -3,6 +3,18 @@ import { supabase } from '../lib/supabase';
 import { uploadDocument, getSignedUrl } from '../utils/storage';
 import { checkNotificationEnabled } from './useAutoNotificationSettings';
 
+/** Returns current user's uid and role from profiles. */
+const getCurrentUserRole = async (): Promise<{ uid: string | null; role: string | null }> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { uid: null, role: null };
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+    return { uid: user.id, role: profile?.role ?? null };
+};
+
 export interface DocumentType {
     id: string;
     name: string;
@@ -220,6 +232,11 @@ export const useDocuments = () => {
     }) => {
         try {
             setLoading(true);
+
+            // Scope to operator's assigned passengers automatically
+            const { uid, role } = await getCurrentUserRole();
+            const isOperator = role === 'operator';
+
             let query = supabase
                 .from('passenger_documents')
                 .select('*, passengers(first_name, last_name), required_documents(*, document_types(name))')
@@ -228,6 +245,17 @@ export const useDocuments = () => {
             if (filters?.tripId) query = query.eq('trip_id', filters.tripId);
             if (filters?.passengerId) query = query.eq('passenger_id', filters.passengerId);
             if (filters?.status) query = query.eq('status', filters.status);
+
+            // If operator, restrict to their assigned passengers
+            if (isOperator && uid) {
+                const { data: ap } = await supabase
+                    .from('passengers')
+                    .select('id')
+                    .eq('assigned_to', uid)
+                    .is('archived_at', null);
+                const ids = (ap || []).map(p => p.id);
+                query = query.in('passenger_id', ids.length > 0 ? ids : ['00000000-0000-0000-0000-000000000000']);
+            }
 
             const { data, error } = await query;
 

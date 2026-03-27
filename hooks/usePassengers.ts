@@ -18,7 +18,8 @@ export const usePassengers = () => {
         page: number = 1,
         pageSize: number = 20,
         searchTerm: string = '',
-        includeArchived = false
+        includeArchived = false,
+        operatorFilter: string | null = null
     ) => {
         try {
             setLoading(true);
@@ -27,6 +28,19 @@ export const usePassengers = () => {
             let query = supabase
                 .from('v_admin_passengers_list')
                 .select('*', { count: 'exact' });
+
+            const { data: roleData } = await supabase.rpc('get_my_role');
+            const { data: authData } = await supabase.auth.getUser();
+            
+            if (roleData === 'operator' && authData.user) {
+                query = query.eq('assigned_to', authData.user.id);
+            } else if (operatorFilter) {
+                if (operatorFilter === 'unassigned') {
+                    query = query.is('assigned_to', null);
+                } else {
+                    query = query.eq('assigned_to', operatorFilter);
+                }
+            }
 
             if (!includeArchived) {
                 query = query.is('archived_at', null);
@@ -57,12 +71,21 @@ export const usePassengers = () => {
 
     const createPassenger = async (passenger: PassengerInsert) => {
         try {
+            const { data: authData } = await supabase.auth.getUser();
+            const { data: roleData } = await supabase.rpc('get_my_role');
+            
+            const insertData: any = {
+                ...passenger,
+                created_by: authData.user?.id
+            };
+            
+            if (roleData === 'operator' && authData.user) {
+                insertData.assigned_to = authData.user.id;
+            }
+
             const { data, error: insertError } = await supabase
                 .from('passengers')
-                .insert([{
-                    ...passenger,
-                    created_by: (await supabase.auth.getUser()).data.user?.id
-                }])
+                .insert([insertData])
                 .select()
                 .single();
 

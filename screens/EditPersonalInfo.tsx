@@ -4,6 +4,7 @@ import { usePassenger, Passenger } from '../hooks/usePassenger';
 import { PageLoading } from '../components/PageLoading';
 import { useToast } from '../components/Toast';
 import { validateCUIL, formatCUIL, validatePhone, validateBirthDate, getMaxBirthDate } from '../utils/validation';
+import { SalesTeamModal } from '../components/SalesTeamModal';
 
 export const EditPersonalInfo: React.FC = () => {
     const navigate = useNavigate();
@@ -12,6 +13,7 @@ export const EditPersonalInfo: React.FC = () => {
     const [saving, setSaving] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [isModified, setIsModified] = useState(false);
+    const [showContactModal, setShowContactModal] = useState(false);
 
     const [formData, setFormData] = useState({
         first_name: '',
@@ -143,7 +145,14 @@ export const EditPersonalInfo: React.FC = () => {
                                 Email: {passenger?.email}
                             </p>
                             <p className="text-xs text-blue-700 dark:text-blue-300">
-                                El email no puede modificarse desde aquí. Contactá a tu agente de ventas si necesitás cambiarlo.
+                                El email no puede modificarse desde aquí.{' '}
+                                <button
+                                    onClick={() => setShowContactModal(true)}
+                                    className="underline font-semibold hover:text-blue-800 dark:hover:text-blue-200 transition-colors inline"
+                                >
+                                    Contactá a tu agente de ventas
+                                </button>
+                                {' '}si necesitás cambiarlo.
                             </p>
                         </div>
                     </div>
@@ -266,6 +275,11 @@ export const EditPersonalInfo: React.FC = () => {
                     )}
                 </div>
             </div>
+
+            <SalesTeamModal
+                isOpen={showContactModal}
+                onClose={() => setShowContactModal(false)}
+            />
         </div>
     );
 };

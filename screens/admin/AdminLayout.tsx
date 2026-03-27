@@ -20,6 +20,7 @@ export const AdminLayout: React.FC = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [isSupportModalOpen, setIsSupportModalOpen] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const getPageTitle = () => {
         // Check for exact match first
@@ -36,17 +37,35 @@ export const AdminLayout: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[#F5F6FA] dark:bg-zinc-950">
-            <AdminSidebar />
+        <div className="min-h-screen bg-[#F5F6FA] dark:bg-zinc-950 flex">
+            {/* Sidebar Overlay (Mobile only) */}
+            {isSidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
+            <AdminSidebar 
+                isOpen={isSidebarOpen} 
+                onClose={() => setIsSidebarOpen(false)} 
+            />
 
             {/* Main Content */}
-            <div className="ml-64">
+            <div className="flex-1 min-w-0 transition-all duration-300 ml-0 md:ml-64 relative">
                 {/* Top Header */}
-                <header className="h-16 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between px-8 sticky top-0 z-40">
-                    <div>
-                        <h1 className="text-xl font-bold text-zinc-800 dark:text-white">{getPageTitle()}</h1>
+                <header className="h-16 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="p-2 -ml-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg md:hidden transition-colors"
+                            aria-label="Abrir menú"
+                        >
+                            <span className="material-symbols-outlined">menu</span>
+                        </button>
+                        <h1 className="text-xl font-bold text-zinc-800 dark:text-white truncate">{getPageTitle()}</h1>
                     </div>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 md:gap-4">
                         <button
                             onClick={() => navigate('/admin/communications')}
                             className="p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 relative transition-colors"
@@ -66,7 +85,7 @@ export const AdminLayout: React.FC = () => {
                 </header>
 
                 {/* Page Content */}
-                <main className="p-8">
+                <main className="p-4 md:p-8">
                     <Outlet />
                 </main>
             </div>

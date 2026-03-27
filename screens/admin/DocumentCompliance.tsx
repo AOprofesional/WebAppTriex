@@ -45,7 +45,7 @@ export const AdminDocumentCompliance: React.FC = () => {
             // Fetch Trip Passengers
             const { data, error } = await supabase
                 .from('trip_passengers')
-                .select('passenger_id, passengers(id, first_name, last_name)')
+                .select('passenger_id, passengers!inner(id, first_name, last_name)')
                 .eq('trip_id', tripId);
 
             if (error) throw error;

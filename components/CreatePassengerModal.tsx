@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { useDebounce } from '../hooks/useDebounce';
 import { validateEmail, validatePhone, validateCUIL, getErrorMessage } from '../utils/validation';
+import { useRole } from '../hooks/useRole';
 
 interface CreatePassengerModalProps {
     isOpen: boolean;
@@ -16,6 +17,7 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
     const { createAndInvite, creating } = useCreatePassengerWithInvite();
     const { refetch } = usePassengers(); // This might refetch the main passenger list
     const { validateReferralCode } = useOrangePass();
+    const { isAdmin } = useRole();
 
     const [formData, setFormData] = useState({
         first_name: '',
@@ -28,11 +30,15 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
         document_type: '' as 'DNI' | 'Pasaporte' | 'Otro' | '',
         document_number: '',
         trip_id: '', // New field for optional trip linking
-        referral_code: '' // Orange Pass referral code
+        referral_code: '', // Orange Pass referral code
+        assigned_to: '' // Admin operator assignment
     });
 
     const [availableTrips, setAvailableTrips] = useState<{ id: string; name: string }[]>([]);
     const [loadingTrips, setLoadingTrips] = useState(false);
+
+    const [operators, setOperators] = useState<{ id: string; full_name: string; email: string }[]>([]);
+    const [loadingOperators, setLoadingOperators] = useState(false);
 
     // Referral code validation
     const [referralCodeValid, setReferralCodeValid] = useState<boolean | null>(null);
@@ -60,12 +66,33 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
     const debouncedEmail = useDebounce(formData.email, 500);
     const debouncedReferralCode = useDebounce(formData.referral_code, 500);
 
-    // Fetch trips when modal opens
+    // Fetch trips and operators when modal opens
     useEffect(() => {
         if (isOpen) {
             fetchTrips();
+            if (isAdmin) {
+                fetchOperators();
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, isAdmin]);
+
+    const fetchOperators = async () => {
+        try {
+            setLoadingOperators(true);
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('id, full_name, email')
+                .eq('role', 'operator')
+                .order('full_name');
+
+            if (error) throw error;
+            setOperators(data || []);
+        } catch (err) {
+            console.error('Error fetching operators:', err);
+        } finally {
+            setLoadingOperators(false);
+        }
+    };
 
     const fetchTrips = async () => {
         try {
@@ -275,7 +302,8 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
             profile_id: existingProfileId,
             referred_by_passenger_id: finalReferrerId || undefined,
             referred_by_code_raw: finalReferralCode || undefined,
-            referral_linked_at: finalReferralCode ? new Date().toISOString() : undefined
+            referral_linked_at: finalReferralCode ? new Date().toISOString() : undefined,
+            assigned_to: isAdmin && formData.assigned_to ? formData.assigned_to : undefined
         });
 
         if (result.success && result.passenger) {
@@ -314,7 +342,8 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                 document_type: '',
                 document_number: '',
                 trip_id: '',
-                referral_code: ''
+                referral_code: '',
+                assigned_to: ''
             });
             setReferrerId(null);
             setReferralCodeValid(null);
@@ -429,6 +458,32 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                         {/* Datos Adicionales (Opcionales) */}
                         <div className="space-y-4 pt-6 border-t border-zinc-200 dark:border-zinc-800">
                             <h3 className="font-bold text-zinc-800 dark:text-white">Datos Adicionales (Opcional)</h3>
+
+                            {isAdmin && (
+                                <div className="bg-primary/5 dark:bg-primary/10 p-5 rounded-xl border border-primary/20 mb-4">
+                                    <label className="block text-sm font-bold text-primary dark:text-primary mb-2 flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[18px]">assignment_ind</span>
+                                        Asignar Operador (Opcional)
+                                    </label>
+                                    <select
+                                        value={formData.assigned_to}
+                                        onChange={(e) => setFormData({ ...formData, assigned_to: e.target.value })}
+                                        className="w-full px-4 py-2.5 bg-white dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                                    >
+                                        <option value="">-- Sin asignar (Visible para todos si eres Admin) --</option>
+                                        {loadingOperators ? (
+                                            <option disabled>Cargando operadores...</option>
+                                        ) : (
+                                            operators.map(op => (
+                                                <option key={op.id} value={op.id}>{op.full_name || op.email}</option>
+                                            ))
+                                        )}
+                                    </select>
+                                    <p className="text-xs text-zinc-500 mt-2">
+                                        Si asignas un operador, sólo él (y los administradores) podrán gestionar este pasajero.
+                                    </p>
+                                </div>
+                            )}
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>

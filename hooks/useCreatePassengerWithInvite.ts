@@ -15,6 +15,7 @@ interface CreatePassengerData {
     referred_by_passenger_id?: string;
     referred_by_code_raw?: string;
     referral_linked_at?: string;
+    assigned_to?: string;
 }
 
 export const useCreatePassengerWithInvite = () => {
@@ -26,13 +27,24 @@ export const useCreatePassengerWithInvite = () => {
         setError(null);
 
         try {
+            // 1. Obtener datos de auth y rol
+            const { data: authData } = await supabase.auth.getUser();
+            const { data: roleData, error: roleError } = await supabase.rpc('get_my_role');
+
+            const insertData: any = {
+                ...data,
+                created_by: authData.user?.id
+            };
+
+            // Auto-asignar a sí mismo si es operador (y no viene forzado otro assigned_to)
+            if (roleData === 'operator' && authData.user && !insertData.assigned_to) {
+                insertData.assigned_to = authData.user.id;
+            }
+
             // 1. Crear pasajero (profile_id queda NULL automáticamente)
             const { data: passenger, error: createError } = await supabase
                 .from('passengers')
-                .insert([{
-                    ...data,
-                    created_by: (await supabase.auth.getUser()).data.user?.id
-                }])
+                .insert([insertData])
                 .select()
                 .single();
 

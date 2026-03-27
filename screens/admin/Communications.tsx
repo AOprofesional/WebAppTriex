@@ -142,16 +142,32 @@ export const AdminCommunications: React.FC = () => {
                                                 </p>
                                             )}
                                         </div>
-                                        <span className="text-xs text-zinc-400 shrink-0">{getTimeAgo(notification.created_at)}</span>
-                                    </div>
-                                );
-                            })
+                                            <span className="text-xs text-zinc-400 shrink-0">{getTimeAgo(notification.created_at)}</span>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                        {/* Pagination integrated into card footer */}
+                        {!loading && notifications.length > 0 && (
+                            <div className="px-6 py-4 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/30">
+                                <Pagination
+                                    totalItems={totalCount}
+                                    itemsPerPage={ITEMS_PER_PAGE}
+                                    currentPage={currentPage}
+                                    onPageChange={setCurrentPage}
+                                />
+                                <div className="mt-3 text-right">
+                                    <span className="text-xs text-zinc-400">
+                                        Última actualización: {new Date().toLocaleTimeString('es-AR')}
+                                    </span>
+                                </div>
+                            </div>
                         )}
                     </div>
-                </div>
 
                 {/* Auto Notifications Config */}
-                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800">
+                <div className={`bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-100 dark:border-zinc-800 self-start ${showConfig ? 'block' : 'hidden lg:block'}`}>
                     <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
                         <h2 className="text-base font-bold text-zinc-800 dark:text-white">Notificaciones Automáticas</h2>
                     </div>
@@ -189,26 +205,6 @@ export const AdminCommunications: React.FC = () => {
                 isOpen={isModalOpen}
                 onClose={handleModalClose}
             />
-
-            {/* Pagination */}
-            {!showConfig && (
-                <div className="pt-2">
-                    <Pagination
-                        totalItems={totalCount}
-                        itemsPerPage={ITEMS_PER_PAGE}
-                        currentPage={currentPage}
-                        onPageChange={setCurrentPage}
-                    />
-                    <div className="flex justify-between items-center text-sm text-zinc-500 mt-4 px-2">
-                        <span>
-                            Mostrando <strong className="text-zinc-800 dark:text-zinc-200">{notifications.length}</strong> de <strong className="text-zinc-800 dark:text-zinc-200">{totalCount}</strong> notificaciones
-                        </span>
-                        <span>
-                            Última actualización: {new Date().toLocaleTimeString('es-AR')}
-                        </span>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

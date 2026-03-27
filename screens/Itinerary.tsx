@@ -5,7 +5,7 @@ import { usePassengerTrips } from '../hooks/usePassengerTrips';
 import { useItineraryDays } from '../hooks/useItineraryDays';
 import { useItineraryItems } from '../hooks/useItineraryItems';
 import { PageLoading } from '../components/PageLoading';
-import { ContactCoordinatorModal } from '../components/ContactCoordinatorModal';
+import { SalesTeamModal } from '../components/SalesTeamModal';
 
 export const Itinerary: React.FC = () => {
   const { primaryTrip, loading: tripsLoading } = usePassengerTrips();
@@ -332,11 +332,10 @@ export const Itinerary: React.FC = () => {
         )
       }
 
-      <ContactCoordinatorModal
+      <SalesTeamModal
         isOpen={showContactModal}
         onClose={() => setShowContactModal(false)}
         coordinatorPhone={primaryTrip?.coordinator_phone}
-        coordinatorEmail={primaryTrip?.coordinator_email}
       />
     </div >
   );

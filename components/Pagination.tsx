@@ -72,7 +72,7 @@ export const Pagination: React.FC<PaginationProps> = ({
                     className="p-2 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     aria-label="Página anterior"
                 >
-                    <span className="material-icons text-xl">chevron_left</span>
+                    <span className="material-symbols-outlined text-xl">chevron_left</span>
                 </button>
 
                 {/* Page numbers */}
@@ -114,7 +114,7 @@ export const Pagination: React.FC<PaginationProps> = ({
                     className="p-2 rounded-lg text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     aria-label="Página siguiente"
                 >
-                    <span className="material-icons text-xl">chevron_right</span>
+                    <span className="material-symbols-outlined text-xl">chevron_right</span>
                 </button>
             </div>
         </div>

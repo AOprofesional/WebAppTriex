@@ -9,6 +9,7 @@ import { useOrangePass } from '../hooks/useOrangePass';
 import { formatPoints } from '../utils/orangePassHelpers';
 
 import { NotificationDetailsModal } from '../components/NotificationDetailsModal';
+import { SalesTeamModal } from '../components/SalesTeamModal';
 
 export const Notifications: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export const Notifications: React.FC = () => {
   const { passenger } = usePassenger();
   const { redemptionHistory, pointsHistory } = useOrangePass(passenger?.id);
   const [selectedNotification, setSelectedNotification] = React.useState<any | null>(null);
+  const [showContactModal, setShowContactModal] = React.useState(false);
 
   // The user needs to manually select each notification to mark it as read
 
@@ -230,7 +232,10 @@ export const Notifications: React.FC = () => {
 
       {/* Coordinator Contact */}
       <div className="px-5 mt-12 mb-8">
-        <button className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all">
+        <button 
+          onClick={() => setShowContactModal(true)}
+          className="w-full py-5 bg-[#3D3935] dark:bg-zinc-800 text-white rounded-[24px] font-bold flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-all"
+        >
           <span className="material-symbols-outlined text-2xl">support_agent</span>
           Contactar agente de ventas
         </button>
@@ -240,6 +245,12 @@ export const Notifications: React.FC = () => {
         isOpen={!!selectedNotification}
         onClose={() => setSelectedNotification(null)}
         notification={selectedNotification}
+      />
+
+      <SalesTeamModal
+        isOpen={showContactModal}
+        onClose={() => setShowContactModal(false)}
+        coordinatorPhone={passenger?.trips?.[0]?.coordinator_phone}
       />
     </div>
   );

@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePassengers } from '../../hooks/usePassengers';
+import { useUsers } from '../../hooks/useUsers';
 import { useAuth } from '../../contexts/AuthContext';
 import { CreatePassengerModal } from '../../components/CreatePassengerModal';
 import { EditPassengerModal } from '../../components/EditPassengerModal';
@@ -27,6 +27,7 @@ type PassengerListView = {
     is_recurrent: boolean | null;
     archived_at: string | null;
     avatar_url: string | null;
+    operator_name?: string | null;
 };
 
 
@@ -49,6 +50,7 @@ const StatusBadge: React.FC<{ isRecurrent: boolean | null }> = ({ isRecurrent })
 export const AdminPassengers: React.FC = () => {
     const navigate = useNavigate();
     const { role } = useAuth();
+    const { users: operators, fetchUsers } = useUsers();
     const {
         passengers,
         loading,
@@ -63,6 +65,7 @@ export const AdminPassengers: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterType, setFilterType] = useState('all');
     const [showArchived, setShowArchived] = useState(false);
+    const [selectedOperator, setSelectedOperator] = useState<string>('all');
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
@@ -93,19 +96,27 @@ export const AdminPassengers: React.FC = () => {
         fetchPassengerTypes();
     }, []);
 
+    // Fetch operators for filter if admin
+    useEffect(() => {
+        if (role === 'admin' || role === 'superadmin') {
+            fetchUsers('operator');
+        }
+    }, [role]);
+
     // Refetch passengers when pagination/search/archived toggle changes
     // Add small debounce for search
     useEffect(() => {
         const timeoutId = setTimeout(() => {
-            refetch(currentPage, ITEMS_PER_PAGE, searchTerm, showArchived);
+            const opParam = selectedOperator === 'all' ? null : selectedOperator;
+            refetch(currentPage, ITEMS_PER_PAGE, searchTerm, showArchived, opParam);
         }, 300);
         return () => clearTimeout(timeoutId);
-    }, [currentPage, ITEMS_PER_PAGE, searchTerm, showArchived, refetch]);
+    }, [currentPage, ITEMS_PER_PAGE, searchTerm, showArchived, selectedOperator, refetch]);
 
     // Reset pagination when search changes
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, filterType]);
+    }, [searchTerm, filterType, selectedOperator]);
 
     // Local filtering for type
     const paginatedPassengers = passengers.filter(p => {
@@ -213,6 +224,23 @@ export const AdminPassengers: React.FC = () => {
                         <option value="other">Otro</option>
                     </select>
 
+                    {/* Operator Filter (only for admins) */}
+                    {(role === 'admin' || role === 'superadmin') && (
+                        <select
+                            value={selectedOperator}
+                            onChange={(e) => setSelectedOperator(e.target.value)}
+                            className="px-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        >
+                            <option value="all">Todos los operadores</option>
+                            <option value="unassigned">Sin asignar</option>
+                            {operators.map(op => (
+                                <option key={op.id} value={op.id}>
+                                    {op.full_name || op.email}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+
                     {/* Show Archived Toggle */}
                     <label className="flex items-center gap-2 px-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
                         <input
@@ -266,6 +294,7 @@ export const AdminPassengers: React.FC = () => {
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Documento</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Perfil</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Estado</th>
+                                    <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Operador</th>
                                     <th className="text-right px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Acciones</th>
                                 </tr>
                             </thead>
@@ -321,6 +350,11 @@ export const AdminPassengers: React.FC = () => {
                                                         Activo
                                                     </span>
                                                 )}
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
+                                                    {passenger.operator_name || <span className="text-zinc-400 font-normal italic">Sin asignar</span>}
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center justify-end gap-2">
@@ -403,7 +437,8 @@ export const AdminPassengers: React.FC = () => {
                 onClose={() => setEditingPassenger(null)}
                 onSave={() => {
                     setEditingPassenger(null);
-                    refetch(showArchived);
+                    const opParam = selectedOperator === 'all' ? null : selectedOperator;
+                    refetch(currentPage, ITEMS_PER_PAGE, searchTerm, showArchived, opParam);
                 }}
             />
 

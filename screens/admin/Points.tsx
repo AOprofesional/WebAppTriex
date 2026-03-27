@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import { Redemptions } from './Redemptions';
 
 // Types
@@ -28,6 +29,7 @@ interface Transaction {
 }
 
 export const AdminPoints: React.FC = () => {
+    const { role } = useAuth();
     const [activeTab, setActiveTab] = useState<'members' | 'transactions' | 'redemptions'>('members');
     const [searchTerm, setSearchTerm] = useState('');
     const [members, setMembers] = useState<Member[]>([]);
@@ -40,8 +42,10 @@ export const AdminPoints: React.FC = () => {
     });
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (role) {
+            fetchData();
+        }
+    }, [role]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -56,6 +60,16 @@ export const AdminPoints: React.FC = () => {
 
             // 1a. Fetch ALL Points Ledger entries for Orange members
             const memberIds = membersData?.map((m: any) => m.id) || [];
+            const isOperator = role === 'operator';
+
+            if (isOperator && memberIds.length === 0) {
+                 setTransactions([]);
+                 setStats({ totalPoints: 0, activeMembers: 0, expiringPoints: 0 });
+                 setMembers([]);
+                 setLoading(false);
+                 return;
+            }
+
             let ledgerMap: Record<string, any[]> = {};
 
             if (memberIds.length > 0) {
@@ -126,7 +140,7 @@ export const AdminPoints: React.FC = () => {
             setMembers(processedMembers);
 
             // 2. Fetch Transactions (Recent Ledger Entries)
-            const { data: ledgerData, error: ledgerError } = await supabase
+            let transactionsQuery = supabase
                 .from('orange_points_ledger')
                 .select(`
                     id, points, reason, trip_category, status, created_at, expires_at,
@@ -135,6 +149,12 @@ export const AdminPoints: React.FC = () => {
                 `)
                 .order('created_at', { ascending: false })
                 .limit(50); // Limit to recent 50 for performance
+                
+            if (isOperator && memberIds.length > 0) {
+                transactionsQuery = transactionsQuery.in('passenger_id', memberIds);
+            }
+
+            const { data: ledgerData, error: ledgerError } = await transactionsQuery;
 
             if (ledgerError) throw ledgerError;
 
@@ -164,12 +184,18 @@ export const AdminPoints: React.FC = () => {
             const nextMonth = new Date();
             nextMonth.setDate(nextMonth.getDate() + 30);
 
-            const { count: expiringCount } = await supabase
+            let expiringQuery = supabase
                 .from('orange_points_ledger')
                 .select('*', { count: 'exact', head: true })
                 .eq('status', 'ACTIVE')
                 .lt('expires_at', nextMonth.toISOString())
                 .gt('expires_at', new Date().toISOString());
+                
+            if (isOperator && memberIds.length > 0) {
+                expiringQuery = expiringQuery.in('passenger_id', memberIds);
+            }
+
+            const { count: expiringCount } = await expiringQuery;
 
             setStats({
                 totalPoints: totalActivePoints,
