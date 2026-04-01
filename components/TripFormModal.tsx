@@ -147,8 +147,8 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
         destination: '',
         start_date: '',
         end_date: '',
-        trip_type: 'EGRESADOS',
-        brand_sub: 'Triex Egresados',
+        trip_type: 'REEGRESADOS',
+        brand_sub: 'Triex Reegresados',
         status_commercial: 'ABIERTO',
         general_itinerary: '',
         includes_text: '',
@@ -185,8 +185,8 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                     destination: '',
                     start_date: '',
                     end_date: '',
-                    trip_type: 'EGRESADOS',
-                    brand_sub: 'Triex Egresados',
+                    trip_type: 'REEGRESADOS',
+                    brand_sub: 'Triex Reegresados',
                     status_commercial: 'ABIERTO',
                     general_itinerary: '',
                     includes_text: '',
@@ -237,8 +237,8 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                 destination: data.destination || '',
                 start_date: data.start_date || '',
                 end_date: data.end_date || '',
-                trip_type: data.trip_type || 'EGRESADOS',
-                brand_sub: data.brand_sub || 'Triex Egresados',
+                trip_type: data.trip_type || 'REEGRESADOS',
+                brand_sub: data.brand_sub || 'Triex Reegresados',
                 status_commercial: data.status_commercial || 'ABIERTO',
                 general_itinerary: data.general_itinerary || '',
                 includes_text: data.includes_text || '',
@@ -678,7 +678,7 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                                                     value={formData.name}
                                                     onChange={(e) => handleInputChange('name', e.target.value)}
                                                     className={`w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border ${errors.name ? 'border-red-500' : 'border-zinc-200 dark:border-zinc-700'} rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary`}
-                                                    placeholder="Ej: Egresados 2026 - Cancún"
+                                                    placeholder="Ej: Reegresados 2026 - Cancún"
                                                 />
                                                 {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
                                             </div>
@@ -735,7 +735,7 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                                                     onChange={(e) => handleInputChange('trip_type', e.target.value)}
                                                     className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                                 >
-                                                    <option value="EGRESADOS">Egresados</option>
+                                                    <option value="REEGRESADOS">Reegresados</option>
                                                     <option value="CORPORATIVO">Corporativo</option>
                                                     <option value="FAMILIAR">Familiar</option>
                                                     <option value="GRUPO">Grupo</option>
@@ -754,6 +754,10 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                                                     <option value="Triex Sin Barreras">Triex Sin Barreras</option>
                                                     <option value="Wine Adventure">Wine Adventure</option>
                                                     <option value="Triex Group">Triex Group</option>
+                                                    <option value="Triex Reegresados">Triex Reegresados</option>
+                                                    <option value="Triex Europa">Triex Europa</option>
+                                                    <option value="Triex Caribe">Triex Caribe</option>
+                                                    <option value="Triex Brasil">Triex Brasil</option>
                                                 </select>
                                             </div>
                                         </div>
