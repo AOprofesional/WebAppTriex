@@ -89,6 +89,7 @@ export const AdminDashboard: React.FC = () => {
     const [isPassengerModalOpen, setIsPassengerModalOpen] = useState(false);
     const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
     const [isTripModalOpen, setIsTripModalOpen] = useState(false);
+    const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
 
     const { stats, upcomingTrips, recentActivity, loading } = useDashboardData();
 
@@ -116,7 +117,7 @@ export const AdminDashboard: React.FC = () => {
 
             {/* Quick Actions */}
             <div className="flex flex-wrap gap-3">
-                <QuickAction label="Crear viaje" icon="add" onClick={() => setIsTripModalOpen(true)} />
+                <QuickAction label="Crear viaje" icon="add" onClick={() => { setSelectedTripId(null); setIsTripModalOpen(true); }} />
                 <QuickAction label="Crear pasajero" icon="person_add" onClick={() => setIsPassengerModalOpen(true)} />
                 <QuickAction label="Cargar voucher" icon="upload_file" onClick={() => setIsVoucherModalOpen(true)} />
             </div>
@@ -187,7 +188,10 @@ export const AdminDashboard: React.FC = () => {
                             upcomingTrips.map((trip) => (
                                 <div
                                     key={trip.id}
-                                    onClick={() => navigate(`/admin/trips/${trip.id}`)}
+                                    onClick={() => {
+                                        setSelectedTripId(trip.id);
+                                        setIsTripModalOpen(true);
+                                    }}
                                     className="px-6 py-4 flex items-center justify-between hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-colors cursor-pointer"
                                 >
                                     <div className="flex items-center gap-4">
@@ -279,7 +283,11 @@ export const AdminDashboard: React.FC = () => {
             />
             <TripFormModal
                 isOpen={isTripModalOpen}
-                onClose={() => setIsTripModalOpen(false)}
+                onClose={() => {
+                    setIsTripModalOpen(false);
+                    setSelectedTripId(null);
+                }}
+                tripId={selectedTripId}
             />
         </div>
     );

@@ -56,16 +56,23 @@ export const useItineraryDays = (tripId: string | null) => {
         if (!tripId) return { data: null, error: 'No trip ID provided' };
 
         try {
-            const maxDayNumber = days.length > 0
-                ? Math.max(...days.map(d => d.day_number))
-                : 0;
+            // Fetch absolute max day_number for the trip from the database to avoid unique constraint 
+            // violations with previously archived days.
+            const { data: maxDayData } = await supabase
+                .from('trip_itinerary_days')
+                .select('day_number')
+                .eq('trip_id', tripId)
+                .order('day_number', { ascending: false })
+                .limit(1);
+
+            const absMaxDayNumber = (maxDayData && maxDayData.length > 0) ? maxDayData[0].day_number : 0;
 
             const { data, error: insertError } = await supabase
                 .from('trip_itinerary_days')
                 .insert({
                     trip_id: tripId,
-                    day_number: maxDayNumber + 1,
-                    sort_index: maxDayNumber + 1,
+                    day_number: absMaxDayNumber + 1,
+                    sort_index: absMaxDayNumber + 1,
                 })
                 .select()
                 .single();
