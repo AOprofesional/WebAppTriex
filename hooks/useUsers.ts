@@ -1,6 +1,60 @@
 import { useState, useEffect } from 'react';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 
+// Traduce los mensajes de error de Supabase / inglés al español
+const traducirError = (mensaje: string): string => {
+    if (!mensaje) return 'Ocurrió un error inesperado';
+    const m = mensaje.toLowerCase();
+
+    if (m.includes('already been registered') || m.includes('already registered') || m.includes('email address is already')) {
+        return 'Ya existe un usuario registrado con ese correo electrónico';
+    }
+    if (m.includes('user already exists')) {
+        return 'Ya existe un usuario con ese correo electrónico';
+    }
+    if (m.includes('invalid email')) {
+        return 'El correo electrónico ingresado no es válido';
+    }
+    if (m.includes('password') && m.includes('weak')) {
+        return 'La contraseña es demasiado débil';
+    }
+    if (m.includes('invalid session') || m.includes('expired token') || m.includes('jwt expired')) {
+        return 'La sesión ha expirado. Por favor, volvé a iniciar sesión';
+    }
+    if (m.includes('unauthorized') || m.includes('not authorized')) {
+        return 'No tenés permisos para realizar esta acción';
+    }
+    if (m.includes('no active session') || m.includes('no hay sesión')) {
+        return 'No hay sesión activa. Por favor, iniciá sesión nuevamente';
+    }
+    if (m.includes('failed to create user')) {
+        return 'No se pudo crear el usuario';
+    }
+    if (m.includes('failed to delete user')) {
+        return 'No se pudo eliminar el usuario';
+    }
+    if (m.includes('failed to toggle')) {
+        return 'No se pudo cambiar el estado del usuario';
+    }
+    if (m.includes('network') || m.includes('fetch')) {
+        return 'Error de conexión. Verificá tu acceso a internet';
+    }
+    if (m.includes('insufficient permissions') || m.includes('only admins')) {
+        return 'No tenés permisos suficientes. Solo los administradores pueden realizar esta acción';
+    }
+    if (m.includes('profile not found') || m.includes('could not verify user role')) {
+        return 'No se pudo verificar el rol del usuario';
+    }
+    if (m.includes('email, full_name') || m.includes('are required')) {
+        return 'Email, nombre completo y rol son obligatorios';
+    }
+    if (m.includes('server configuration') || m.includes('missing service role')) {
+        return 'Error de configuración del servidor. Contactá al soporte técnico';
+    }
+    // Fallback: devolver el mensaje original si no hay traducción
+    return mensaje;
+};
+
 interface User {
     id: string;
     email: string | null;
@@ -111,7 +165,7 @@ export const useUsers = () => {
             return { data: responseData.user, error: null };
         } catch (err: any) {
             console.error('Error creating user:', err);
-            return { data: null, error: err.message };
+            return { data: null, error: traducirError(err.message) };
         } finally {
             setLoading(false);
         }
@@ -201,7 +255,7 @@ export const useUsers = () => {
             return { error: null };
         } catch (err: any) {
             console.error('Error toggling user status:', err);
-            return { error: err.message };
+            return { error: traducirError(err.message) };
         } finally {
             setLoading(false);
         }
@@ -262,7 +316,7 @@ export const useUsers = () => {
             return { error: null };
         } catch (err: any) {
             console.error('Error deleting user:', err);
-            return { error: err.message };
+            return { error: traducirError(err.message) };
         } finally {
             setLoading(false);
         }
