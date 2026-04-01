@@ -819,14 +819,14 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                                             {days.length > 0 && (
                                                 <div className="overflow-x-auto mb-5">
                                                     <div className="flex gap-2 min-w-max">
-                                                        {days.map((day) => (
+                                                        {days.map((day, index) => (
                                                             <button
                                                                 key={day.id}
                                                                 type="button"
                                                                 onClick={() => setSelectedDayId(day.id)}
                                                                 className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${selectedDayId === day.id ? 'bg-primary text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200'}`}
                                                             >
-                                                                Día {day.day_number} {day.title && <span className="text-xs opacity-80">- {day.title}</span>}
+                                                                Día {index + 1} {day.title && <span className="text-xs opacity-80">- {day.title}</span>}
                                                             </button>
                                                         ))}
                                                     </div>

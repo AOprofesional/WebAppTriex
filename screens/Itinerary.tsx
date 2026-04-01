@@ -131,7 +131,7 @@ export const Itinerary: React.FC = () => {
                     }}
                     className={`flex-shrink-0 snap-center flex flex-col items-center justify-center min-w-[70px] py-3 px-2 rounded-2xl transition-all ${isSelected ? 'bg-[#F97316] text-white shadow-lg ring-2 ring-[#F97316]/20 scale-105' : 'bg-white dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-zinc-100 dark:border-zinc-800 hover:border-[#F97316]/30 active:scale-95'}`}
                   >
-                    <span className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isSelected ? 'text-white/90' : 'text-zinc-400'}`}>Día {day.day_number}</span>
+                    <span className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isSelected ? 'text-white/90' : 'text-zinc-400'}`}>Día {index + 1}</span>
                     {dDate ? (
                       <div className="flex flex-col items-center">
                         <span className="text-xl font-extrabold leading-none">{dayOfMonth}</span>
@@ -270,7 +270,7 @@ export const Itinerary: React.FC = () => {
                 <h2 className="text-2xl font-bold text-[#1F2937] dark:text-white font-ubuntu">{selectedActivity.title}</h2>
                 <div className="flex items-center gap-2 mt-2 text-[#F97316]">
                   <span className="material-symbols-outlined text-sm font-fill">schedule</span>
-                  <span className="text-sm font-bold">Día {days.find(d => d.id === selectedDayId)?.day_number}, {selectedActivity.time}</span>
+                  <span className="text-sm font-bold">Día {days.findIndex(d => d.id === selectedDayId) + 1}, {selectedActivity.time}</span>
                 </div>
               </div>
 
