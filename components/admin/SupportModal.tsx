@@ -10,12 +10,12 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
     if (!isOpen) return null;
 
     const handleEmailSupport = () => {
-        window.location.href = "mailto:soporte@triex.com?subject=Reporte de Problema - Triex Admin";
+        window.location.href = "mailto:aoprofesional09@gmail.com?subject=Reporte de Problema - Triex Admin";
     };
 
     const handleWhatsAppSupport = () => {
-        // Placeholder number, replace with actual support number
-        window.open("https://wa.me/5492615908839", "_blank");
+        // WhatsApp number
+        window.open("https://wa.me/5492615169692", "_blank");
     };
 
     return (

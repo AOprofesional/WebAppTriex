@@ -477,6 +477,7 @@ export type Database = {
           referral_linked_at: string | null
           referred_by_code_raw: string | null
           referred_by_passenger_id: string | null
+          savia_file_number: string | null
           updated_at: string | null
           updated_by: string | null
         }
@@ -506,6 +507,7 @@ export type Database = {
           referral_linked_at?: string | null
           referred_by_code_raw?: string | null
           referred_by_passenger_id?: string | null
+          savia_file_number?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
@@ -535,6 +537,7 @@ export type Database = {
           referral_linked_at?: string | null
           referred_by_code_raw?: string | null
           referred_by_passenger_id?: string | null
+          savia_file_number?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
@@ -1397,6 +1400,7 @@ export type Database = {
           operator_name: string | null
           passenger_email: string | null
           phone: string | null
+          savia_file_number: string | null
           type_code: string | null
           type_name: string | null
           user_id: string | null
@@ -1426,6 +1430,7 @@ export type Database = {
           passenger_type_code: string | null
           passenger_type_name: string | null
           phone: string | null
+          savia_file_number: string | null
           updated_at: string | null
         }
         Relationships: []

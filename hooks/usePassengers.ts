@@ -47,7 +47,7 @@ export const usePassengers = () => {
             }
 
             if (searchTerm) {
-                query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,passenger_email.ilike.%${searchTerm}%`);
+                query = query.or(`first_name.ilike.%${searchTerm}%,last_name.ilike.%${searchTerm}%,passenger_email.ilike.%${searchTerm}%,document_number.ilike.%${searchTerm}%,savia_file_number.ilike.%${searchTerm}%`);
             }
 
             const from = (page - 1) * pageSize;

@@ -13,6 +13,7 @@ type PassengerListView = {
     document_type: string | null;
     document_number: string | null;
     type_name: string | null;
+    savia_file_number: string | null;
     profile_id: string | null;
     is_recurrent: boolean | null;
     archived_at: string | null;
@@ -323,6 +324,10 @@ export const PassengerDetailsModal: React.FC<PassengerDetailsModalProps> = ({
                                         <div>
                                             <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase mb-2">Tipo de Pasajero</label>
                                             <p className="text-base text-zinc-800 dark:text-white">{passenger.type_name || '-'}</p>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase mb-2">Expediente SAVIA</label>
+                                            <p className="text-base text-zinc-800 dark:text-white">{passenger.savia_file_number || '-'}</p>
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase mb-2">Perfil de Usuario</label>

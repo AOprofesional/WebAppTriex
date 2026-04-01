@@ -31,7 +31,8 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
         document_number: '',
         trip_id: '', // New field for optional trip linking
         referral_code: '', // Orange Pass referral code
-        assigned_to: '' // Admin operator assignment
+        assigned_to: '', // Admin operator assignment
+        savia_file_number: ''
     });
 
     const [availableTrips, setAvailableTrips] = useState<{ id: string; name: string }[]>([]);
@@ -298,6 +299,7 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
             cuil: formData.cuil || undefined,
             document_type: formData.document_type || undefined,
             document_number: formData.document_number || undefined,
+            savia_file_number: formData.savia_file_number || undefined,
             // Extended fields
             profile_id: existingProfileId,
             referred_by_passenger_id: finalReferrerId || undefined,
@@ -343,7 +345,8 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                 document_number: '',
                 trip_id: '',
                 referral_code: '',
-                assigned_to: ''
+                assigned_to: '',
+                savia_file_number: ''
             });
             setReferrerId(null);
             setReferralCodeValid(null);
@@ -547,6 +550,19 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                                         placeholder="12345678"
                                     />
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                                    Expediente SAVIA
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.savia_file_number}
+                                    onChange={(e) => setFormData({ ...formData, savia_file_number: e.target.value })}
+                                    className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                                    placeholder="Ej. SAV-12345"
+                                />
                             </div>
                         </div>
                     </div>

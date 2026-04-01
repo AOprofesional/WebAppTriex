@@ -11,6 +11,7 @@ interface PassengerData {
     phone: string | null;
     document_type: string | null;
     document_number: string | null;
+    savia_file_number: string | null;
     type_code: string | null;  // From view
     passenger_type_id: number | null;  // For updates
     is_recurrent: boolean | null;
@@ -40,6 +41,7 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
         phone: '',
         document_type: '',
         document_number: '',
+        savia_file_number: '',
         passenger_type_id: 1 as number,  // 1 = regular
         is_recurrent: false,
         referral_code: '',
@@ -133,6 +135,7 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                 phone: passenger.phone || '',
                 document_type: passenger.document_type || '',
                 document_number: passenger.document_number || '',
+                savia_file_number: passenger.savia_file_number || '',
                 passenger_type_id: typeCodeToId[passenger.type_code || 'regular'] || 1,
                 is_recurrent: passenger.is_recurrent || false,
                 referral_code: '', // Will be populated by fetchReferralInfo
@@ -207,6 +210,7 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                 phone: formData.phone || null,
                 document_type: docType,
                 document_number: docNumber,
+                savia_file_number: formData.savia_file_number || null,
                 passenger_type_id: formData.passenger_type_id,
                 is_recurrent: formData.is_recurrent,
                 referred_by_code_raw: formData.referral_code || null,
@@ -360,6 +364,18 @@ export const EditPassengerModal: React.FC<EditPassengerModalProps> = ({
                                     className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
                                 />
                             </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">
+                                Expediente SAVIA
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.savia_file_number}
+                                onChange={(e) => setFormData({ ...formData, savia_file_number: e.target.value })}
+                                className="w-full px-4 py-2.5 bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition"
+                            />
                         </div>
 
                         <div>

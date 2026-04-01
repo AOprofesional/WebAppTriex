@@ -16,6 +16,7 @@ interface CreatePassengerData {
     referred_by_code_raw?: string;
     referral_linked_at?: string;
     assigned_to?: string;
+    savia_file_number?: string;
 }
 
 export const useCreatePassengerWithInvite = () => {

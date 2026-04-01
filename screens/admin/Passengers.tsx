@@ -28,6 +28,7 @@ type PassengerListView = {
     archived_at: string | null;
     avatar_url: string | null;
     operator_name?: string | null;
+    savia_file_number?: string | null;
 };
 
 
@@ -292,6 +293,7 @@ export const AdminPassengers: React.FC = () => {
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Tipo</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Teléfono</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Documento</th>
+                                    <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">SAVIA</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Perfil</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Estado</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Operador</th>
@@ -335,6 +337,11 @@ export const AdminPassengers: React.FC = () => {
                                             <td className="px-6 py-4">
                                                 <span className="text-sm text-zinc-600 dark:text-zinc-300">
                                                     {passenger.document_number ? `${passenger.document_type} ${passenger.document_number}` : '-'}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <span className="text-sm font-mono text-zinc-600 dark:text-zinc-300">
+                                                    {passenger.savia_file_number || '-'}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
