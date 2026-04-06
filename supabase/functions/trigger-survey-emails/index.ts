@@ -12,9 +12,9 @@ serve(async (req) => {
     }
 
     try {
-        // Authenticate request using Service Role Key (since this will be triggered by pg_cron or admin)
+        // Authenticate request using Webhook Secret
         const authHeader = req.headers.get('Authorization')
-        if (authHeader !== `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`) {
+        if (authHeader !== `Bearer ${Deno.env.get('WEBHOOK_SECRET')}`) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), {
                 status: 401,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -12,9 +12,9 @@ serve(async (req) => {
     }
 
     try {
-        // Authenticate webhook request using Service Role Key
+        // Authenticate webhook request using Webhook Secret
         const authHeader = req.headers.get('Authorization')
-        if (authHeader !== `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`) {
+        if (authHeader !== `Bearer ${Deno.env.get('WEBHOOK_SECRET')}`) {
             return new Response(JSON.stringify({ error: 'Unauthorized' }), {
                 status: 401,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -142,11 +142,11 @@ serve(async (req) => {
                     <td style="color:#71717a;font-size:13px;">Tu saldo actual</td>
                     <td align="right" style="color:#18181b;font-size:18px;font-weight:700;">${newBalance} pts</td>
                   </tr>
-                  ${passenger.orange_member_number ? \`
+                  ${passenger.orange_member_number ? `
                   <tr>
                     <td style="color:#71717a;font-size:13px;padding-top:8px;">Número de socio</td>
-                    <td align="right" style="color:#71717a;font-size:13px;padding-top:8px;font-family:monospace;">\${passenger.orange_member_number}</td>
-                  </tr>\` : ''}
+                    <td align="right" style="color:#71717a;font-size:13px;padding-top:8px;font-family:monospace;">${passenger.orange_member_number}</td>
+                  </tr>` : ''}
                 </table>
               </div>
               <p style="color:#71717a;font-size:13px;line-height:1.6;margin:0;">
@@ -171,11 +171,11 @@ serve(async (req) => {
         `.trim();
 
         // 5. Trigger send-email edge function
-        const sendEmailResponse = await fetch(\`\${supabaseUrl}/functions/v1/send-email\`, {
+        const sendEmailResponse = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': \`Bearer \${serviceKey}\`
+                'Authorization': `Bearer ${serviceKey}`
             },
             body: JSON.stringify({
                 to: userEmail,
