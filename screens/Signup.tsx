@@ -68,7 +68,15 @@ export const Signup: React.FC = () => {
             }
         } catch (err: any) {
             console.error('Signup error:', err);
-            setError(err.message || 'Error al crear la cuenta');
+            let errorMessage = err.message || 'Error al crear la cuenta';
+            
+            if (errorMessage === 'User already registered') {
+                errorMessage = 'Ya existe una cuenta con este correo electrónico.';
+            } else if (errorMessage.includes('password')) {
+                errorMessage = 'La contraseña es demasiado débil. Usa al menos 8 caracteres.';
+            }
+
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }

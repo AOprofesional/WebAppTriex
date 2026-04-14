@@ -52,7 +52,19 @@ export const Login: React.FC = () => {
             }
         } catch (err: any) {
             console.error('Login error:', err);
-            setError(err.message || 'Error al iniciar sesión. Verifica tus credenciales.');
+            
+            let errorMessage = err.message || 'Error al iniciar sesión. Verifica tus credenciales.';
+            
+            // Translate common Supabase login errors
+            if (errorMessage === 'Invalid login credentials') {
+                errorMessage = 'Email o contraseña incorrectos.';
+            } else if (errorMessage === 'Email not confirmed') {
+                errorMessage = 'Por favor, confirma tu correo electrónico antes de ingresar.';
+            } else if (errorMessage.includes('rate limit')) {
+                errorMessage = 'Demasiados intentos. Por favor, espera un momento y vuelve a intentarlo.';
+            }
+            
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
@@ -94,7 +106,14 @@ export const Login: React.FC = () => {
 
         } catch (err: any) {
             console.error('Magic Link error:', err);
-            setError(err.message || 'Error al enviar el enlace de acceso.');
+            
+            // Translate specific Supabase error
+            let errorMessage = err.message || 'Error al enviar el enlace de acceso.';
+            if (errorMessage === 'Signups not allowed for otp') {
+                errorMessage = 'No tienes una cuenta registrada. Para ingresar con Enlace de Acceso, un administrador debe crear tu cuenta primero.';
+            }
+
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
