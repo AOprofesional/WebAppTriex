@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+import { supabase } from './lib/supabase';
 import { HashRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Home } from './screens/Home';
@@ -162,10 +162,31 @@ const App: React.FC = () => {
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const redirectTo = searchParams.get('redirectTo');
+    
     if (redirectTo) {
-      const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
-      window.location.hash = redirectTo;
+      const applyRedirect = () => {
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        window.location.hash = redirectTo;
+      };
+
+      if (window.location.hash.includes('access_token=')) {
+        // Wait for Supabase to parse the token into a session
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if (event === 'SIGNED_IN' || session) {
+            applyRedirect();
+            subscription.unsubscribe();
+          }
+        });
+
+        // Fallback safety timeout in case the event never fires or already fired
+        setTimeout(() => {
+          applyRedirect();
+          subscription.unsubscribe();
+        }, 1500);
+      } else {
+        applyRedirect();
+      }
     }
   }, []);
 
