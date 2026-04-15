@@ -162,31 +162,16 @@ const App: React.FC = () => {
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const redirectTo = searchParams.get('redirectTo');
-    
+
     if (redirectTo) {
-      const applyRedirect = () => {
-        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
-        window.location.hash = redirectTo;
-      };
+      // Store the desired destination BEFORE Supabase parses the token.
+      // This avoids a full page reload caused by window.location.hash assignment,
+      // which would clear the in-memory session before it can be persisted.
+      sessionStorage.setItem('auth_redirect_to', redirectTo);
 
-      if (window.location.hash.includes('access_token=')) {
-        // Wait for Supabase to parse the token into a session
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          if (event === 'SIGNED_IN' || session) {
-            applyRedirect();
-            subscription.unsubscribe();
-          }
-        });
-
-        // Fallback safety timeout in case the event never fires or already fired
-        setTimeout(() => {
-          applyRedirect();
-          subscription.unsubscribe();
-        }, 1500);
-      } else {
-        applyRedirect();
-      }
+      // Clean ?redirectTo= from the URL so Supabase can read the #access_token= cleanly
+      const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname + window.location.hash;
+      window.history.replaceState({}, document.title, cleanUrl);
     }
   }, []);
 
@@ -248,12 +233,8 @@ const App: React.FC = () => {
                     <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/update-password" element={<UpdatePassword />} />
 
-                    {/* Auth callback for invite-claim flow */}
-                    <Route path="/auth/callback" element={
-                      <ProtectedRoute allowedRoles={['passenger', 'operator', 'admin']}>
-                        <AuthCallback />
-                      </ProtectedRoute>
-                    } />
+                    {/* Auth callback for invite-claim flow — must be public so the user can arrive here without a session and claim it */}
+                    <Route path="/auth/callback" element={<AuthCallback />} />
 
                     {/* Pending account screen */}
                     <Route path="/pending" element={
