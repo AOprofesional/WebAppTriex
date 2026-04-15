@@ -38,14 +38,33 @@ export const usePassengerTrips = () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('No authenticated user');
 
-            // Get passenger record for current user
-            const { data: passenger, error: passengerError } = await supabase
+            // Get passenger record — first by profile_id, then by email as fallback
+            // (profile_id may be null if claim_passenger_by_email hasn't run yet)
+            let { data: passenger, error: passengerError } = await supabase
                 .from('passengers')
                 .select('id, first_name, last_name')
                 .eq('profile_id', user.id)
-                .single();
+                .maybeSingle();
 
             if (passengerError) throw passengerError;
+
+            if (!passenger && user.email) {
+                // Fallback: look up by email for unclaimed passengers
+                const { data: fallback, error: fbError } = await supabase
+                    .from('passengers')
+                    .select('id, first_name, last_name')
+                    .eq('email', user.email)
+                    .maybeSingle();
+
+                if (fbError) throw fbError;
+
+                if (fallback) {
+                    passenger = fallback;
+                    // Attempt silent auto-claim in background
+                    supabase.rpc('claim_passenger_by_email').catch(() => {});
+                }
+            }
+
             if (!passenger) throw new Error('No passenger record found');
 
             setPassenger(passenger);
