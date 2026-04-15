@@ -37,17 +37,39 @@ export const usePassenger = () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            const { data, error } = await supabase
+            // Primary lookup: by profile_id (already claimed)
+            let { data, error } = await supabase
                 .from('passengers')
                 .select('*')
                 .eq('profile_id', user.id)
-                .single();
+                .maybeSingle();   // maybeSingle() returns null instead of error when 0 rows
 
             if (error) {
-                console.error('Error fetching passenger:', error);
-            } else {
-                setPassenger(data);
+                console.error('Error fetching passenger by profile_id:', error);
             }
+
+            // Fallback: if no profile_id match, try by email.
+            // This happens when the user is authenticated but claim_passenger_by_email
+            // hasn't run yet (e.g. the user refreshed the page before AuthCallback finished).
+            if (!data && user.email) {
+                const { data: fallback, error: fallbackError } = await supabase
+                    .from('passengers')
+                    .select('*')
+                    .eq('email', user.email)
+                    .maybeSingle();
+
+                if (fallbackError) {
+                    console.error('Error fetching passenger by email:', fallbackError);
+                } else if (fallback) {
+                    // Found by email — try to run claim so future lookups work by profile_id
+                    data = fallback;
+                    supabase.rpc('claim_passenger_by_email').catch(err =>
+                        console.warn('Auto-claim attempt:', err.message)
+                    );
+                }
+            }
+
+            setPassenger(data);
         } catch (error) {
             console.error('Exception fetching passenger:', error);
         } finally {
