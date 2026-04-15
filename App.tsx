@@ -162,16 +162,36 @@ const App: React.FC = () => {
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const redirectTo = searchParams.get('redirectTo');
+    const hashHasToken = window.location.hash.includes('access_token=');
 
     if (redirectTo) {
-      // Store the desired destination BEFORE Supabase parses the token.
-      // This avoids a full page reload caused by window.location.hash assignment,
-      // which would clear the in-memory session before it can be persisted.
+      // Save target route for AuthCallback to use after claiming
       sessionStorage.setItem('auth_redirect_to', redirectTo);
 
-      // Clean ?redirectTo= from the URL so Supabase can read the #access_token= cleanly
-      const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname + window.location.hash;
-      window.history.replaceState({}, document.title, cleanUrl);
+      if (hashHasToken) {
+        // Wait for Supabase to fully write the session to localStorage
+        // before navigating — otherwise a reload clears the in-memory session.
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+            subscription.unsubscribe();
+            // Use replace so the token URL disappears from history.
+            // Session is now safely in localStorage, so reload is fine.
+            window.location.replace(window.location.origin + '/#' + redirectTo);
+          }
+        });
+
+        // Safety fallback: if SIGNED_IN never fires within 4 seconds,
+        // navigate anyway and let AuthCallback show an error.
+        setTimeout(() => {
+          subscription.unsubscribe();
+          window.location.replace(window.location.origin + '/#' + redirectTo);
+        }, 4000);
+      } else {
+        // No token in URL (e.g. password reset links) — navigate immediately
+        const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        window.location.hash = redirectTo;
+      }
     }
   }, []);
 

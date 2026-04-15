@@ -157,18 +157,16 @@ export const usePassengers = () => {
 
     const permanentDeletePassenger = async (id: string) => {
         try {
-            // Verify admin role before attempting deletion
             const { data: roleData, error: roleError } = await supabase.rpc('get_my_role');
             if (roleError) throw roleError;
-
             if (roleData !== 'admin') {
                 throw new Error('Solo los administradores pueden eliminar pasajeros permanentemente');
             }
 
-            // 1. Get the passenger to check if they have an associated auth user (profile_id)
+            // 1. Fetch passenger to get profile_id AND email (both needed for full cleanup)
             const { data: passenger, error: fetchError } = await supabase
                 .from('passengers')
-                .select('profile_id')
+                .select('profile_id, email')
                 .eq('id', id)
                 .single();
 
@@ -176,40 +174,51 @@ export const usePassengers = () => {
                 throw new Error('Error buscando datos del pasajero');
             }
 
-            // 2. If passenger has a profile_id, delete their Auth User via Edge Function
-            if (passenger?.profile_id) {
+            // 2. Delete the auth user via Edge Function:
+            //    - If profile_id is set, use it directly (faster)
+            //    - If profile_id is null (passenger never completed invite), 
+            //      pass email so the Edge Function can find & delete the auth user
+            if (passenger) {
                 const { data: session } = await supabase.auth.getSession();
-                const response = await fetch(`${supabaseUrl}/functions/v1/delete-user`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Authorization: `Bearer ${session?.session?.access_token}`
-                    },
-                    body: JSON.stringify({ userId: passenger.profile_id })
-                });
+                const body: { userId?: string; email?: string } = {};
 
-                // We won't block the rest of the flow if auth deletion fails, but we'll log it.
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    console.error('Warning: Failed to delete auth user:', errorData);
+                if (passenger.profile_id) {
+                    body.userId = passenger.profile_id;
+                } else if (passenger.email) {
+                    body.email = passenger.email;
+                }
+
+                if (body.userId || body.email) {
+                    const response = await fetch(`${supabaseUrl}/functions/v1/delete-user`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            Authorization: `Bearer ${session?.session?.access_token}`
+                        },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (!response.ok) {
+                        const errData = await response.json();
+                        console.error('Warning: Failed to delete auth user:', errData);
+                        // Don't throw — continue to delete the passenger row anyway
+                    }
                 }
             }
 
-            // 3. Delete the passenger entity exactly using the RPC cascade function
+            // 3. Delete passenger row (cascade via RPC or direct delete)
             const { error: rpcError } = await supabase.rpc('delete_passenger_cascade', { passenger_id: id });
-            
+
             if (rpcError) {
-                // Si la función RPC no existe o falla, intentamos un borrado directo desde el cliente (podría fallar por RLS)
-                console.warn('RPC delete_passenger_cascade falló o no existe, intentando delete directo...', rpcError);
+                console.warn('RPC delete_passenger_cascade falló, intentando delete directo...', rpcError);
                 const { error: directDeleteError } = await supabase
                     .from('passengers')
                     .delete()
                     .eq('id', id);
-                    
                 if (directDeleteError) throw directDeleteError;
             }
 
-            // 4. LOG AUDIT
+            // 4. Audit log
             const { data: authData } = await supabase.auth.getUser();
             if (authData.user) {
                 await supabase.from('audit_log').insert({
@@ -217,7 +226,11 @@ export const usePassengers = () => {
                     action: 'DELETE_PASSENGER_CASCADE',
                     entity_type: 'passengers',
                     entity_id: id,
-                    details: { reason: 'permanent delete via UI', profile_deleted: !!passenger?.profile_id }
+                    details: {
+                        reason: 'permanent delete via UI',
+                        passenger_email: passenger?.email,
+                        profile_deleted: !!passenger?.profile_id
+                    }
                 });
             }
 

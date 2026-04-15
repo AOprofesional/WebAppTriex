@@ -7,17 +7,17 @@ const corsHeaders = {
 }
 
 interface DeleteUserPayload {
-    userId: string
+    userId?: string   // auth user UUID (profile_id) — preferred
+    email?: string    // fallback: look up by email in auth.users
 }
 
 serve(async (req) => {
-    // Handle CORS preflight
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
     }
 
     try {
-        // Create Supabase client with user's auth
+        // Verify caller is authenticated
         const supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -28,10 +28,7 @@ serve(async (req) => {
             }
         )
 
-        // Verify user is authenticated
-        const {
-            data: { user },
-        } = await supabaseClient.auth.getUser()
+        const { data: { user } } = await supabaseClient.auth.getUser()
 
         if (!user) {
             return new Response(
@@ -40,7 +37,7 @@ serve(async (req) => {
             )
         }
 
-        // Check if user is admin or superadmin
+        // Check admin/superadmin role
         const { data: profile, error: profileError } = await supabaseClient
             .from('profiles')
             .select('role')
@@ -61,20 +58,11 @@ serve(async (req) => {
             )
         }
 
-        // Get the user ID to delete from request body
         const payload: DeleteUserPayload = await req.json()
 
-        if (!payload.userId) {
+        if (!payload.userId && !payload.email) {
             return new Response(
-                JSON.stringify({ error: 'userId is required' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-        }
-
-        // Prevent users from deleting themselves
-        if (payload.userId === user.id) {
-            return new Response(
-                JSON.stringify({ error: 'You cannot delete your own account' }),
+                JSON.stringify({ error: 'userId or email is required' }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
@@ -91,10 +79,49 @@ serve(async (req) => {
             }
         )
 
-        // Delete the user using admin client
-        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(
-            payload.userId
-        )
+        // Resolve the auth user ID to delete
+        let targetUserId = payload.userId
+
+        // If no userId provided (profile_id was null), look up by email
+        if (!targetUserId && payload.email) {
+            console.log(`Resolving auth user by email: ${payload.email}`)
+
+            // listUsers doesn't filter by email directly so we use the admin API
+            const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+                page: 1,
+                perPage: 1000
+            })
+
+            if (listError) {
+                console.error('Error listing users:', listError)
+                throw listError
+            }
+
+            const found = listData.users.find(u => u.email?.toLowerCase() === payload.email!.toLowerCase())
+
+            if (!found) {
+                // No auth user for this email — nothing to delete, that's fine
+                console.log(`No auth user found for email ${payload.email} — skipping auth deletion`)
+                return new Response(
+                    JSON.stringify({ success: true, message: 'No auth user found for this email, skipped' }),
+                    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+            }
+
+            targetUserId = found.id
+            console.log(`Resolved email ${payload.email} to auth user ID: ${targetUserId}`)
+        }
+
+        // Safety: prevent self-deletion
+        if (targetUserId === user.id) {
+            return new Response(
+                JSON.stringify({ error: 'You cannot delete your own account' }),
+                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+        }
+
+        // Delete the auth user (cascades to profiles via DB trigger)
+        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(targetUserId!)
 
         if (deleteError) {
             console.error('Error deleting user:', deleteError)
@@ -102,12 +129,10 @@ serve(async (req) => {
         }
 
         return new Response(
-            JSON.stringify({
-                success: true,
-                message: 'User deleted successfully'
-            }),
+            JSON.stringify({ success: true, message: 'User deleted successfully', deletedId: targetUserId }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
+
     } catch (error: any) {
         console.error('Error in delete-user function:', error)
         return new Response(

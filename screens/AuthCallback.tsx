@@ -11,45 +11,30 @@ export const AuthCallback: React.FC = () => {
     useEffect(() => {
         const run = async () => {
             try {
-                // 1. Wait for Supabase to fully establish the session from the URL token.
-                //    getSession() is safe: it reads the token from the URL hash internally.
-                let session = (await supabase.auth.getSession()).data.session;
+                // At this point, App.tsx already waited for SIGNED_IN before navigating here.
+                // The session is guaranteed to be in localStorage. Just verify it.
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-                if (!session) {
-                    // If not ready yet, wait for the SIGNED_IN event (up to 5 seconds)
-                    session = await new Promise<typeof session>((resolve) => {
-                        const timeout = setTimeout(() => resolve(null), 5000);
-                        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
-                            if (event === 'SIGNED_IN' && s) {
-                                clearTimeout(timeout);
-                                subscription.unsubscribe();
-                                resolve(s);
-                            }
-                        });
-                    });
-                }
-
-                if (!session) {
-                    setError('No se pudo establecer la sesión. El enlace puede haber expirado. Por favor contacta soporte.');
+                if (sessionError || !session) {
+                    setError('No se pudo establecer la sesión. El enlace puede haber expirado o ya fue utilizado. Por favor contacta soporte.');
                     return;
                 }
 
-                // 2. Claim the passenger record (link auth user → passenger row)
+                // Claim the passenger record (link auth user → passenger row)
                 const result = await claimPassenger();
 
-                // 3. Read where we should redirect the user after claiming
+                // Read redirect destination stored by App.tsx before the page reload
                 const redirectTo = sessionStorage.getItem('auth_redirect_to');
                 sessionStorage.removeItem('auth_redirect_to');
 
                 switch (result.status) {
                     case 'OK_LINKED':
                     case 'ALREADY_LINKED':
-                        // Redirect to intended destination or fallback to home
+                        // Go to intended destination or app home
                         navigate(redirectTo && redirectTo !== '/auth/callback' ? redirectTo : '/app', { replace: true });
                         break;
 
                     case 'NOT_FOUND':
-                        // No passenger record for this email → pending screen
                         navigate('/pending', { replace: true });
                         break;
 
