@@ -1,8 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
+import { config } from 'dotenv';
+
+// Cargar variables desde .env.local
+config({ path: '.env.local' });
 
 // Initialize Supabase client
-const supabaseUrl = 'https://gcziorsiqzwxbebxafeo.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjemlvcnNpcXp3eGJlYnhhZmVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODE1MzEsImV4cCI6MjA4NDY1NzUzMX0.xMm4qHhCn22J0xEjejC8RTmQYBNDLFD0ZPJ4rey_A6M';
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+    console.error('❌ Faltan variables VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY en .env.local');
+    process.exit(1);
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function seedDocuments() {

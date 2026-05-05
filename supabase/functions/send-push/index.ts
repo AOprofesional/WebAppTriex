@@ -7,7 +7,12 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const ICON_URL = 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/archivos-sistema/favicon-192.png'
+// Derived from SUPABASE_URL env var (set automatically by Supabase)
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
+const ICON_URL = `${SUPABASE_URL}/storage/v1/object/public/archivos-sistema/favicon-192.png`
+
+// VAPID contact email (configure as a Supabase Edge Function Secret: VAPID_EMAIL)
+const VAPID_EMAIL = Deno.env.get('VAPID_EMAIL') ?? 'no_reply@triexviajes.com.ar'
 
 interface PushPayload {
     userId?: string
@@ -54,7 +59,7 @@ serve(async (req) => {
         if (!vapidKeys?.publicKey || !vapidKeys?.privateKey) throw new Error('VAPID keys not configured')
 
         webpush.setVapidDetails(
-            'mailto:no_reply@triexviajes.com.ar',
+            VAPID_EMAIL,
             vapidKeys.publicKey,
             vapidKeys.privateKey
         )

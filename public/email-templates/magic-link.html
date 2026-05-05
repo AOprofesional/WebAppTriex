@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enlace de acceso a Triex</title>
+    <style>
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background-color: #f4f4f5;
+            color: #27272a;
+            margin: 0;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 16px;
+            padding: 40px 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e4e4e7;
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            color: #27272a;
+            margin-bottom: 24px;
+            letter-spacing: -0.5px;
+        }
+        .title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #18181b;
+        }
+        .text {
+            font-size: 16px;
+            line-height: 1.5;
+            color: #52525b;
+            margin-bottom: 32px;
+        }
+        .button {
+            display: inline-block;
+            background-color: #27272a;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        .button:hover {
+            background-color: #18181b;
+        }
+        .footer {
+            margin-top: 32px;
+            font-size: 13px;
+            color: #a1a1aa;
+        }
+        .alt-link {
+            margin-top: 24px;
+            font-size: 13px;
+            color: #71717a;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">Triex</div>
+        <div class="title">Tu enlace de acceso mágico ✨</div>
+        <div class="text">
+            Has solicitado un enlace para iniciar sesión en tu cuenta de Triex. Haz clic en el botón de abajo para acceder directamente, sin necesidad de contraseñas.
+        </div>
+        <a href="{{ .ConfirmationURL }}" class="button">Iniciar Sesión Segura</a>
+        
+        <div class="alt-link">
+            Si el botón no funciona, copia y pega este enlace en tu navegador:<br><br>
+            <a href="{{ .ConfirmationURL }}" style="color: #3b82f6;">{{ .ConfirmationURL }}</a>
+        </div>
+        
+        <div class="footer">
+            Si no solicitaste este correo, puedes ignorarlo de forma segura.<br>
+            © Triex. Todos los derechos reservados.
+        </div>
+    </div>
+</body>
+</html>

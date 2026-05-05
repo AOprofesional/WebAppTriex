@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from './lib/supabase';
-import { HashRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { Home } from './screens/Home';
 import { MyTrip } from './screens/MyTrip';
@@ -159,44 +158,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const App: React.FC = () => {
-  useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const redirectTo = searchParams.get('redirectTo');
-    const hashHasToken = window.location.hash.includes('access_token=');
-
-    if (redirectTo) {
-      // Save target route for AuthCallback to use after claiming
-      sessionStorage.setItem('auth_redirect_to', redirectTo);
-
-      if (hashHasToken) {
-        // Wait for Supabase to fully write the session to localStorage
-        // before navigating — otherwise a reload clears the in-memory session.
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-          if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
-            subscription.unsubscribe();
-            // Use replace so the token URL disappears from history.
-            // Session is now safely in localStorage, so reload is fine.
-            window.location.replace(window.location.origin + '/#' + redirectTo);
-          }
-        });
-
-        // Safety fallback: if SIGNED_IN never fires within 4 seconds,
-        // navigate anyway and let AuthCallback show an error.
-        setTimeout(() => {
-          subscription.unsubscribe();
-          window.location.replace(window.location.origin + '/#' + redirectTo);
-        }, 4000);
-      } else {
-        // No token in URL (e.g. password reset links) — navigate immediately
-        const cleanUrl = window.location.protocol + '//' + window.location.host + window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
-        window.location.hash = redirectTo;
-      }
-    }
-  }, []);
-
   return (
-    <HashRouter>
+    <BrowserRouter>
       <NotificationsProvider>
         <ToastProvider>
           <ConfirmDialogProvider>
@@ -338,7 +301,7 @@ const App: React.FC = () => {
           </ConfirmDialogProvider>
         </ToastProvider>
       </NotificationsProvider>
-    </HashRouter>
+    </BrowserRouter>
   );
 };
 

@@ -18,6 +18,11 @@ self.addEventListener('push', (event) => {
     let title = 'Triex';
     let options = {
         body: 'Tienes una nueva notificación',
+        // NOTA: El Service Worker es un archivo estático servido directamente por el browser,
+        // por lo que NO puede acceder a variables de entorno de Vite (import.meta.env).
+        // Esta URL de ícono es un fallback para notificaciones que no incluyen ícono propio.
+        // La URL real del ícono (derivada de SUPABASE_URL) es enviada como parte del payload
+        // desde la Edge Function send-push, que tiene prioridad sobre este fallback.
         icon: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/archivos-sistema/favicon-192.png',
         badge: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/archivos-sistema/favicon-192.png',
         data: {

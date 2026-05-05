@@ -1,4 +1,5 @@
 import React from 'react';
+import { SUPABASE_STORAGE_URL, SUPPORT_WHATSAPP } from '../config';
 
 export interface SalesAgent {
   id: string;
@@ -9,14 +10,14 @@ export interface SalesAgent {
 }
 
 const SALES_AGENTS: SalesAgent[] = [
-  { id: '1', name: 'Agostina Melica', role: 'Administración', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/AGOSTINA%20MELICA%20ADMINISTRACION.jpg', phone: '5492612455808' },
-  { id: '2', name: 'Benjamín Arrojo', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/BENJAMIN%20ARROJO%20VENTAS.jpg' },
-  { id: '3', name: 'Celeste Garro', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/CELESTE%20GARRO%20VENTAS.jpg' },
-  { id: '4', name: 'Eliana Rivero', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/ELIANA%20RIVERO%20VENTAS.jpg', phone: '5492612469416' },
-  { id: '5', name: 'Florencia Benavides', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/FLORENCIA%20BENAVIDES%20VENTAS.jpg', phone: '5492613378514' },
-  { id: '6', name: 'Hugo Fisigaro', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/HUGO%20FISIGARO%20VENTAS.jpg', phone: '5492613343492' },
-  { id: '7', name: 'Nicolás Cozzani', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/NICOLAS%20COZZANI%20VENTAS.jpg', phone: '5492613460978' },
-  { id: '8', name: 'Victoria Amaya', role: 'Ventas', imageUrl: 'https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/Equipo/VICTORIA%20AMAYA%20VENTAS.jpg', phone: '5492616569000' },
+  { id: '1', name: 'Agostina Melica', role: 'Administración', imageUrl: `${SUPABASE_STORAGE_URL}/Equipo/AGOSTINA%20MELICA%20ADMINISTRACION.jpg`, phone: '5492612455808' },
+  { id: '2', name: 'Benjamín Arrojo', role: 'Ventas', imageUrl: `${SUPABASE_STORAGE_URL}/Equipo/BENJAMIN%20ARROJO%20VENTAS.jpg` },
+  { id: '3', name: 'Celeste Garro', role: 'Ventas', imageUrl: `${SUPABASE_STORAGE_URL}/Equipo/CELESTE%20GARRO%20VENTAS.jpg` },
+  { id: '4', name: 'Eliana Rivero', role: 'Ventas', imageUrl: `${SUPABASE_STORAGE_URL}/Equipo/ELIANA%20RIVERO%20VENTAS.jpg`, phone: '5492612469416' },
+  { id: '5', name: 'Florencia Benavides', role: 'Ventas', imageUrl: `${SUPABASE_STORAGE_URL}/Equipo/FLORENCIA%20BENAVIDES%20VENTAS.jpg`, phone: '5492613378514' },
+  { id: '6', name: 'Hugo Fisigaro', role: 'Ventas', imageUrl: `${SUPABASE_STORAGE_URL}/Equipo/HUGO%20FISIGARO%20VENTAS.jpg`, phone: '5492613343492' },
+  { id: '7', name: 'Nicolás Cozzani', role: 'Ventas', imageUrl: `${SUPABASE_STORAGE_URL}/Equipo/NICOLAS%20COZZANI%20VENTAS.jpg`, phone: '5492613460978' },
+  { id: '8', name: 'Victoria Amaya', role: 'Ventas', imageUrl: `${SUPABASE_STORAGE_URL}/Equipo/VICTORIA%20AMAYA%20VENTAS.jpg`, phone: '5492616569000' },
 ];
 
 interface SalesTeamModalProps {
@@ -31,7 +32,7 @@ export const SalesTeamModal: React.FC<SalesTeamModalProps> = ({ isOpen, onClose,
   const handleWhatsApp = (agent: SalesAgent) => {
     // If we have a specific coordinator phone we could use it, but they want to contact the specific agent.
     // If agent phone is missing, fallback to coordinatorPhone or a default.
-    const phone = agent.phone || coordinatorPhone?.replace(/\D/g, '') || '5492615908839';
+    const phone = agent.phone || coordinatorPhone?.replace(/\D/g, '') || SUPPORT_WHATSAPP;
     window.open(`https://wa.me/${phone}?text=Hola%20${encodeURIComponent(agent.name)},%20necesito%20ayuda%20con%20mi%20viaje`, '_blank');
     onClose();
   };

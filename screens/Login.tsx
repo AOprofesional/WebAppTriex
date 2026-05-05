@@ -94,8 +94,8 @@ export const Login: React.FC = () => {
             const { error } = await supabase.auth.signInWithOtp({
                 email: magicLinkEmail,
                 options: {
-                    emailRedirectTo: `${window.location.origin}/#/`, // Root redirect
-                    shouldCreateUser: false, // Don't create new users via this method (login only)
+                    emailRedirectTo: window.location.origin,
+                    shouldCreateUser: false,
                 },
             });
 

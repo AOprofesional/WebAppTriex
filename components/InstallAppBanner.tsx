@@ -1,5 +1,6 @@
 import React from 'react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
+import { SUPABASE_STORAGE_URL } from '../config';
 
 export const InstallAppBanner: React.FC = () => {
     const { canInstall, isIOS, installPrompt, promptInstall, dismiss } = usePWAInstall();
@@ -24,7 +25,7 @@ export const InstallAppBanner: React.FC = () => {
                         {/* App icon */}
                         <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 shadow-sm">
                             <img
-                                src="https://gcziorsiqzwxbebxafeo.supabase.co/storage/v1/object/public/archivos-sistema/favicon-192.png"
+                                src={`${SUPABASE_STORAGE_URL}/archivos-sistema/favicon-192.png`}
                                 alt="Triex"
                                 className="w-full h-full object-cover"
                             />

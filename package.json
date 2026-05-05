@@ -27,6 +27,7 @@
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.2.0",
     "autoprefixer": "^10.4.25",
+    "dotenv": "^17.4.2",
     "jsdom": "^29.0.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
@@ -35,4 +36,3 @@
     "vitest": "^4.1.3"
   }
 }
-

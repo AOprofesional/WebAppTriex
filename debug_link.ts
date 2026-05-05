@@ -1,11 +1,8 @@
 
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from './lib/supabase';
 
-// Re-use config from lib/supabase.ts (hardcoded here for script)
-const supabaseUrl = 'https://gcziorsiqzwxbebxafeo.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdjemlvcnNpcXp3eGJlYnhhZmVvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODE1MzEsImV4cCI6MjA4NDY1NzUzMX0.xMm4qHhCn22J0xEjejC8RTmQYBNDLFD0ZPJ4rey_A6M';
+// Las credenciales se leen desde .env.local vía lib/supabase.ts
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function checkLink() {
     const email = 'maxiplayer33@gmail.com';

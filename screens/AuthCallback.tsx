@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useClaim } from '../hooks/useClaim';
+import { SUPPORT_WHATSAPP } from '../config';
 
 export const AuthCallback: React.FC = () => {
     const navigate = useNavigate();
@@ -76,7 +77,7 @@ export const AuthCallback: React.FC = () => {
 
                     <div className="space-y-3">
                         <a
-                            href="https://wa.me/5492615908839?text=Hola,%20tengo%20un%20problema%20con%20mi%20cuenta"
+                            href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Hola,%20tengo%20un%20problema%20con%20mi%20cuenta`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition"

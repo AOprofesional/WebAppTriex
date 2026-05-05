@@ -1,4 +1,5 @@
 import React from 'react';
+import { SUPPORT_WHATSAPP } from '../config';
 
 interface ContactCoordinatorModalProps {
     isOpen: boolean;
@@ -17,7 +18,7 @@ export const ContactCoordinatorModal: React.FC<ContactCoordinatorModalProps> = (
 
     const handleWhatsApp = () => {
         // Opens WhatsApp with a pre-filled message
-        const phone = coordinatorPhone?.replace(/\D/g, '') || '5492615908839'; // Fallback or strict cleanup
+        const phone = coordinatorPhone?.replace(/\D/g, '') || SUPPORT_WHATSAPP;
         window.open(`https://wa.me/${phone}?text=Hola,%20necesito%20ayuda`, '_blank');
         onClose();
     };

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { SUPPORT_WHATSAPP } from '../config';
 
 export const ArchivedAccountScreen: React.FC = () => {
     const navigate = useNavigate();
@@ -55,7 +56,7 @@ export const ArchivedAccountScreen: React.FC = () => {
                 {/* Actions */}
                 <div className="space-y-3">
                     <a
-                        href="https://wa.me/5492615908839?text=Hola,%20mi%20cuenta%20está%20archivada"
+                        href={`https://wa.me/${SUPPORT_WHATSAPP}?text=Hola,%20mi%20cuenta%20está%20archivada`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition"

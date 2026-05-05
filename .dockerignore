@@ -1,6 +1,10 @@
 node_modules
 .git
-.env
 dist
 build
 npm-debug.log
+
+# Archivos de entorno locales - las vars vienen de EasyPanel en producción
+.env
+.env.local
+.env.*.local

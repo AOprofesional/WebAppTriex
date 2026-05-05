@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { ADMIN_WHATSAPP, ADMIN_SUPPORT_EMAIL } from '../../config';
 
 interface SupportModalProps {
     isOpen: boolean;
@@ -10,12 +11,12 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
     if (!isOpen) return null;
 
     const handleEmailSupport = () => {
-        window.location.href = "mailto:aoprofesional09@gmail.com?subject=Reporte de Problema - Triex Admin";
+        window.location.href = `mailto:${ADMIN_SUPPORT_EMAIL}?subject=Reporte de Problema - Triex Admin`;
     };
 
     const handleWhatsAppSupport = () => {
         // WhatsApp number
-        window.open("https://wa.me/5492615169692", "_blank");
+        window.open(`https://wa.me/${ADMIN_WHATSAPP}`, "_blank");
     };
 
     return (
