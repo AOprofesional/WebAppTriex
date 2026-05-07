@@ -767,6 +767,42 @@ export type Database = {
           },
         ]
       }
+      sales_team: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          image_url: string | null
+          name: string
+          order_index: number | null
+          phone: string | null
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          order_index?: number | null
+          phone?: string | null
+          role: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          order_index?: number | null
+          phone?: string | null
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       survey_settings: {
         Row: {
           comment_placeholder: string

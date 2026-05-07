@@ -8,6 +8,7 @@ import { useNextActivity } from '../hooks/useNextActivity';
 import { useSurvey } from '../hooks/useSurvey';
 import { SurveyModal } from '../components/SurveyModal';
 import { SalesTeamModal } from '../components/SalesTeamModal';
+import { getSignedUrl } from '../lib/storageHelpers';
 
 export const MyTrip: React.FC = () => {
   const navigate = useNavigate();
@@ -76,12 +77,18 @@ export const MyTrip: React.FC = () => {
     setOpeningVoucher(voucher.id);
     try {
       if (voucher.external_url) {
+        // Voucher de tipo link externo
         window.open(voucher.external_url, '_blank');
-      } else if (voucher.file_url) {
-        window.open(voucher.file_url, '_blank');
+      } else if (voucher.file_path) {
+        // Voucher subido a Storage — generar signed URL y abrir
+        const signedUrl = await getSignedUrl('vouchers', voucher.file_path);
+        window.open(signedUrl, '_blank');
+      } else {
+        console.warn('Voucher sin URL ni archivo:', voucher.id);
       }
+    } catch (err) {
+      console.error('Error al abrir el voucher:', err);
     } finally {
-      // Small delay to show feedback
       setTimeout(() => setOpeningVoucher(null), 500);
     }
   };

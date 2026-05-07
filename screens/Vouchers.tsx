@@ -5,6 +5,7 @@ import { LOGO_URL } from '../constants';
 import { useVouchers } from '../hooks/useVouchers';
 import { usePassengerTrips } from '../hooks/usePassengerTrips';
 import { PageLoading } from '../components/PageLoading';
+import { getSignedUrl } from '../lib/storageHelpers';
 
 export const Vouchers: React.FC = () => {
   const navigate = useNavigate();
@@ -33,11 +34,25 @@ export const Vouchers: React.FC = () => {
     OTRO: 'folder',
   };
 
-  const handleVoucherClick = (voucher: any) => {
-    if (voucher.external_url) {
-      window.open(voucher.external_url, '_blank');
-    } else if (voucher.file_url) {
-      window.open(voucher.file_url, '_blank');
+  const [openingVoucher, setOpeningVoucher] = useState<string | null>(null);
+
+  const handleVoucherClick = async (voucher: any) => {
+    setOpeningVoucher(voucher.id);
+    try {
+      if (voucher.external_url) {
+        // Voucher de tipo link externo
+        window.open(voucher.external_url, '_blank');
+      } else if (voucher.file_path) {
+        // Voucher subido a Storage — generar signed URL
+        const signedUrl = await getSignedUrl('vouchers', voucher.file_path);
+        window.open(signedUrl, '_blank');
+      } else {
+        console.warn('Voucher sin URL ni archivo:', voucher.id);
+      }
+    } catch (err) {
+      console.error('Error al abrir el voucher:', err);
+    } finally {
+      setTimeout(() => setOpeningVoucher(null), 600);
     }
   };
 
@@ -110,13 +125,17 @@ export const Vouchers: React.FC = () => {
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="w-12 h-12 bg-[#F0F5FA] dark:bg-zinc-800 rounded-2xl flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[#E0592A] text-[24px]">
-                      {voucher.format === 'PDF'
-                        ? 'picture_as_pdf'
-                        : voucher.format === 'IMAGE'
-                          ? 'image'
-                          : 'link'}
-                    </span>
+                    {openingVoucher === voucher.id ? (
+                      <div className="w-6 h-6 border-2 border-[#E0592A] border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <span className="material-symbols-outlined text-[#E0592A] text-[24px]">
+                        {voucher.format === 'PDF'
+                          ? 'picture_as_pdf'
+                          : voucher.format === 'IMAGE'
+                            ? 'image'
+                            : 'link'}
+                      </span>
+                    )}
                   </div>
                   {voucher.category && (
                     <span className="text-[10px] font-bold bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 px-2 py-1 rounded-full uppercase tracking-wide">

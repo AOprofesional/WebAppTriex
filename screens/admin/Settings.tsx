@@ -8,6 +8,7 @@ import { uploadProfilePhoto, deleteProfilePhoto } from '../../utils/profileImage
 import { ProfilePhotoModal } from '../../components/ProfilePhotoModal';
 import { PasswordStrengthMeter } from '../../components/PasswordStrengthMeter';
 import { validatePasswordStrength } from '../../utils/passwordUtils';
+import { SalesTeamSettings } from '../../components/admin/SalesTeamSettings';
 
 export const AdminSettings: React.FC = () => {
     const { settings, saving, updateSetting } = useSettings();
@@ -611,6 +612,9 @@ export const AdminSettings: React.FC = () => {
                 </div>
             </div>
             )}
+
+            {/* Sales Team Settings - Admin only */}
+            {!isOperator && <SalesTeamSettings />}
 
             {/* Version Info */}
             <div className="text-center py-4">
