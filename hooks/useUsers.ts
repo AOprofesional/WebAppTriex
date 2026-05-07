@@ -155,10 +155,13 @@ export const useUsers = () => {
                 }
             );
 
-            const responseData = await response.json();
+            const responseData = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                throw new Error(responseData.error || 'Failed to create user');
+                console.error('Edge function failed with status:', response.status);
+                console.error('Edge function response data:', responseData);
+                const errorMsg = responseData.error || responseData.message || JSON.stringify(responseData) || 'Failed to create user';
+                throw new Error(errorMsg);
             }
 
             await fetchUsers();
@@ -245,10 +248,13 @@ export const useUsers = () => {
                 }
             );
 
-            const data = await response.json();
+            const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to toggle user status');
+                console.error('Edge function failed with status:', response.status);
+                console.error('Edge function response data:', data);
+                const errorMsg = data.error || data.message || JSON.stringify(data) || 'Failed to toggle user status';
+                throw new Error(errorMsg);
             }
 
             await fetchUsers();
@@ -306,10 +312,13 @@ export const useUsers = () => {
                 }
             );
 
-            const data = await response.json();
+            const data = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to delete user');
+                console.error('Edge function failed with status:', response.status);
+                console.error('Edge function response data:', data);
+                const errorMsg = data.error || data.message || JSON.stringify(data) || 'Failed to delete user';
+                throw new Error(errorMsg);
             }
 
             await fetchUsers();
