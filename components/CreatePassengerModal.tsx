@@ -11,9 +11,10 @@ import { useRole } from '../hooks/useRole';
 interface CreatePassengerModalProps {
     isOpen: boolean;
     onClose: () => void;
+    onSuccess?: () => void;
 }
 
-export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOpen, onClose }) => {
+export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOpen, onClose, onSuccess }) => {
     const { createAndInvite, creating } = useCreatePassengerWithInvite();
     const { refetch } = usePassengers(); // This might refetch the main passenger list
     const { validateReferralCode } = useOrangePass();
@@ -219,6 +220,16 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
         setCuilError(validation.isValid ? null : validation.error);
     };
 
+    const handleTabChange = (newTab: 'personal' | 'contact' | 'orangepass') => {
+        if (newTab !== 'personal') {
+            if (!formData.first_name.trim() || !formData.last_name.trim()) {
+                toast.error('Por favor, completa Nombre y Apellido de la pestaña "Info Personal" antes de continuar.');
+                return;
+            }
+        }
+        setActiveTab(newTab);
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
@@ -330,7 +341,8 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
             }
 
             toast.success(result.message);
-            refetch(); // Refrescar lista de pasajeros
+            refetch(); // Refrescar lista interna del modal
+            onSuccess?.(); // Notificar al padre para refrescar con filtros actuales
             onClose();
             // Reset form
             setFormData({
@@ -375,7 +387,7 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                 {/* Tabs Navigation */}
                 <div className="flex border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 px-4 pt-2 overflow-x-auto no-scrollbar">
                     <button
-                        onClick={() => setActiveTab('personal')}
+                        onClick={() => handleTabChange('personal')}
                         className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${activeTab === 'personal'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'
@@ -384,7 +396,7 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                         Info Personal
                     </button>
                     <button
-                        onClick={() => setActiveTab('contact')}
+                        onClick={() => handleTabChange('contact')}
                         className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${activeTab === 'contact'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'
@@ -393,7 +405,7 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                         Contacto y Viaje
                     </button>
                     <button
-                        onClick={() => setActiveTab('orangepass')}
+                        onClick={() => handleTabChange('orangepass')}
                         className={`px-4 py-3 text-sm font-semibold whitespace-nowrap border-b-2 transition-colors ${activeTab === 'orangepass'
                                 ? 'border-primary text-primary'
                                 : 'border-transparent text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300'

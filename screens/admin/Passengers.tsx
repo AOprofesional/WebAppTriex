@@ -297,7 +297,7 @@ export const AdminPassengers: React.FC = () => {
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Perfil</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Estado</th>
                                     <th className="text-left px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Operador</th>
-                                    <th className="text-right px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Acciones</th>
+                                    <th className="sticky right-0 z-10 bg-zinc-50 dark:bg-zinc-800/50 text-right px-6 py-4 text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider shadow-[-8px_0_10px_-4px_rgba(0,0,0,0.05)] dark:shadow-[-8px_0_10px_-4px_rgba(0,0,0,0.2)]">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-zinc-50 dark:divide-zinc-800">
@@ -306,7 +306,7 @@ export const AdminPassengers: React.FC = () => {
                                     const fullName = `${passenger.first_name} ${passenger.last_name}`;
 
                                     return (
-                                        <tr key={passenger.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                                        <tr key={passenger.id} className="group hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 rounded-full overflow-hidden bg-primary/10 flex-shrink-0">
@@ -363,7 +363,7 @@ export const AdminPassengers: React.FC = () => {
                                                     {passenger.operator_name || <span className="text-zinc-400 font-normal italic">Sin asignar</span>}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4">
+                                            <td className="sticky right-0 z-10 bg-white dark:bg-zinc-900 group-hover:bg-zinc-50 dark:group-hover:bg-zinc-800/30 px-6 py-4 shadow-[-8px_0_10px_-4px_rgba(0,0,0,0.05)] dark:shadow-[-8px_0_10px_-4px_rgba(0,0,0,0.2)] transition-colors">
                                                 <div className="flex items-center justify-end gap-2">
                                                     {/* View Details */}
                                                     <button
@@ -435,6 +435,10 @@ export const AdminPassengers: React.FC = () => {
             <CreatePassengerModal
                 isOpen={isCreateModalOpen}
                 onClose={() => setIsCreateModalOpen(false)}
+                onSuccess={() => {
+                    const opParam = selectedOperator === 'all' ? null : selectedOperator;
+                    refetch(currentPage, ITEMS_PER_PAGE, searchTerm, showArchived, opParam);
+                }}
             />
 
             {/* Edit Passenger Modal */}

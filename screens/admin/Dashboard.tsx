@@ -103,8 +103,9 @@ export const AdminDashboard: React.FC = () => {
 
     // Format date range
     const formatDateRange = (startDate: string, endDate: string) => {
-        const start = new Date(startDate);
-        const end = new Date(endDate);
+        const parseDate = (d: string) => d.length === 10 ? new Date(`${d}T00:00:00`) : new Date(d);
+        const start = parseDate(startDate);
+        const end = parseDate(endDate);
         const startDay = start.getDate();
         const endDay = end.getDate();
         const month = start.toLocaleDateString('es-AR', { month: 'short' });

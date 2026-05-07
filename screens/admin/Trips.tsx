@@ -142,7 +142,8 @@ export const AdminTrips: React.FC = () => {
 
     const formatDate = (dateStr: string) => {
         if (!dateStr) return '-';
-        const date = new Date(dateStr);
+        const parseableStr = dateStr.length === 10 ? `${dateStr}T00:00:00` : dateStr;
+        const date = new Date(parseableStr);
         return date.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' });
     };
 
