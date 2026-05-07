@@ -3,7 +3,6 @@ import { useSalesTeam, SalesTeamMember, SalesTeamInsert } from '../../hooks/useS
 import { useConfirm } from '../../components/ConfirmDialog';
 import toast from 'react-hot-toast';
 import { supabase } from '../../lib/supabase';
-import { v4 as uuidv4 } from 'uuid';
 
 export const SalesTeamSettings: React.FC = () => {
     const { team, loading, addMember, updateMember, deleteMember } = useSalesTeam();
@@ -68,7 +67,7 @@ export const SalesTeamSettings: React.FC = () => {
         try {
             setUploadingImage(true);
             const fileExt = file.name.split('.').pop();
-            const fileName = `${uuidv4()}.${fileExt}`;
+            const fileName = `${crypto.randomUUID()}.${fileExt}`;
             const filePath = `Equipo/${fileName}`;
 
             // Upload to triex-public bucket
