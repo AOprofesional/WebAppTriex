@@ -11,8 +11,9 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? ''
 const ICON_URL = `${SUPABASE_URL}/storage/v1/object/public/archivos-sistema/favicon-192.png`
 
-// VAPID contact email (configure as a Supabase Edge Function Secret: VAPID_EMAIL)
-const VAPID_EMAIL = Deno.env.get('VAPID_EMAIL') ?? 'no_reply@triexviajes.com.ar'
+// VAPID contact email (must be a mailto: URI per RFC 8292)
+const VAPID_EMAIL_RAW = Deno.env.get('VAPID_EMAIL') ?? 'no_reply@triexviajes.com.ar'
+const VAPID_EMAIL = VAPID_EMAIL_RAW.startsWith('mailto:') ? VAPID_EMAIL_RAW : `mailto:${VAPID_EMAIL_RAW}`
 
 interface PushPayload {
     userId?: string
