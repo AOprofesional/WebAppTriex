@@ -177,8 +177,14 @@ export const useAdminVouchers = () => {
             await fetchAllVouchers();
             return { data: voucher, error: null };
         } catch (err: any) {
-            console.error('Error creating voucher:', err);
-            return { data: null, error: err.message };
+            console.error('Error creating voucher detail:', {
+                message: err.message,
+                details: err.details,
+                hint: err.hint,
+                code: err.code,
+                name: err.name
+            });
+            return { data: null, error: err.message || 'Error al crear el voucher' };
         } finally {
             setLoading(false);
         }
@@ -227,8 +233,14 @@ export const useAdminVouchers = () => {
             await fetchAllVouchers();
             return { data: voucher, error: null };
         } catch (err: any) {
-            console.error('Error updating voucher:', err);
-            return { data: null, error: err.message };
+            console.error('Error updating voucher detail:', {
+                message: err.message,
+                details: err.details,
+                hint: err.hint,
+                code: err.code,
+                name: err.name
+            });
+            return { data: null, error: err.message || 'Error al actualizar el voucher' };
         } finally {
             setLoading(false);
         }

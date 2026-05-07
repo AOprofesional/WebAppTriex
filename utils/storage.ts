@@ -30,13 +30,18 @@ export const uploadVoucher = async (
             });
 
         if (uploadError) {
-            console.error('Upload error:', uploadError);
+            console.error('Upload error detail:', {
+                message: uploadError.message,
+                name: uploadError.name,
+                cause: uploadError.cause,
+                stack: uploadError.stack
+            });
             return {
                 bucket: null,
                 filePath: null,
                 mimeType: null,
                 size: null,
-                error: uploadError.message
+                error: `Error de almacenamiento: ${uploadError.message}`
             };
         }
 
@@ -48,13 +53,13 @@ export const uploadVoucher = async (
             error: null
         };
     } catch (err: any) {
-        console.error('Exception during upload:', err);
+        console.error('Exception during upload detail:', err);
         return {
             bucket: null,
             filePath: null,
             mimeType: null,
             size: null,
-            error: err.message
+            error: `Excepción de red/sistema: ${err.message || 'Error desconocido'}`
         };
     }
 };
@@ -90,13 +95,18 @@ export const uploadDocument = async (
             });
 
         if (uploadError) {
-            console.error('Upload error:', uploadError);
+            console.error('Upload error detail:', {
+                message: uploadError.message,
+                name: uploadError.name,
+                cause: uploadError.cause,
+                stack: uploadError.stack
+            });
             return {
                 bucket: null,
                 filePath: null,
                 mimeType: null,
                 size: null,
-                error: uploadError.message
+                error: `Error de almacenamiento: ${uploadError.message}`
             };
         }
 
@@ -108,13 +118,13 @@ export const uploadDocument = async (
             error: null
         };
     } catch (err: any) {
-        console.error('Exception during upload:', err);
+        console.error('Exception during upload detail:', err);
         return {
             bucket: null,
             filePath: null,
             mimeType: null,
             size: null,
-            error: err.message
+            error: `Excepción de red/sistema: ${err.message || 'Error desconocido'}`
         };
     }
 };
