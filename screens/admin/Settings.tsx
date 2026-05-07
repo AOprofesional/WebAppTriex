@@ -592,7 +592,7 @@ export const AdminSettings: React.FC = () => {
                 </div>
             ))}
 
-            {/* Danger Zone — admin only */}
+            {/* Danger Zone — admin only
             {!isOperator && (<div className="bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-200 dark:border-red-800 p-6">
                 <h3 className="text-base font-bold text-red-600 dark:text-red-400 mb-2">Zona de Peligro</h3>
                 <p className="text-sm text-red-600/80 dark:text-red-400/80 mb-4">Estas acciones son irreversibles. Proceder con precaución.</p>
@@ -612,6 +612,7 @@ export const AdminSettings: React.FC = () => {
                 </div>
             </div>
             )}
+            */}
 
             {/* Sales Team Settings - Admin only */}
             {!isOperator && <SalesTeamSettings />}
