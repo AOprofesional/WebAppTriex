@@ -117,41 +117,60 @@ export const Redemptions: React.FC = () => {
             if (status === 'COMPLETED' && request) {
                 const passenger = request.passenger;
                 
-                // 1. Push notification
+                // 1. Push notification (fire-and-forget)
                 if (passenger.profile_id) {
-                    supabase.functions.invoke('send-push', {
-                        body: {
-                            userId: passenger.profile_id,
-                            title: '¡Canje Aprobado! 🎉',
-                            body: `Tu solicitud de canje por ${request.points_amount} puntos ha sido aprobada.`,
-                            url: '/#/benefits',
-                            tag: 'redemption-approved'
+                    (async () => {
+                        try {
+                            await supabase.functions.invoke('send-push', {
+                                body: {
+                                    userId: passenger.profile_id,
+                                    title: '¡Canje Aprobado! 🎉',
+                                    body: `Tu solicitud de canje por ${request.points_amount} puntos ha sido aprobada.`,
+                                    url: '/#/benefits',
+                                    tag: 'redemption-approved'
+                                }
+                            });
+                        } catch (err) {
+                            console.error('Error sending push:', err);
                         }
-                    }).catch(err => console.error('Error sending push:', err));
+                    })();
                 }
 
-                // 2. In-App Notification
-                supabase.from('notifications').insert({
-                    passenger_id: request.passenger_id,
-                    type: 'points_redemption',
-                    title: 'Canje Aprobado',
-                    message: `Tu solicitud de canje por ${request.points_amount} puntos ha sido aprobada.`
-                }).catch(err => console.error('Error saving in-app notification:', err));
+                // 2. In-App Notification (fire-and-forget)
+                (async () => {
+                    try {
+                        const { error: notifError } = await supabase.from('notifications').insert({
+                            passenger_id: request.passenger_id,
+                            type: 'points_redemption',
+                            title: 'Canje Aprobado',
+                            message: `Tu solicitud de canje por ${request.points_amount} puntos ha sido aprobada.`
+                        });
+                        if (notifError) console.error('Error saving in-app notification:', notifError);
+                    } catch (err) {
+                        console.error('Error saving in-app notification:', err);
+                    }
+                })();
 
-                // 3. Email
+                // 3. Email (fire-and-forget)
                 if (passenger.email) {
-                    const emailHtml = `
-                        <h2>¡Hola ${passenger.first_name}!</h2>
-                        <p>Te escribimos para avisarte que tu solicitud de canje por <strong>${request.points_amount} puntos</strong> ha sido <strong>aprobada</strong>.</p>
-                        <p>¡Gracias por ser parte de la comunidad Triex!</p>
-                    `;
-                    supabase.functions.invoke('send-email', {
-                        body: {
-                            to: passenger.email,
-                            subject: '¡Tu canje de puntos ha sido aprobado! 🎉',
-                            html: emailHtml
+                    (async () => {
+                        try {
+                            const emailHtml = `
+                                <h2>¡Hola ${passenger.first_name}!</h2>
+                                <p>Te escribimos para avisarte que tu solicitud de canje por <strong>${request.points_amount} puntos</strong> ha sido <strong>aprobada</strong>.</p>
+                                <p>¡Gracias por ser parte de la comunidad Triex!</p>
+                            `;
+                            await supabase.functions.invoke('send-email', {
+                                body: {
+                                    to: passenger.email,
+                                    subject: '¡Tu canje de puntos ha sido aprobado! 🎉',
+                                    html: emailHtml
+                                }
+                            });
+                        } catch (err) {
+                            console.error('Error sending email:', err);
                         }
-                    }).catch(err => console.error('Error sending email:', err));
+                    })();
                 }
             }
 

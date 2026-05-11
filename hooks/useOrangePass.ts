@@ -77,17 +77,24 @@ export const useOrangePass = (passengerId?: string) => {
             if (requestsError) throw requestsError;
 
             const now = new Date();
-            let active = 0;
+            let earned = 0;   // Sum of positive entries (points gained)
+            let redeemed = 0; // Sum of negative entries (points spent via redemptions)
             let expired = 0;
             let locked = 0;
 
             // Calculate Ledger Points
             ledgerData?.forEach((entry) => {
                 const expiresAt = new Date(entry.expires_at);
-                if (expiresAt > now) {
-                    active += entry.points;
+                if (entry.points > 0) {
+                    // Positive entries = points earned
+                    if (expiresAt > now) {
+                        earned += entry.points;
+                    } else {
+                        expired += entry.points;
+                    }
                 } else {
-                    expired += entry.points;
+                    // Negative entries = points redeemed/deducted
+                    redeemed += Math.abs(entry.points);
                 }
             });
 
@@ -96,21 +103,14 @@ export const useOrangePass = (passengerId?: string) => {
                 locked += req.points_amount;
             });
 
-            // Formatted Total: Active - Locked (Available to spend)
-            const available = Math.max(0, active - locked);
+            // Available = earned - redeemed - locked
+            const available = Math.max(0, earned - redeemed - locked);
 
-            // We update state with the AVAILABLE points, but keeping track of total active
-            // for display purposes if needed. For now, matching the interface:
-            // total = available
-            // active = active (raw)
-            // expired = expired
-
-            // NOTE: To avoid UI confusion, 'total' will be what the user can SPEND.
             const balanceState = {
-                total: available,
-                active: active,
+                total: available,      // Points available to spend
+                active: earned,        // Total points ever earned (for "Puntos Ganados" display)
                 expired: expired,
-                locked: locked // Optional: we could add this to the interface if we want to show it
+                locked: locked
             };
 
             setBalance(balanceState);
