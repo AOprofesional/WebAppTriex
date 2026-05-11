@@ -17,6 +17,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false, i
     const { signOut, role, user } = useAuth();
     const [vouchersExpanded, setVouchersExpanded] = useState(false);
     const [profileName, setProfileName] = useState<string>('Usuario');
+    const [pendingRedemptions, setPendingRedemptions] = useState(0);
     const isOperator = role === 'operator';
 
     useEffect(() => {
@@ -45,8 +46,50 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false, i
             }
         };
 
+        const fetchPendingRedemptions = async () => {
+            if (!role) return;
+            try {
+                let query = supabase
+                    .from('redemption_requests')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('status', 'PENDING');
+                
+                if (role === 'operator') {
+                    const { data: membersData } = await supabase
+                        .from('passengers')
+                        .select('id')
+                        .eq('is_orange_member', true);
+                    const allowedIds = membersData?.map(m => m.id) || [];
+                    if (allowedIds.length > 0) {
+                        query = query.in('passenger_id', allowedIds);
+                    } else {
+                        setPendingRedemptions(0);
+                        return;
+                    }
+                }
+
+                const { count, error } = await query;
+                if (!error && count !== null) {
+                    setPendingRedemptions(count);
+                }
+            } catch (err) {
+                console.error('Error fetching pending redemptions:', err);
+            }
+        };
+
         fetchProfile();
-    }, [user]);
+        fetchPendingRedemptions();
+
+        const channel = supabase.channel('redemptions_badge')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'redemption_requests' }, () => {
+                fetchPendingRedemptions();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, [user, role]);
 
     const getInitials = (name: string) => {
         if (!name) return 'U';
@@ -230,7 +273,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false, i
                                 <span className={`material-symbols-outlined text-xl ${active ? 'font-fill' : ''}`}>
                                     {item.icon}
                                 </span>
-                                <span className="text-sm font-medium">{item.label}</span>
+                                <span className="text-sm font-medium flex-1">{item.label}</span>
+                                {item.label === 'Puntos' && pendingRedemptions > 0 && (
+                                    <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
+                                        {pendingRedemptions}
+                                    </span>
+                                )}
                             </button>
                         );
                     })}

@@ -20,6 +20,7 @@ interface RedemptionRequest {
         last_name: string;
         email: string;
         orange_member_number: string;
+        profile_id: string;
     };
 }
 
@@ -30,7 +31,7 @@ export const Redemptions: React.FC = () => {
     const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'COMPLETED' | 'REJECTED'>('PENDING');
     const [processingId, setProcessingId] = useState<string | null>(null);
     const toast = useToast();
-    const confirm = useConfirm();
+    const { confirm } = useConfirm();
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -60,7 +61,8 @@ export const Redemptions: React.FC = () => {
             first_name,
             last_name,
             email,
-            orange_member_number
+            orange_member_number,
+            profile_id
           )
         `)
                 .order('created_at', { ascending: false });
@@ -92,6 +94,7 @@ export const Redemptions: React.FC = () => {
     }, [filter, role]);
 
     const handleProcessRequest = async (id: string, status: 'COMPLETED' | 'REJECTED', adminComment?: string) => {
+        const request = requests.find(r => r.id === id);
         const result = await confirm({
             title: `¿Confirmar ${status === 'COMPLETED' ? 'aprobación' : 'rechazo'}?`,
             message: `Estás a punto de ${status === 'COMPLETED' ? 'aprobar' : 'rechazar'} esta solicitud de canje. Esta acción no se puede deshacer.`,
@@ -110,6 +113,47 @@ export const Redemptions: React.FC = () => {
             });
 
             if (error) throw error;
+
+            if (status === 'COMPLETED' && request) {
+                const passenger = request.passenger;
+                
+                // 1. Push notification
+                if (passenger.profile_id) {
+                    supabase.functions.invoke('send-push', {
+                        body: {
+                            userId: passenger.profile_id,
+                            title: '¡Canje Aprobado! 🎉',
+                            body: `Tu solicitud de canje por ${request.points_amount} puntos ha sido aprobada.`,
+                            url: '/#/benefits',
+                            tag: 'redemption-approved'
+                        }
+                    }).catch(err => console.error('Error sending push:', err));
+                }
+
+                // 2. In-App Notification
+                supabase.from('notifications').insert({
+                    passenger_id: request.passenger_id,
+                    type: 'points_redemption',
+                    title: 'Canje Aprobado',
+                    message: `Tu solicitud de canje por ${request.points_amount} puntos ha sido aprobada.`
+                }).catch(err => console.error('Error saving in-app notification:', err));
+
+                // 3. Email
+                if (passenger.email) {
+                    const emailHtml = `
+                        <h2>¡Hola ${passenger.first_name}!</h2>
+                        <p>Te escribimos para avisarte que tu solicitud de canje por <strong>${request.points_amount} puntos</strong> ha sido <strong>aprobada</strong>.</p>
+                        <p>¡Gracias por ser parte de la comunidad Triex!</p>
+                    `;
+                    supabase.functions.invoke('send-email', {
+                        body: {
+                            to: passenger.email,
+                            subject: '¡Tu canje de puntos ha sido aprobado! 🎉',
+                            html: emailHtml
+                        }
+                    }).catch(err => console.error('Error sending email:', err));
+                }
+            }
 
             toast.success(
                 `Solicitud ${status === 'COMPLETED' ? 'aprobada' : 'rechazada'}`,

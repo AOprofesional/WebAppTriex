@@ -163,7 +163,7 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
         next_step_detail_override: '',
         next_step_cta_label_override: '',
         next_step_cta_route_override: '',
-        trip_category: 'OTRO',
+        trip_category: '',
     });
 
     const [initialFormData, setInitialFormData] = useState<TripFormData | null>(null);
@@ -201,7 +201,7 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                     next_step_detail_override: '',
                     next_step_cta_label_override: '',
                     next_step_cta_route_override: '',
-                    trip_category: 'OTRO',
+                    trip_category: '',
                 });
                 setCurrentBannerUrl(null);
                 setBannerFile(null);
@@ -253,7 +253,7 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                 next_step_detail_override: data.next_step_detail_override || '',
                 next_step_cta_label_override: data.next_step_cta_label_override || '',
                 next_step_cta_route_override: data.next_step_cta_route_override || '',
-                trip_category: data.trip_category || 'OTRO',
+                trip_category: data.trip_category || '',
             };
             setFormData(dataToSet);
             setInitialFormData(dataToSet);
@@ -318,6 +318,11 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                 newErrors.next_step_title_override = 'El título es obligatorio';
                 firstErrorTab = firstErrorTab || 'settings';
             }
+        }
+
+        if (!formData.trip_category) {
+            newErrors.trip_category = 'La categoría del viaje es obligatoria';
+            firstErrorTab = firstErrorTab || 'settings';
         }
 
         setErrors(newErrors);
@@ -1024,10 +1029,12 @@ export const TripFormModal: React.FC<TripFormModalProps> = ({ isOpen, onClose, t
                                                     <h3 className="text-md font-bold text-triex-grey dark:text-white mb-4 flex items-center gap-2"><span className="material-symbols-outlined text-primary">card_giftcard</span>Orange Pass - Referidos y Puntos</h3>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                                         <div>
-                                                            <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Categoría del Viaje</label>
-                                                            <select value={formData.trip_category} onChange={(e) => handleInputChange('trip_category', e.target.value)} className="w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                                                            <label className="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Categoría del Viaje *</label>
+                                                            <select value={formData.trip_category} onChange={(e) => handleInputChange('trip_category', e.target.value)} className={`w-full px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border ${errors.trip_category ? 'border-red-500' : 'border-zinc-200 dark:border-zinc-700'} rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary`}>
+                                                                <option value="" disabled>Seleccioná una categoría...</option>
                                                                 <option value="OTRO">Otro (no acumula puntos)</option><option value="BRASIL_ANDINOS">Brasil y Andinos (10 pts)</option><option value="CARIBE">Caribe (20 pts)</option><option value="USA_CANADA">EE.UU. y Canadá (30 pts)</option><option value="EUROPA">Europa (40 pts)</option><option value="EXOTICOS">Destinos Exóticos (40 pts)</option>
                                                             </select>
+                                                            {errors.trip_category && <p className="mt-1 text-sm text-red-500">{errors.trip_category}</p>}
                                                         </div>
                                                         <div className="flex items-center justify-center">
                                                             <div className="bg-orange-50 dark:bg-orange-900/20 rounded-xl p-4 border border-orange-200">

@@ -306,7 +306,7 @@ export const AdminPassengers: React.FC = () => {
                                     const fullName = `${passenger.first_name} ${passenger.last_name}`;
 
                                     return (
-                                        <tr key={passenger.id} className="group hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                                        <tr key={passenger.id} className={`group transition-colors ${passenger.archived_at ? 'bg-orange-50/60 dark:bg-orange-900/20 hover:bg-orange-100/60 dark:hover:bg-orange-900/30' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800/30'}`}>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 rounded-full overflow-hidden bg-primary/10 flex-shrink-0">
