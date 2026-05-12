@@ -37,6 +37,7 @@ export const Itinerary: React.FC = () => {
     status: 'approved', // Logic to determine status could be added here
     icon: 'location_on', // Default icon
     instructions: item.instructions_text ? [item.instructions_text] : [],
+    instructionsUrl: item.instructions_url || undefined,
     meetingPoint: item.location_name ? {
       name: item.location_name,
       mapUrl: item.location_detail || undefined
@@ -180,7 +181,7 @@ export const Itinerary: React.FC = () => {
 
                     <div
                       className={`flex-1 min-w-0 p-4 rounded-xl border transition-all cursor-pointer group ${act.status === 'in_course' ? 'bg-white dark:bg-zinc-900 border-[#F97316] shadow-lg ring-2 ring-[#F97316]/5' : 'bg-white dark:bg-zinc-900 border-zinc-100 dark:border-zinc-800 shadow-sm hover:border-[#F97316]/30 hover:shadow-md'}`}
-                      onClick={() => (act.instructions && act.instructions.length > 0) && setSelectedActivity(act)}
+                      onClick={() => setSelectedActivity(act)}
                     >
                       <div className="flex justify-between items-center mb-1">
                         <div className="flex flex-col">
@@ -189,13 +190,11 @@ export const Itinerary: React.FC = () => {
                             <span className="inline-flex items-center px-2 py-0.5 mt-1 rounded text-[10px] font-bold bg-[#F97316]/10 text-[#F97316] uppercase tracking-tight w-fit">En curso</span>
                           )}
                         </div>
-                        {(act.instructions && act.instructions.length > 0) && (
-                          <div className="w-8 h-8 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-[#F97316]/10 group-hover:text-[#F97316] transition-colors">
-                            <span className="material-symbols-outlined text-[20px] text-zinc-300 group-hover:text-[#F97316]">
-                              chevron_right
-                            </span>
-                          </div>
-                        )}
+                        <div className="w-8 h-8 rounded-full bg-zinc-50 dark:bg-zinc-800 flex items-center justify-center group-hover:bg-[#F97316]/10 group-hover:text-[#F97316] transition-colors">
+                          <span className="material-symbols-outlined text-[20px] text-zinc-300 group-hover:text-[#F97316]">
+                            chevron_right
+                          </span>
+                        </div>
                       </div>
 
                       <h4 className="text-base font-bold text-[#1F2937] dark:text-white mt-1 break-words">{act.title}</h4>
@@ -206,20 +205,10 @@ export const Itinerary: React.FC = () => {
                         <span className="break-words flex-1 mt-0.5">{act.location}</span>
                       </div>
 
-                      {(act.instructions && act.instructions.length > 0) && (
-                        <div className="mt-3 pt-3 border-t border-zinc-50 dark:border-zinc-800 flex items-center gap-1 text-xs font-bold text-zinc-400 group-hover:text-[#F97316] transition-colors">
-                          <span>Ver detalles</span>
-                          <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                        </div>
-                      )}
-
-                      {/* En curso button override if needed, or keep above logic */}
-                      {act.status === 'in_course' && (act.instructions && act.instructions.length > 0) && (
-                        <button className="w-full mt-3 bg-[#F97316] text-white py-2.5 px-4 rounded-lg font-bold text-sm flex items-center justify-center gap-2 shadow-sm hover:bg-[#E06A2E] transition-colors">
-                          Ver instrucciones
-                          <span className="material-symbols-outlined text-sm">open_in_new</span>
-                        </button>
-                      )}
+                      <div className="mt-3 pt-3 border-t border-zinc-50 dark:border-zinc-800 flex items-center gap-1 text-xs font-bold text-zinc-400 group-hover:text-[#F97316] transition-colors">
+                        <span>Ver detalles</span>
+                        <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -274,17 +263,43 @@ export const Itinerary: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mb-8">
-                <h3 className="text-lg font-bold text-[#1F2937] dark:text-white mb-3">¿Qué debo hacer?</h3>
-                <ul className="space-y-3">
-                  {selectedActivity.instructions?.map((inst, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <span className="material-symbols-outlined text-[#F97316] text-lg">check_circle</span>
-                      <span className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{inst}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {/* Descripción completa */}
+              {selectedActivity.description && (
+                <div className="mb-6">
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{selectedActivity.description}</p>
+                </div>
+              )}
+
+              {/* Instrucciones de texto */}
+              {selectedActivity.instructions && selectedActivity.instructions.length > 0 && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-bold text-[#1F2937] dark:text-white mb-3">¿Qué debo hacer?</h3>
+                  <ul className="space-y-3">
+                    {selectedActivity.instructions.map((inst, i) => (
+                      <li key={i} className="flex items-start gap-3">
+                        <span className="material-symbols-outlined text-[#F97316] text-lg">check_circle</span>
+                        <span className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{inst}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Link de instrucciones */}
+              {selectedActivity.instructionsUrl && (
+                <div className="mb-8">
+                  <h3 className="text-lg font-bold text-[#1F2937] dark:text-white mb-3">Instrucciones</h3>
+                  <a
+                    href={selectedActivity.instructionsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 rounded-xl border border-[#F97316]/30 bg-[#F97316]/5 text-[#F97316] font-semibold text-sm hover:bg-[#F97316]/10 transition-colors"
+                  >
+                    <span className="material-symbols-outlined">open_in_new</span>
+                    Ver instrucciones completas
+                  </a>
+                </div>
+              )}
 
               {selectedActivity.meetingPoint && (
                 <div className="mb-8">

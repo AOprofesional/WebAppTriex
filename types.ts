@@ -10,6 +10,7 @@ export interface Activity {
   status: Status;
   icon: string;
   instructions?: string[];
+  instructionsUrl?: string;
   meetingPoint?: {
     name: string;
     mapUrl?: string; // Made optional
