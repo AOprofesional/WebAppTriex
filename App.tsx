@@ -50,7 +50,7 @@ import { AdminSurveys } from './screens/admin/Surveys';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
-  const { user, isArchived } = useAuth();
+  const { user, isArchived, needsPasswordSetup } = useAuth();
   const navigate = useNavigate();
   const { unreadCount } = useNotifications();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -62,15 +62,17 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   useEffect(() => {
-    // Check if user logged in via Magic Link
-    if (user && localStorage.getItem('triex_auth_method') === 'magiclink') {
+    // Show password modal if the user was invited via magic link (localStorage flag)
+    // OR if the DB flag indicates they still need to set up a password
+    if (user && (localStorage.getItem('triex_auth_method') === 'magiclink' || needsPasswordSetup)) {
       setShowPasswordModal(true);
     }
-  }, [user]);
+  }, [user, needsPasswordSetup]);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = async () => {
     setShowPasswordModal(false);
     localStorage.removeItem('triex_auth_method');
+    // completePasswordSetup is called inside CreatePasswordModal after success
   };
 
   // Skip layout for admin routes and specific paths
@@ -147,10 +149,11 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         {/* Global pre-trip survey */}
         <GlobalSurveyWrapper />
 
-        {/* Create Password Modal - Only for Magic Link users */}
+        {/* Create Password Modal - Mandatory when DB flag is set (invited user), optional otherwise */}
         <CreatePasswordModal
           isOpen={showPasswordModal}
           onClose={handleCloseModal}
+          mandatory={needsPasswordSetup}
         />
       </div>
     </div>
