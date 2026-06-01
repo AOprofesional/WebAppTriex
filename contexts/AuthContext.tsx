@@ -13,6 +13,7 @@ interface AuthContextType {
     needsPasswordSetup: boolean;
     signOut: () => Promise<void>;
     refreshRole: () => Promise<void>;
+    checkNeedsPasswordSetup: () => Promise<void>;
     completePasswordSetup: () => Promise<void>;
 }
 
@@ -209,6 +210,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         needsPasswordSetup,
         signOut,
         refreshRole,
+        checkNeedsPasswordSetup,
         completePasswordSetup,
     };
 

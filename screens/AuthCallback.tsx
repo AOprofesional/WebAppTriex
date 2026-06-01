@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useClaim } from '../hooks/useClaim';
+import { useAuth } from '../contexts/AuthContext';
 import { SUPPORT_WHATSAPP } from '../config';
 
 export const AuthCallback: React.FC = () => {
     const navigate = useNavigate();
     const { claimPassenger } = useClaim();
+    const { checkNeedsPasswordSetup } = useAuth();
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -31,6 +33,8 @@ export const AuthCallback: React.FC = () => {
                 switch (result.status) {
                     case 'OK_LINKED':
                     case 'ALREADY_LINKED':
+                        // Refresh password setup status since claim updates it in the DB
+                        await checkNeedsPasswordSetup();
                         // Go to intended destination or app home
                         navigate(redirectTo && redirectTo !== '/auth/callback' ? redirectTo : '/app', { replace: true });
                         break;
@@ -57,7 +61,7 @@ export const AuthCallback: React.FC = () => {
         };
 
         run();
-    }, [claimPassenger, navigate]);
+    }, [claimPassenger, navigate, checkNeedsPasswordSetup]);
 
     if (error) {
         return (
