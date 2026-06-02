@@ -23,6 +23,9 @@ export const AuthCallback: React.FC = () => {
 
                 // Claim the passenger record (link auth user → passenger row)
                 const result = await claimPassenger();
+                
+                // Force the password modal to appear since they came from an invite link
+                localStorage.setItem('triex_auth_method', 'magiclink');
 
                 // Read redirect destination stored by App.tsx before the page reload
                 const redirectTo = sessionStorage.getItem('auth_redirect_to');
