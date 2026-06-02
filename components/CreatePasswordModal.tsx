@@ -76,7 +76,7 @@ export const CreatePasswordModal: React.FC<CreatePasswordModalProps> = ({ isOpen
                                 Crea una contraseña
                             </h3>
                             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                                Para que puedas ingresar más rápido la próxima vez sin esperar el email. (Opcional)
+                                Por tu seguridad, es obligatorio que crees una contraseña para tu cuenta.
                             </p>
                         </div>
 
@@ -114,16 +114,9 @@ export const CreatePasswordModal: React.FC<CreatePasswordModalProps> = ({ isOpen
 
                             <div className="flex gap-3 pt-2">
                                 <button
-                                    type="button"
-                                    onClick={onClose}
-                                    className="flex-1 px-4 py-3 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 font-semibold rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-                                >
-                                    Ahora no
-                                </button>
-                                <button
                                     type="submit"
                                     disabled={isLoading}
-                                    className="flex-1 px-4 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50"
+                                    className="w-full px-4 py-3 bg-primary text-white font-bold rounded-lg hover:bg-primary/90 transition-all disabled:opacity-50"
                                 >
                                     {isLoading ? 'Guardando...' : 'Crear contraseña'}
                                 </button>

@@ -62,6 +62,15 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   useEffect(() => {
+    // Detect magic link from URL hash before Supabase strips it
+    if (window.location.hash.includes('type=magiclink') || 
+        window.location.hash.includes('type=invite') || 
+        window.location.hash.includes('type=recovery')) {
+      localStorage.setItem('triex_auth_method', 'magiclink');
+    }
+  }, []);
+
+  useEffect(() => {
     // Check if user logged in via Magic Link
     if (user && localStorage.getItem('triex_auth_method') === 'magiclink') {
       setShowPasswordModal(true);
