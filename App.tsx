@@ -75,7 +75,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     if (user && localStorage.getItem('triex_auth_method') === 'magiclink') {
       setShowPasswordModal(true);
     }
-  }, [user]);
+  }, [user, location.pathname]);
 
   const handleCloseModal = () => {
     setShowPasswordModal(false);
