@@ -10,11 +10,8 @@ interface AuthContextType {
     role: string | null;
     roleLoading: boolean;
     isArchived: boolean;
-    needsPasswordSetup: boolean;
     signOut: () => Promise<void>;
     refreshRole: () => Promise<void>;
-    checkNeedsPasswordSetup: () => Promise<void>;
-    completePasswordSetup: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,7 +23,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [role, setRole] = useState<string | null>(null);
     const [roleLoading, setRoleLoading] = useState(true);
     const [isArchived, setIsArchived] = useState(false);
-    const [needsPasswordSetup, setNeedsPasswordSetup] = useState(false);
 
     // Formatear mensaje y cerrar sesión
     const handleBanned = async () => {
@@ -107,36 +103,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    // Function to check if user needs to set up a password (invited via magic link)
-    const checkNeedsPasswordSetup = async () => {
-        if (!user) {
-            setNeedsPasswordSetup(false);
-            return;
-        }
-        try {
-            const { data, error } = await supabase.rpc('check_needs_password_setup');
-            if (error) {
-                console.error('Error checking password setup status:', error);
-                setNeedsPasswordSetup(false);
-                return;
-            }
-            setNeedsPasswordSetup(data === true);
-        } catch (err: any) {
-            console.error('Unexpected error checking password setup:', err);
-            setNeedsPasswordSetup(false);
-        }
-    };
-
-    // Mark password setup as completed in the DB and update local state
-    const completePasswordSetup = async () => {
-        try {
-            await supabase.rpc('complete_password_setup');
-        } catch (err) {
-            console.error('Error completing password setup:', err);
-        }
-        setNeedsPasswordSetup(false);
-    };
-
     useEffect(() => {
         // Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -157,12 +123,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return () => subscription.unsubscribe();
     }, []);
 
-    // Auto-load role, archived status, and password setup flag when user changes
+    // Auto-load role and archived status when user changes
     useEffect(() => {
         if (user) {
             refreshRole();
             checkArchivedStatus();
-            checkNeedsPasswordSetup();
 
             // Setup Realtime subscription for banned_until changes
             const profileSubscription = supabase
@@ -191,7 +156,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
             setRole(null);
             setIsArchived(false);
-            setNeedsPasswordSetup(false);
         }
     }, [user]);
 
@@ -207,11 +171,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role,
         roleLoading,
         isArchived,
-        needsPasswordSetup,
         signOut,
         refreshRole,
-        checkNeedsPasswordSetup,
-        completePasswordSetup,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

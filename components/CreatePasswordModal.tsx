@@ -1,21 +1,17 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../contexts/AuthContext';
 
 interface CreatePasswordModalProps {
     isOpen: boolean;
     onClose: () => void;
-    /** When true, the user cannot dismiss the modal without setting a password */
-    mandatory?: boolean;
 }
 
-export const CreatePasswordModal: React.FC<CreatePasswordModalProps> = ({ isOpen, onClose, mandatory = false }) => {
+export const CreatePasswordModal: React.FC<CreatePasswordModalProps> = ({ isOpen, onClose }) => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
-    const { completePasswordSetup } = useAuth();
 
     if (!isOpen) return null;
 
@@ -41,9 +37,6 @@ export const CreatePasswordModal: React.FC<CreatePasswordModalProps> = ({ isOpen
             });
 
             if (error) throw error;
-
-            // Mark the password as set in the database and local state
-            await completePasswordSetup();
 
             setSuccess(true);
             setTimeout(() => {
@@ -80,12 +73,10 @@ export const CreatePasswordModal: React.FC<CreatePasswordModalProps> = ({ isOpen
                                 <span className="material-symbols-outlined text-primary text-2xl">lock_reset</span>
                             </div>
                             <h3 className="text-xl font-bold text-zinc-800 dark:text-white mb-2">
-                                {mandatory ? 'Crea tu contraseña' : 'Crea una contraseña'}
+                                Crea una contraseña
                             </h3>
                             <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                                {mandatory
-                                    ? 'Para continuar, necesitás crear una contraseña personal con la que podrás ingresar directamente.'
-                                    : 'Para que puedas ingresar más rápido la próxima vez sin esperar el email. (Opcional)'}
+                                Para que puedas ingresar más rápido la próxima vez sin esperar el email. (Opcional)
                             </p>
                         </div>
 
@@ -122,15 +113,13 @@ export const CreatePasswordModal: React.FC<CreatePasswordModalProps> = ({ isOpen
                             </div>
 
                             <div className="flex gap-3 pt-2">
-                                {!mandatory && (
-                                    <button
-                                        type="button"
-                                        onClick={onClose}
-                                        className="flex-1 px-4 py-3 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 font-semibold rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
-                                    >
-                                        Ahora no
-                                    </button>
-                                )}
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="flex-1 px-4 py-3 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 font-semibold rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                                >
+                                    Ahora no
+                                </button>
                                 <button
                                     type="submit"
                                     disabled={isLoading}
