@@ -85,7 +85,7 @@ export const ConfirmDialogProvider: React.FC<{ children: React.ReactNode }> = ({
                             </h3>
                         </div>
 
-                        <div className="p-6">
+                        <div className="p-6 max-h-[60vh] overflow-y-auto">
                             <p className="text-zinc-600 dark:text-zinc-400 whitespace-pre-line mb-4">
                                 {options.message}
                             </p>
