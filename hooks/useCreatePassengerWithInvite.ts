@@ -23,7 +23,7 @@ export const useCreatePassengerWithInvite = () => {
     const [creating, setCreating] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const createAndInvite = async (data: CreatePassengerData) => {
+    const createAndInvite = async (mainData: CreatePassengerData, companionsData: Omit<CreatePassengerData, 'email'>[] = []) => {
         setCreating(true);
         setError(null);
 
@@ -32,59 +32,72 @@ export const useCreatePassengerWithInvite = () => {
             const { data: authData } = await supabase.auth.getUser();
             const { data: roleData, error: roleError } = await supabase.rpc('get_my_role');
 
-            const insertData: any = {
-                ...data,
+            const baseInsertData: any = {
                 created_by: authData.user?.id
             };
 
             // Auto-asignar a sí mismo si es operador (y no viene forzado otro assigned_to)
-            if (roleData === 'operator' && authData.user && !insertData.assigned_to) {
-                insertData.assigned_to = authData.user.id;
+            if (roleData === 'operator' && authData.user && !mainData.assigned_to) {
+                baseInsertData.assigned_to = authData.user.id;
             }
 
-            // 1. Crear pasajero (profile_id queda NULL automáticamente)
-            const { data: passenger, error: createError } = await supabase
+            // 2. Crear pasajero principal
+            const { data: mainPassenger, error: createError } = await supabase
                 .from('passengers')
-                .insert([insertData])
+                .insert([{ ...mainData, ...baseInsertData }])
                 .select()
                 .single();
 
             if (createError) {
-                // Check for duplicate email error
-                if (createError.code === '23505' && createError.message.includes('passengers_email_key')) {
-                    throw new Error('Ya existe un pasajero registrado con este correo electrónico');
-                }
-                throw new Error(`Error al crear pasajero: ${createError.message}`);
+                throw new Error(`Error al crear pasajero principal: ${createError.message}`);
             }
 
-            // 2. Enviar magic link de invitación
+            // 3. Crear acompañantes si existen
+            if (companionsData.length > 0) {
+                const companionsToInsert = companionsData.map(comp => ({
+                    ...comp,
+                    email: mainData.email, // Comparten el mismo email
+                    parent_passenger_id: mainPassenger.id, // Vinculados al principal
+                    ...baseInsertData
+                }));
+
+                const { error: companionsError } = await supabase
+                    .from('passengers')
+                    .insert(companionsToInsert);
+                
+                if (companionsError) {
+                    throw new Error(`Error al crear acompañantes: ${companionsError.message}`);
+                }
+            }
+
+            // 4. Enviar magic link de invitación
             const { error: inviteError } = await supabase.auth.signInWithOtp({
-                email: data.email,
+                email: mainData.email,
                 options: {
                     emailRedirectTo: `${window.location.origin}/auth/callback`,
                     data: {
-                        passenger_id: passenger.id,
+                        passenger_id: mainPassenger.id,
                         invited_by: 'admin'
                     }
                 }
             });
 
             if (inviteError) {
-                // Pasajero creado pero error al enviar invitación
+                // Pasajeros creados pero error al enviar invitación
                 console.error('Error sending invite:', inviteError);
                 return {
                     success: true,
-                    passenger,
+                    passenger: mainPassenger,
                     inviteSent: false,
-                    message: `Pasajero creado, pero no se pudo enviar la invitación: ${inviteError.message}`
+                    message: `Pasajeros creados, pero no se pudo enviar la invitación: ${inviteError.message}`
                 };
             }
 
             return {
                 success: true,
-                passenger,
+                passenger: mainPassenger,
                 inviteSent: true,
-                message: `Pasajero creado e invitación enviada a ${data.email}`
+                message: `Pasajero(s) creado(s) e invitación enviada a ${mainData.email}`
             };
 
         } catch (err: any) {

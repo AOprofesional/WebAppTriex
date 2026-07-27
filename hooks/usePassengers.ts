@@ -163,10 +163,10 @@ export const usePassengers = () => {
                 throw new Error('Solo los administradores pueden eliminar pasajeros permanentemente');
             }
 
-            // 1. Fetch passenger to get profile_id AND email (both needed for full cleanup)
+            // 1. Fetch passenger to get profile_id, email, AND parent_passenger_id
             const { data: passenger, error: fetchError } = await supabase
                 .from('passengers')
-                .select('profile_id, email')
+                .select('profile_id, email, parent_passenger_id')
                 .eq('id', id)
                 .single();
 
@@ -174,11 +174,9 @@ export const usePassengers = () => {
                 throw new Error('Error buscando datos del pasajero');
             }
 
-            // 2. Delete the auth user via Edge Function:
-            //    - If profile_id is set, use it directly (faster)
-            //    - If profile_id is null (passenger never completed invite), 
-            //      pass email so the Edge Function can find & delete the auth user
-            if (passenger) {
+            // 2. Delete the auth user via Edge Function ONLY if it's a primary passenger (parent_passenger_id IS NULL)
+            //    Companions share the profile/email of their parent, so we MUST NOT delete the auth user when deleting a companion.
+            if (passenger && !passenger.parent_passenger_id) {
                 const { data: session } = await supabase.auth.getSession();
                 const body: { userId?: string; email?: string } = {};
 

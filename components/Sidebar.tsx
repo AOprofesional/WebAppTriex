@@ -14,7 +14,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signOut } = useAuth();
+  const { signOut, availablePassengers, switchPassenger } = useAuth();
   const { isStaff } = useRole();
   const { passenger } = usePassenger(); // Use custom hook
 
@@ -124,6 +124,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
         {/* Footer actions */}
         <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 space-y-4">
+
+          {availablePassengers && availablePassengers.length > 1 && (
+            <button
+              onClick={() => { switchPassenger(''); onClose(); }}
+              className="w-full flex items-center gap-4 px-4 text-zinc-500 font-bold text-sm mb-4"
+            >
+              <span className="material-symbols-outlined">swap_horiz</span>
+              Cambiar perfil
+            </button>
+          )}
 
           <button
             onClick={handleLogout}

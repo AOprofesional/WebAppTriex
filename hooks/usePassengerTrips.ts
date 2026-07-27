@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Tables } from '../types/database.types';
 import { selectPrimaryTrip } from '../utils/tripSelection';
+import { useAuth } from '../contexts/AuthContext';
 
 type Trip = Tables<'trips'>;
 type TripRequirement = Tables<'trip_documents_requirements'>;
@@ -18,6 +19,7 @@ export interface NextStep {
 }
 
 export const usePassengerTrips = () => {
+    const { selectedPassengerId } = useAuth();
     const [trips, setTrips] = useState<Trip[]>([]);
     const [primaryTrip, setPrimaryTrip] = useState<Trip | null>(null);
     const [passenger, setPassenger] = useState<{ id: string; first_name: string; last_name: string } | null>(null);
@@ -27,7 +29,7 @@ export const usePassengerTrips = () => {
 
     useEffect(() => {
         fetchPassengerTrips();
-    }, []);
+    }, [selectedPassengerId]);
 
     const fetchPassengerTrips = async () => {
         try {
@@ -38,36 +40,50 @@ export const usePassengerTrips = () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) throw new Error('No authenticated user');
 
-            // Get passenger record — first by profile_id, then by email as fallback
-            // (profile_id may be null if claim_passenger_by_email hasn't run yet)
-            let { data: passenger, error: passengerError } = await supabase
-                .from('passengers')
-                .select('id, first_name, last_name')
-                .eq('profile_id', user.id)
-                .maybeSingle();
+            let passengerData = null;
 
-            if (passengerError) throw passengerError;
-
-            if (!passenger && user.email) {
-                // Fallback: look up by email for unclaimed passengers
-                const { data: fallback, error: fbError } = await supabase
+            if (selectedPassengerId) {
+                const { data, error } = await supabase
                     .from('passengers')
                     .select('id, first_name, last_name')
-                    .eq('email', user.email)
+                    .eq('id', selectedPassengerId)
+                    .single();
+                if (error) throw error;
+                passengerData = data;
+            } else {
+                // Get passenger record — first by profile_id, then by email as fallback
+                let { data, error } = await supabase
+                    .from('passengers')
+                    .select('id, first_name, last_name')
+                    .eq('profile_id', user.id)
+                    .order('created_at', { ascending: true })
+                    .limit(1)
                     .maybeSingle();
 
-                if (fbError) throw fbError;
+                if (error) throw error;
+                
+                if (!data && user.email) {
+                    const { data: fallback, error: fbError } = await supabase
+                        .from('passengers')
+                        .select('id, first_name, last_name')
+                        .eq('email', user.email)
+                        .order('created_at', { ascending: true })
+                        .limit(1)
+                        .maybeSingle();
 
-                if (fallback) {
-                    passenger = fallback;
-                    // Attempt silent auto-claim in background
-                    supabase.rpc('claim_passenger_by_email').catch(() => {});
+                    if (fbError) throw fbError;
+
+                    if (fallback) {
+                        data = fallback;
+                        supabase.rpc('claim_passenger_by_email').catch(() => {});
+                    }
                 }
+                passengerData = data;
             }
 
-            if (!passenger) throw new Error('No passenger record found');
+            if (!passengerData) throw new Error('No passenger record found');
 
-            setPassenger(passenger);
+            setPassenger(passengerData);
 
             // Get trips for this passenger
             const { data: tripPassengers, error: tpError } = await supabase

@@ -34,6 +34,7 @@ import { ArchivedAccountScreen } from './screens/ArchivedAccount';
 import { NotificationListener } from './components/NotificationListener';
 import { InstallAppBanner } from './components/InstallAppBanner';
 import { GlobalSurveyWrapper } from './components/GlobalSurveyWrapper';
+import { ProfileSelector } from './components/ProfileSelector';
 
 // Admin imports
 import { AdminLayout } from './screens/admin/AdminLayout';
@@ -155,6 +156,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
         {/* Global pre-trip survey */}
         <GlobalSurveyWrapper />
+
+        {/* Profile Selector Modal */}
+        {!hideNavOn.some(path => location.pathname.startsWith(path)) && <ProfileSelector />}
 
         {/* Create Password Modal - Only for Magic Link users */}
         <CreatePasswordModal

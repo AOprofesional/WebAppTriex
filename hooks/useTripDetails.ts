@@ -16,7 +16,10 @@ type TripDetails = {
     documentRequirements: DocRequirement[];
 };
 
+import { useAuth } from '../contexts/AuthContext';
+
 export const useTripDetails = (tripId?: string) => {
+    const { selectedPassengerId } = useAuth();
     const [data, setData] = useState<TripDetails>({
         trip: null,
         passenger: null,
@@ -32,7 +35,7 @@ export const useTripDetails = (tripId?: string) => {
         } else {
             fetchActiveTrip();
         }
-    }, [tripId]);
+    }, [tripId, selectedPassengerId]);
 
     const fetchActiveTrip = async () => {
         try {
@@ -44,19 +47,33 @@ export const useTripDetails = (tripId?: string) => {
             if (!user) throw new Error('No authenticated user');
 
             // Get passenger record
-            const { data: passenger } = await supabase
-                .from('passengers')
-                .select('id')
-                .eq('profile_id', user.id)
-                .single();
+            let passengerData = null;
+            
+            if (selectedPassengerId) {
+                const { data } = await supabase
+                    .from('passengers')
+                    .select('id')
+                    .eq('id', selectedPassengerId)
+                    .single();
+                passengerData = data;
+            } else {
+                const { data } = await supabase
+                    .from('passengers')
+                    .select('id')
+                    .eq('profile_id', user.id)
+                    .order('created_at', { ascending: true })
+                    .limit(1)
+                    .single();
+                passengerData = data;
+            }
 
-            if (!passenger) throw new Error('No passenger record found');
+            if (!passengerData) throw new Error('No passenger record found');
 
             // Get trip IDs for this passenger
             const { data: tripPassengers } = await supabase
                 .from('trip_passengers')
                 .select('trip_id')
-                .eq('passenger_id', passenger.id);
+                .eq('passenger_id', passengerData.id);
 
             if (!tripPassengers || tripPassengers.length === 0) {
                 setLoading(false);
@@ -112,12 +129,23 @@ export const useTripDetails = (tripId?: string) => {
             let passengerId: string | null = null;
 
             if (user) {
-                const { data: passenger } = await supabase
-                    .from('passengers')
-                    .select('id')
-                    .eq('profile_id', user.id)
-                    .single();
-                passengerId = passengerIdArg || passenger?.id || null;
+                if (selectedPassengerId) {
+                    const { data: passenger } = await supabase
+                        .from('passengers')
+                        .select('id')
+                        .eq('id', selectedPassengerId)
+                        .single();
+                    passengerId = passengerIdArg || passenger?.id || null;
+                } else {
+                    const { data: passenger } = await supabase
+                        .from('passengers')
+                        .select('id')
+                        .eq('profile_id', user.id)
+                        .order('created_at', { ascending: true })
+                        .limit(1)
+                        .single();
+                    passengerId = passengerIdArg || passenger?.id || null;
+                }
             }
 
             // Fetch vouchers (Filtered by passenger if available)

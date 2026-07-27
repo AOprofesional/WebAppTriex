@@ -42,6 +42,8 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
     const [operators, setOperators] = useState<{ id: string; full_name: string; email: string }[]>([]);
     const [loadingOperators, setLoadingOperators] = useState(false);
 
+    const [companions, setCompanions] = useState<any[]>([]);
+
     // Referral code validation
     const [referralCodeValid, setReferralCodeValid] = useState<boolean | null>(null);
     const [validatingCode, setValidatingCode] = useState(false);
@@ -220,10 +222,24 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
         setCuilError(validation.isValid ? null : validation.error);
     };
 
+    const handleAddCompanion = () => {
+        setCompanions([...companions, { first_name: '', last_name: '', document_number: '' }]);
+    };
+
+    const handleRemoveCompanion = (index: number) => {
+        setCompanions(companions.filter((_, i) => i !== index));
+    };
+
+    const handleCompanionChange = (index: number, field: string, value: string) => {
+        const newCompanions = [...companions];
+        newCompanions[index][field] = value;
+        setCompanions(newCompanions);
+    };
+
     const handleTabChange = (newTab: 'personal' | 'contact' | 'orangepass') => {
         if (newTab !== 'personal') {
             if (!formData.first_name.trim() || !formData.last_name.trim()) {
-                toast.error('Por favor, completa Nombre y Apellido de la pestaña "Info Personal" antes de continuar.');
+                toast.error('Por favor, completa Nombre y Apellido del titular antes de continuar.');
                 return;
             }
         }
@@ -236,8 +252,17 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
         // Basic validation & Tab switching for required fields
         if (!formData.first_name || !formData.last_name) {
             setActiveTab('personal');
-            toast.error('Por favor, completa Nombre y Apellido');
+            toast.error('Por favor, completa Nombre y Apellido del titular');
             return;
+        }
+
+        // Validate companions
+        for (let i = 0; i < companions.length; i++) {
+            if (!companions[i].first_name || !companions[i].last_name) {
+                setActiveTab('personal');
+                toast.error(`Por favor, completa Nombre y Apellido del acompañante ${i + 1}`);
+                return;
+            }
         }
 
         if (!formData.email) {
@@ -300,7 +325,7 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
         }
 
         // 3. Create Passenger (Atomic)
-        const result = await createAndInvite({
+        const mainData = {
             first_name: formData.first_name,
             last_name: formData.last_name,
             email: formData.email,
@@ -311,13 +336,21 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
             document_type: formData.document_type || undefined,
             document_number: formData.document_number || undefined,
             savia_file_number: formData.savia_file_number || undefined,
-            // Extended fields
             profile_id: existingProfileId,
             referred_by_passenger_id: finalReferrerId || undefined,
             referred_by_code_raw: finalReferralCode || undefined,
             referral_linked_at: finalReferralCode ? new Date().toISOString() : undefined,
             assigned_to: isAdmin && formData.assigned_to ? formData.assigned_to : undefined
-        });
+        };
+
+        const companionsData = companions.map(c => ({
+            first_name: c.first_name,
+            last_name: c.last_name,
+            document_number: c.document_number || undefined,
+            passenger_type_id: formData.passenger_type_id,
+        }));
+
+        const result = await createAndInvite(mainData, companionsData);
 
         if (result.success && result.passenger) {
             // Link to trip if selected
@@ -360,6 +393,7 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                 assigned_to: '',
                 savia_file_number: ''
             });
+            setCompanions([]);
             setReferrerId(null);
             setReferralCodeValid(null);
             setActiveTab('personal');
@@ -468,6 +502,72 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                                     <option value={4}>Otro</option>
                                 </select>
                             </div>
+                        </div>
+
+                        {/* Acompañantes */}
+                        <div className="space-y-4 pt-6 border-t border-zinc-200 dark:border-zinc-800">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-zinc-800 dark:text-white">Acompañantes</h3>
+                                <button
+                                    type="button"
+                                    onClick={handleAddCompanion}
+                                    className="text-sm font-semibold text-primary hover:text-primary/80 transition flex items-center gap-1"
+                                >
+                                    <span className="material-symbols-outlined text-sm">add</span>
+                                    Agregar
+                                </button>
+                            </div>
+                            
+                            {companions.length === 0 ? (
+                                <p className="text-sm text-zinc-500">No hay acompañantes agregados.</p>
+                            ) : (
+                                <div className="space-y-4">
+                                    {companions.map((comp, index) => (
+                                        <div key={index} className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700 relative">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveCompanion(index)}
+                                                className="absolute top-2 right-2 text-zinc-400 hover:text-red-500 transition"
+                                            >
+                                                <span className="material-symbols-outlined text-sm">close</span>
+                                            </button>
+                                            <h4 className="text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-3">Acompañante {index + 1}</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-xs font-medium text-zinc-500 mb-1">Nombre *</label>
+                                                    <input
+                                                        type="text"
+                                                        value={comp.first_name}
+                                                        onChange={(e) => handleCompanionChange(index, 'first_name', e.target.value)}
+                                                        className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                        placeholder="Nombre"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-zinc-500 mb-1">Apellido *</label>
+                                                    <input
+                                                        type="text"
+                                                        value={comp.last_name}
+                                                        onChange={(e) => handleCompanionChange(index, 'last_name', e.target.value)}
+                                                        className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                        placeholder="Apellido"
+                                                    />
+                                                </div>
+                                                <div className="md:col-span-2">
+                                                    <label className="block text-xs font-medium text-zinc-500 mb-1">DNI/Pasaporte (Opcional)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={comp.document_number}
+                                                        onChange={(e) => handleCompanionChange(index, 'document_number', e.target.value)}
+                                                        className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                        placeholder="Número de documento"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Datos Adicionales (Opcionales) */}

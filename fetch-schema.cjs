@@ -14,11 +14,8 @@ async function fetchPolicies() {
         const data = await response.json();
         const schemas = data.definitions || (data.components && data.components.schemas) || {};
         
-        console.log("Orange Points Ledger Schema:");
-        console.log(JSON.stringify(schemas['orange_points_ledger'], null, 2));
-
-        console.log("Redemption Requests Schema:");
-        console.log(JSON.stringify(schemas['redemption_requests'], null, 2));
+        console.log("Passengers Schema:");
+        console.log(JSON.stringify(schemas['passengers'], null, 2));
     } catch (e) {
         console.error(e);
     }

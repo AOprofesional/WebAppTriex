@@ -12,6 +12,9 @@ interface AuthContextType {
     isArchived: boolean;
     signOut: () => Promise<void>;
     refreshRole: () => Promise<void>;
+    availablePassengers: any[];
+    selectedPassengerId: string | null;
+    switchPassenger: (id: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,6 +26,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [role, setRole] = useState<string | null>(null);
     const [roleLoading, setRoleLoading] = useState(true);
     const [isArchived, setIsArchived] = useState(false);
+    const [availablePassengers, setAvailablePassengers] = useState<any[]>([]);
+    const [selectedPassengerId, setSelectedPassengerId] = useState<string | null>(null);
 
     // Formatear mensaje y cerrar sesión
     const handleBanned = async () => {
@@ -103,6 +108,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    // Function to fetch available passengers for this profile
+    const fetchAvailablePassengers = async () => {
+        if (!user) {
+            setAvailablePassengers([]);
+            setSelectedPassengerId(null);
+            return;
+        }
+
+        try {
+            const { data, error } = await supabase
+                .from('passengers')
+                .select('*')
+                .eq('profile_id', user.id)
+                .is('archived_at', null)
+                .order('created_at', { ascending: true });
+
+            if (error) throw error;
+            
+            setAvailablePassengers(data || []);
+            
+            // If they only have one passenger, auto-select it
+            if (data && data.length === 1) {
+                setSelectedPassengerId(data[0].id);
+            }
+            // If they have multiple, we leave selectedPassengerId as null 
+            // so the UI can prompt them to select
+            
+        } catch (err) {
+            console.error('Error fetching passengers:', err);
+            setAvailablePassengers([]);
+        }
+    };
+
+    const switchPassenger = (id: string | null) => {
+        setSelectedPassengerId(id);
+    };
+
     useEffect(() => {
         // Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
@@ -128,6 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (user) {
             refreshRole();
             checkArchivedStatus();
+            fetchAvailablePassengers();
 
             // Setup Realtime subscription for banned_until changes
             const profileSubscription = supabase
@@ -156,12 +199,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
             setRole(null);
             setIsArchived(false);
+            setAvailablePassengers([]);
+            setSelectedPassengerId(null);
         }
     }, [user]);
 
     const signOut = async () => {
         await supabase.auth.signOut();
         setRole(null);
+        setAvailablePassengers([]);
+        setSelectedPassengerId(null);
     };
 
     const value = {
@@ -173,6 +220,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isArchived,
         signOut,
         refreshRole,
+        availablePassengers,
+        selectedPassengerId,
+        switchPassenger,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

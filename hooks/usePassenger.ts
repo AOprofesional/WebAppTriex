@@ -28,40 +28,60 @@ export interface Passenger {
     created_at: string;
 }
 
+import { useAuth } from '../contexts/AuthContext';
+
 export const usePassenger = () => {
     const [passenger, setPassenger] = useState<Passenger | null>(null);
     const [loading, setLoading] = useState(true);
+    const { selectedPassengerId } = useAuth();
 
     const fetchPassenger = async () => {
         try {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            // Primary lookup: by profile_id (already claimed)
+            if (selectedPassengerId) {
+                // Fetch the specifically selected passenger
+                const { data, error } = await supabase
+                    .from('passengers')
+                    .select('*')
+                    .eq('id', selectedPassengerId)
+                    .single();
+
+                if (error) {
+                    console.error('Error fetching selected passenger:', error);
+                } else {
+                    setPassenger(data);
+                    return;
+                }
+            }
+
+            // Fallback (e.g. for operators accessing passenger profile context, or before selection)
+            // Or if they just logged in and we want the first one
             let { data, error } = await supabase
                 .from('passengers')
                 .select('*')
                 .eq('profile_id', user.id)
-                .maybeSingle();   // maybeSingle() returns null instead of error when 0 rows
+                .order('created_at', { ascending: true })
+                .limit(1)
+                .maybeSingle();
 
             if (error) {
                 console.error('Error fetching passenger by profile_id:', error);
             }
 
-            // Fallback: if no profile_id match, try by email.
-            // This happens when the user is authenticated but claim_passenger_by_email
-            // hasn't run yet (e.g. the user refreshed the page before AuthCallback finished).
             if (!data && user.email) {
                 const { data: fallback, error: fallbackError } = await supabase
                     .from('passengers')
                     .select('*')
                     .eq('email', user.email)
+                    .order('created_at', { ascending: true })
+                    .limit(1)
                     .maybeSingle();
 
                 if (fallbackError) {
                     console.error('Error fetching passenger by email:', fallbackError);
                 } else if (fallback) {
-                    // Found by email — try to run claim so future lookups work by profile_id
                     data = fallback;
                     supabase.rpc('claim_passenger_by_email').catch(err =>
                         console.warn('Auto-claim attempt:', err.message)
@@ -79,7 +99,7 @@ export const usePassenger = () => {
 
     useEffect(() => {
         fetchPassenger();
-    }, []);
+    }, [selectedPassengerId]);
 
     /**
      * Update passenger profile information
