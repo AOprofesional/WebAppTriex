@@ -94,20 +94,42 @@ export const usePassengerTrips = () => {
 
             if (tpError) throw tpError;
 
-            if (!tripPassengers || tripPassengers.length === 0) {
+            let effectiveTripIds: string[] = tripPassengers?.map(tp => tp.trip_id) || [];
+
+            // If this passenger (companion) has no trips of their own, look up the titular's trips
+            if (effectiveTripIds.length === 0 && passengerData) {
+                // Check if this passenger is a companion (has a parent_passenger_id)
+                const { data: passengerFull, error: fullErr } = await supabase
+                    .from('passengers')
+                    .select('parent_passenger_id')
+                    .eq('id', passengerData.id)
+                    .maybeSingle();
+
+                if (!fullErr && passengerFull?.parent_passenger_id) {
+                    // Use parent's (titular's) trips
+                    const { data: parentTrips, error: ptError } = await supabase
+                        .from('trip_passengers')
+                        .select('trip_id')
+                        .eq('passenger_id', passengerFull.parent_passenger_id);
+
+                    if (!ptError && parentTrips) {
+                        effectiveTripIds = parentTrips.map(tp => tp.trip_id);
+                    }
+                }
+            }
+
+            if (effectiveTripIds.length === 0) {
                 setTrips([]);
                 setPrimaryTrip(null);
                 setNextStep(null);
                 return;
             }
 
-            const tripIds = tripPassengers.map(tp => tp.trip_id);
-
             // Fetch full trip details
             const { data: tripsData, error: tripsError } = await supabase
                 .from('trips')
                 .select('*, trip_passengers(count)')
-                .in('id', tripIds)
+                .in('id', effectiveTripIds)
                 .is('archived_at', null)
                 .order('start_date', { ascending: true });
 
