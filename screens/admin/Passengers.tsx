@@ -29,6 +29,9 @@ type PassengerListView = {
     avatar_url: string | null;
     operator_name?: string | null;
     savia_file_number?: string | null;
+    parent_passenger_id?: string | null;
+    parent_first_name?: string | null;
+    parent_last_name?: string | null;
 };
 
 
@@ -121,6 +124,8 @@ export const AdminPassengers: React.FC = () => {
 
     // Local filtering for type
     const paginatedPassengers = passengers.filter(p => {
+        if (filterType === 'titular') return !p.parent_passenger_id;
+        if (filterType === 'companion') return !!p.parent_passenger_id;
         const matchesType = filterType === 'all' || p.type_name?.toLowerCase().includes(filterType.toLowerCase());
         return matchesType;
     });
@@ -219,6 +224,8 @@ export const AdminPassengers: React.FC = () => {
                         className="px-4 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     >
                         <option value="all">Todos los tipos</option>
+                        <option value="titular">Solo Titulares</option>
+                        <option value="companion">Solo Acompañantes</option>
                         <option value="regular">Regular</option>
                         <option value="vip">VIP</option>
                         <option value="corporate">Corporativo</option>
@@ -319,8 +326,24 @@ export const AdminPassengers: React.FC = () => {
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-semibold text-zinc-800 dark:text-white">{fullName}</p>
-                                                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{passenger.passenger_email}</p>
+                                                        <div className="flex items-center gap-2 flex-wrap">
+                                                            <p className="text-sm font-semibold text-zinc-800 dark:text-white">{fullName}</p>
+                                                            {passenger.parent_passenger_id ? (
+                                                                <span 
+                                                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 border border-purple-200/70 dark:border-purple-800/40"
+                                                                    title={passenger.parent_first_name ? `Acompañante de ${passenger.parent_first_name} ${passenger.parent_last_name}` : 'Acompañante'}
+                                                                >
+                                                                    <span className="material-symbols-outlined text-[13px]">group</span>
+                                                                    Acompañante{passenger.parent_first_name ? ` de ${passenger.parent_first_name} ${passenger.parent_last_name}` : ''}
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                                                                    <span className="material-symbols-outlined text-[12px]">person</span>
+                                                                    Titular
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">{passenger.passenger_email}</p>
                                                     </div>
                                                 </div>
                                             </td>

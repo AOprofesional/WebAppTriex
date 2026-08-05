@@ -1426,6 +1426,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           assigned_to: string | null
+          avatar_url: string | null
           created_at: string | null
           document_number: string | null
           document_type: string | null
@@ -1434,6 +1435,9 @@ export type Database = {
           is_recurrent: boolean | null
           last_name: string | null
           operator_name: string | null
+          parent_first_name: string | null
+          parent_last_name: string | null
+          parent_passenger_id: string | null
           passenger_email: string | null
           phone: string | null
           savia_file_number: string | null

@@ -346,6 +346,7 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
         const companionsData = companions.map(c => ({
             first_name: c.first_name,
             last_name: c.last_name,
+            document_type: c.document_number ? 'DNI' : undefined,
             document_number: c.document_number || undefined,
             passenger_type_id: formData.passenger_type_id,
         }));
