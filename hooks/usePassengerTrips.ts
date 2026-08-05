@@ -1,9 +1,9 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Tables } from '../types/database.types';
 import { selectPrimaryTrip } from '../utils/tripSelection';
 import { useAuth } from '../contexts/AuthContext';
+import { queryCache } from '../lib/queryCache';
 
 type Trip = Tables<'trips'>;
 type TripRequirement = Tables<'trip_documents_requirements'>;
@@ -18,27 +18,44 @@ export interface NextStep {
     ctaRoute: string | null;
 }
 
+interface CachedPassengerTrips {
+    trips: Trip[];
+    primaryTrip: Trip | null;
+    passenger: { id: string; first_name: string; last_name: string } | null;
+    nextStep: NextStep | null;
+}
+
 export const usePassengerTrips = () => {
-    const { selectedPassengerId } = useAuth();
-    const [trips, setTrips] = useState<Trip[]>([]);
-    const [primaryTrip, setPrimaryTrip] = useState<Trip | null>(null);
-    const [passenger, setPassenger] = useState<{ id: string; first_name: string; last_name: string } | null>(null);
-    const [nextStep, setNextStep] = useState<NextStep | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { user, selectedPassengerId } = useAuth();
+    const cacheKey = `passenger_trips:${selectedPassengerId || user?.id || 'current'}`;
+
+    // Read synchronously from cache for instant 0ms screen rendering
+    const initialCache = queryCache.get<CachedPassengerTrips>(cacheKey);
+
+    const [trips, setTrips] = useState<Trip[]>(initialCache?.data?.trips || []);
+    const [primaryTrip, setPrimaryTrip] = useState<Trip | null>(initialCache?.data?.primaryTrip || null);
+    const [passenger, setPassenger] = useState<{ id: string; first_name: string; last_name: string } | null>(
+        initialCache?.data?.passenger || null
+    );
+    const [nextStep, setNextStep] = useState<NextStep | null>(initialCache?.data?.nextStep || null);
+    const [loading, setLoading] = useState(!initialCache);
     const [error, setError] = useState<string | null>(null);
+    const isFirstMount = useRef(true);
 
-    useEffect(() => {
-        fetchPassengerTrips();
-    }, [selectedPassengerId]);
-
-    const fetchPassengerTrips = async () => {
+    const fetchPassengerTrips = async (force: boolean = false) => {
         try {
-            setLoading(true);
+            const currentCache = queryCache.get<CachedPassengerTrips>(cacheKey);
+            if (!currentCache?.data) {
+                setLoading(true);
+            }
             setError(null);
 
             // Get current user
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('No authenticated user');
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (!currentUser) {
+                setLoading(false);
+                return;
+            }
 
             let passengerData = null;
 
@@ -55,18 +72,18 @@ export const usePassengerTrips = () => {
                 let { data, error } = await supabase
                     .from('passengers')
                     .select('id, first_name, last_name')
-                    .eq('profile_id', user.id)
+                    .eq('profile_id', currentUser.id)
                     .order('created_at', { ascending: true })
                     .limit(1)
                     .maybeSingle();
 
                 if (error) throw error;
-                
-                if (!data && user.email) {
+
+                if (!data && currentUser.email) {
                     const { data: fallback, error: fbError } = await supabase
                         .from('passengers')
                         .select('id, first_name, last_name')
-                        .eq('email', user.email)
+                        .eq('email', currentUser.email)
                         .is('parent_passenger_id', null)
                         .order('created_at', { ascending: true })
                         .limit(1)
@@ -82,7 +99,13 @@ export const usePassengerTrips = () => {
                 passengerData = data;
             }
 
-            if (!passengerData) throw new Error('No passenger record found');
+            if (!passengerData) {
+                setTrips([]);
+                setPrimaryTrip(null);
+                setNextStep(null);
+                setLoading(false);
+                return;
+            }
 
             setPassenger(passengerData);
 
@@ -98,7 +121,6 @@ export const usePassengerTrips = () => {
 
             // If this passenger (companion) has no trips of their own, look up the titular's trips
             if (effectiveTripIds.length === 0 && passengerData) {
-                // Check if this passenger is a companion (has a parent_passenger_id)
                 const { data: passengerFull, error: fullErr } = await supabase
                     .from('passengers')
                     .select('parent_passenger_id')
@@ -106,7 +128,6 @@ export const usePassengerTrips = () => {
                     .maybeSingle();
 
                 if (!fullErr && passengerFull?.parent_passenger_id) {
-                    // Use parent's (titular's) trips
                     const { data: parentTrips, error: ptError } = await supabase
                         .from('trip_passengers')
                         .select('trip_id')
@@ -119,9 +140,16 @@ export const usePassengerTrips = () => {
             }
 
             if (effectiveTripIds.length === 0) {
+                const emptyData: CachedPassengerTrips = {
+                    trips: [],
+                    primaryTrip: null,
+                    passenger: passengerData,
+                    nextStep: null,
+                };
                 setTrips([]);
                 setPrimaryTrip(null);
                 setNextStep(null);
+                queryCache.set(cacheKey, emptyData);
                 return;
             }
 
@@ -135,40 +163,70 @@ export const usePassengerTrips = () => {
 
             if (tripsError) throw tripsError;
 
-            setTrips(tripsData || []);
+            const fetchedTrips = tripsData || [];
+            setTrips(fetchedTrips);
 
             // Get primary trip using selectPrimaryTrip logic
-            const primary = selectPrimaryTrip(tripsData || []);
+            const primary = selectPrimaryTrip(fetchedTrips);
             setPrimaryTrip(primary);
 
             // Calculate next step for primary trip
+            let calculatedNextStep: NextStep | null = null;
             if (primary) {
-                const calculatedNextStep = await calculateNextStep(primary, passengerData.id);
+                calculatedNextStep = await calculateNextStep(primary, passengerData.id);
                 setNextStep(calculatedNextStep);
             } else {
                 setNextStep(null);
             }
+
+            // Store in cache for instant transitions
+            const cachedResult: CachedPassengerTrips = {
+                trips: fetchedTrips,
+                primaryTrip: primary,
+                passenger: passengerData,
+                nextStep: calculatedNextStep,
+            };
+            queryCache.set(cacheKey, cachedResult);
+
         } catch (err: any) {
             setError(err.message);
-            console.error('Error fetching passenger trips:', err);
+            console.error('Error fetching passenger trips:', err.message);
         } finally {
             setLoading(false);
         }
     };
 
-    const refetch = () => {
+    useEffect(() => {
+        const cached = queryCache.get<CachedPassengerTrips>(cacheKey);
+        if (cached?.data) {
+            setTrips(cached.data.trips);
+            setPrimaryTrip(cached.data.primaryTrip);
+            setPassenger(cached.data.passenger);
+            setNextStep(cached.data.nextStep);
+            setLoading(false);
+
+            if (cached.isFresh && isFirstMount.current) {
+                isFirstMount.current = false;
+                return;
+            }
+        }
+
+        isFirstMount.current = false;
         fetchPassengerTrips();
+    }, [selectedPassengerId, user?.id]);
+
+    const refetch = () => {
+        fetchPassengerTrips(true);
     };
 
     return {
         trips,
         primaryTrip,
-        passenger, // Expose passenger data
+        passenger,
         nextStep,
         loading,
         error,
         refetch,
-        // Legacy exports for backward compatibility
         activeTrip: primaryTrip,
         nextTrip: null,
     };
@@ -181,7 +239,6 @@ export const usePassengerTrips = () => {
  * FINALIZADO: Show "Viaje finalizado"
  */
 async function calculateNextStep(trip: Trip, passengerId: string): Promise<NextStep | null> {
-    // Check if manual override is enabled
     if (trip.next_step_override_enabled) {
         return {
             type: trip.next_step_type_override as any || 'INFO',
@@ -194,7 +251,6 @@ async function calculateNextStep(trip: Trip, passengerId: string): Promise<NextS
 
     const status = trip.status_operational;
 
-    // PREVIO: Only check documents
     if (status === 'PREVIO') {
         const hasPendingDocs = await checkPendingDocuments(trip.id, passengerId);
 
@@ -208,7 +264,6 @@ async function calculateNextStep(trip: Trip, passengerId: string): Promise<NextS
             };
         }
 
-        // NONE: All docs complete
         return {
             type: 'NONE',
             title: 'Todo listo por ahora',
@@ -218,7 +273,6 @@ async function calculateNextStep(trip: Trip, passengerId: string): Promise<NextS
         };
     }
 
-    // EN_CURSO: Only check itinerary
     if (status === 'EN_CURSO') {
         const hasActionableItinerary = await checkActionableItinerary(trip.id);
 
@@ -232,7 +286,6 @@ async function calculateNextStep(trip: Trip, passengerId: string): Promise<NextS
             };
         }
 
-        // NONE: No actionable items
         return {
             type: 'NONE',
             title: 'No tenés acciones pendientes',
@@ -242,7 +295,6 @@ async function calculateNextStep(trip: Trip, passengerId: string): Promise<NextS
         };
     }
 
-    // FINALIZADO: Always NONE
     if (status === 'FINALIZADO') {
         return {
             type: 'NONE',
@@ -253,7 +305,6 @@ async function calculateNextStep(trip: Trip, passengerId: string): Promise<NextS
         };
     }
 
-    // Fallback for unknown status
     return null;
 }
 
@@ -262,7 +313,6 @@ async function calculateNextStep(trip: Trip, passengerId: string): Promise<NextS
  */
 async function checkPendingDocuments(tripId: string, passengerId: string): Promise<boolean> {
     try {
-        // Get required documents for this trip
         const { data: requirements } = await supabase
             .from('trip_documents_requirements')
             .select('id')
@@ -270,30 +320,25 @@ async function checkPendingDocuments(tripId: string, passengerId: string): Promi
             .eq('is_required', true);
 
         if (!requirements || requirements.length === 0) {
-            // Sin requisitos requeridos para este viaje
             return false;
         }
 
         const requirementIds = requirements.map(r => r.id);
 
-        // Get passenger's documents for these requirements
         const { data: passengerDocs } = await supabase
             .from('passenger_documents')
             .select('required_document_id, status')
             .eq('passenger_id', passengerId)
             .in('required_document_id', requirementIds);
 
-        // Check if any required doc is missing or pending
         for (const req of requirements) {
             const doc = passengerDocs?.find(d => d.required_document_id === req.id);
-
-            // Fix: Statuses are lowercase 'pending' (assigned) or 'rejected' (failed review)
             if (!doc || doc.status === 'pending' || doc.status === 'rejected') {
-                return true; // Has pending docs
+                return true;
             }
         }
 
-        return false; // All required docs are uploaded
+        return false;
     } catch (error) {
         console.error('Error checking pending documents:', error);
         return false;
@@ -301,28 +346,7 @@ async function checkPendingDocuments(tripId: string, passengerId: string): Promi
 }
 
 /**
- * Check if trip or passenger has vouchers
- */
-async function checkHasVouchers(tripId: string, passengerId: string): Promise<boolean> {
-    try {
-        const { data: vouchers } = await supabase
-            .from('vouchers')
-            .select('id')
-            .or(`trip_id.eq.${tripId},passenger_id.eq.${passengerId}`)
-            .is('archived_at', null)
-            .limit(1);
-
-        return (vouchers && vouchers.length > 0) || false;
-    } catch (error) {
-        console.error('Error checking vouchers:', error);
-        return false;
-    }
-}
-
-/**
  * Check if trip has actionable itinerary items
- * Note: Current schema doesn't have is_actionable or completed fields,
- * so we check if there are any itinerary items for the trip
  */
 async function checkActionableItinerary(tripId: string): Promise<boolean> {
     try {

@@ -1,6 +1,6 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { queryCache } from '../lib/queryCache';
 
 export interface ItineraryItem {
     id: string;
@@ -19,25 +19,27 @@ export interface ItineraryItem {
     archived_at: string | null;
 }
 
-export const useItineraryItems = (dayId: string | null) => {
-    const [items, setItems] = useState<ItineraryItem[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+export const useItineraryItems = (dayId: string | null | undefined) => {
+    const cacheKey = `itinerary_items:${dayId || 'none'}`;
+    const initialCache = dayId ? queryCache.get<ItineraryItem[]>(cacheKey) : null;
 
-    useEffect(() => {
-        if (dayId) {
-            fetchItems();
-        } else {
+    const [items, setItems] = useState<ItineraryItem[]>(initialCache?.data || []);
+    const [loading, setLoading] = useState(!initialCache && !!dayId);
+    const [error, setError] = useState<string | null>(null);
+    const isFirstMount = useRef(true);
+
+    const fetchItems = async (force: boolean = false) => {
+        if (!dayId) {
             setItems([]);
             setLoading(false);
+            return;
         }
-    }, [dayId]);
-
-    const fetchItems = async () => {
-        if (!dayId) return;
 
         try {
-            setLoading(true);
+            const currentCache = queryCache.get<ItineraryItem[]>(cacheKey);
+            if (!currentCache?.data) {
+                setLoading(true);
+            }
             setError(null);
 
             const { data, error: fetchError } = await supabase
@@ -49,14 +51,38 @@ export const useItineraryItems = (dayId: string | null) => {
 
             if (fetchError) throw fetchError;
 
-            setItems(data || []);
+            const fetchedItems = data || [];
+            setItems(fetchedItems);
+            queryCache.set(cacheKey, fetchedItems);
         } catch (err: any) {
             setError(err.message);
-            console.error('Error fetching itinerary items:', err);
+            console.error('Error fetching itinerary items:', err.message);
         } finally {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (!dayId) {
+            setItems([]);
+            setLoading(false);
+            return;
+        }
+
+        const cached = queryCache.get<ItineraryItem[]>(cacheKey);
+        if (cached?.data) {
+            setItems(cached.data);
+            setLoading(false);
+
+            if (cached.isFresh && isFirstMount.current) {
+                isFirstMount.current = false;
+                return;
+            }
+        }
+
+        isFirstMount.current = false;
+        fetchItems();
+    }, [dayId]);
 
     const addItem = async (tripId: string, itemData: Partial<ItineraryItem>) => {
         if (!dayId) return { data: null, error: 'No day ID provided' };
@@ -80,7 +106,9 @@ export const useItineraryItems = (dayId: string | null) => {
             if (insertError) throw insertError;
 
             if (data) {
-                setItems([...items, data]);
+                const updated = [...items, data];
+                setItems(updated);
+                queryCache.set(cacheKey, updated);
             }
 
             return { data, error: null };
@@ -102,7 +130,9 @@ export const useItineraryItems = (dayId: string | null) => {
             if (updateError) throw updateError;
 
             if (data) {
-                setItems(items.map(i => i.id === itemId ? data : i));
+                const updated = items.map(i => i.id === itemId ? data : i);
+                setItems(updated);
+                queryCache.set(cacheKey, updated);
             }
 
             return { data, error: null };
@@ -121,7 +151,9 @@ export const useItineraryItems = (dayId: string | null) => {
 
             if (deleteError) throw deleteError;
 
-            setItems(items.filter(i => i.id !== itemId));
+            const updated = items.filter(i => i.id !== itemId);
+            setItems(updated);
+            queryCache.set(cacheKey, updated);
 
             return { error: null };
         } catch (err: any) {
@@ -136,7 +168,6 @@ export const useItineraryItems = (dayId: string | null) => {
             const [moved] = newItems.splice(fromIndex, 1);
             newItems.splice(toIndex, 0, moved);
 
-            // Update sort_index for all affected items
             const updates = newItems.map((item, index) => ({
                 id: item.id,
                 sort_index: index,
@@ -152,6 +183,7 @@ export const useItineraryItems = (dayId: string | null) => {
             );
 
             setItems(newItems);
+            queryCache.set(cacheKey, newItems);
 
             return { error: null };
         } catch (err: any) {
@@ -164,7 +196,7 @@ export const useItineraryItems = (dayId: string | null) => {
         items,
         loading,
         error,
-        fetchItems,
+        fetchItems: () => fetchItems(true),
         addItem,
         updateItem,
         deleteItem,

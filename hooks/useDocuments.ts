@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { uploadDocument, getSignedUrl } from '../utils/storage';
 import { checkNotificationEnabled } from './useAutoNotificationSettings';
+import { queryCache } from '../lib/queryCache';
 
 /** Returns current user's uid and role from profiles. */
 const getCurrentUserRole = async (): Promise<{ uid: string | null; role: string | null }> => {
@@ -54,12 +55,23 @@ export interface PassengerDocument {
 }
 
 export const useDocuments = () => {
-    const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([]);
+    const [documentTypes, setDocumentTypes] = useState<DocumentType[]>(() => {
+        return queryCache.get<DocumentType[]>('document_types')?.data || [];
+    });
     const [requiredDocuments, setRequiredDocuments] = useState<RequiredDocument[]>([]);
     const [passengerDocuments, setPassengerDocuments] = useState<PassengerDocument[]>([]);
     const [loading, setLoading] = useState(false);
 
     const fetchDocumentTypes = async () => {
+        const cacheKey = 'document_types';
+        const cached = queryCache.get<DocumentType[]>(cacheKey);
+        if (cached?.data) {
+            setDocumentTypes(cached.data);
+            if (cached.isFresh) {
+                return { data: cached.data, error: null };
+            }
+        }
+
         try {
             const { data, error } = await supabase
                 .from('document_types')
@@ -68,8 +80,10 @@ export const useDocuments = () => {
                 .order('name');
 
             if (error) throw error;
-            setDocumentTypes(data || []);
-            return { data, error: null };
+            const res = data || [];
+            setDocumentTypes(res);
+            queryCache.set(cacheKey, res);
+            return { data: res, error: null };
         } catch (err: any) {
             console.error('Error fetching document types:', err);
             return { data: null, error: err.message };
@@ -77,8 +91,19 @@ export const useDocuments = () => {
     };
 
     const fetchRequiredDocuments = async (tripId: string) => {
+        const cacheKey = `required_docs:${tripId}`;
+        const cached = queryCache.get<RequiredDocument[]>(cacheKey);
+        if (cached?.data) {
+            setRequiredDocuments(cached.data);
+            if (cached.isFresh) {
+                return { data: cached.data, error: null };
+            }
+        }
+
         try {
-            setLoading(true);
+            if (!cached?.data) {
+                setLoading(true);
+            }
             const { data, error } = await supabase
                 .from('required_documents')
                 .select('*, document_types(name)')
@@ -86,8 +111,10 @@ export const useDocuments = () => {
                 .order('created_at');
 
             if (error) throw error;
-            setRequiredDocuments(data || []);
-            return { data, error: null };
+            const res = data || [];
+            setRequiredDocuments(res);
+            queryCache.set(cacheKey, res);
+            return { data: res, error: null };
         } catch (err: any) {
             console.error('Error fetching required documents:', err);
             return { data: null, error: err.message };
@@ -100,10 +127,6 @@ export const useDocuments = () => {
         try {
             setLoading(true);
 
-            // -------------------------------------------------------
-            // DIFFERENTIAL UPSERT — preserves documents already uploaded
-            // -------------------------------------------------------
-
             // 1. Fetch existing requirements for this trip
             const { data: existingReqs, error: fetchExistingError } = await supabase
                 .from('required_documents')
@@ -115,31 +138,25 @@ export const useDocuments = () => {
             const existing = existingReqs || [];
             const existingIds = existing.map(r => r.id);
 
-            // Requirements coming from the UI that already have an `id` are kept/updated.
-            // Requirements without an `id` are new.
             const incomingIds = requirements.map(r => (r as any).id).filter(Boolean) as string[];
 
-            // 2. Determine which existing requirements were REMOVED by the admin
+            // 2. Determine which existing requirements were REMOVED
             const removedIds = existingIds.filter(id => !incomingIds.includes(id));
 
-            // 3. Delete ONLY the removed requirements AND their passenger_documents
-            //    (preserves documents for kept requirements)
             if (removedIds.length > 0) {
-                // Delete passenger_documents only for removed requirement IDs
                 await supabase
                     .from('passenger_documents')
                     .delete()
                     .in('required_document_id', removedIds)
                     .eq('trip_id', tripId);
 
-                // Delete the removed required_documents
                 await supabase
                     .from('required_documents')
                     .delete()
                     .in('id', removedIds);
             }
 
-            // 4. Insert brand-new requirements (those without an id)
+            // 4. Insert brand-new requirements
             const newRequirements = requirements.filter(r => !(r as any).id);
 
             if (newRequirements.length > 0) {
@@ -148,7 +165,7 @@ export const useDocuments = () => {
                     doc_type_id: req.doc_type_id,
                     is_required: req.is_required,
                     description: req.description,
-                    due_date: req.due_date
+                    due_date: req.due_date,
                 }));
 
                 const { data: insertedReqs, error: insertError } = await supabase
@@ -175,12 +192,13 @@ export const useDocuments = () => {
                                 passenger_id: tripPassenger.passenger_id,
                                 required_document_id: req.id,
                                 status: 'pending',
-                                format: 'pdf'
+                                format: 'pdf',
                             });
                         }
-                        const passenger = tripPassenger.passengers as any;
-                        if (passenger?.profile_id && !userIds.includes(passenger.profile_id)) {
-                            userIds.push(passenger.profile_id);
+
+                        const pProfileId = (tripPassenger.passengers as any)?.profile_id;
+                        if (pProfileId && !userIds.includes(pProfileId)) {
+                            userIds.push(pProfileId);
                         }
                     }
 
@@ -190,8 +208,7 @@ export const useDocuments = () => {
                             .insert(newPassengerDocuments);
                     }
 
-                    // Send push notifications only for truly new documents
-                    if (userIds.length > 0 && await checkNotificationEnabled('document_assigned')) {
+                    if (userIds.length > 0) {
                         try {
                             const { data: trip } = await supabase
                                 .from('trips')
@@ -205,8 +222,8 @@ export const useDocuments = () => {
                                     title: '📄 Nuevos documentos requeridos',
                                     body: `Se han asignado ${insertedReqs.length} documento(s) para ${trip?.name || 'tu viaje'}`,
                                     url: '/#/my-documents',
-                                    tag: 'document-required'
-                                }
+                                    tag: 'document-required',
+                                },
                             });
                         } catch (notifError) {
                             console.error('Error sending push notification:', notifError);
@@ -215,6 +232,8 @@ export const useDocuments = () => {
                 }
             }
 
+            queryCache.invalidate(`required_docs:${tripId}`);
+            queryCache.invalidate('pax_docs:*');
             await fetchRequiredDocuments(tripId);
             return { error: null };
         } catch (err: any) {
@@ -230,8 +249,19 @@ export const useDocuments = () => {
         passengerId?: string;
         status?: string;
     }) => {
+        const cacheKey = `pax_docs:${JSON.stringify(filters || {})}`;
+        const cached = queryCache.get<PassengerDocument[]>(cacheKey);
+        if (cached?.data) {
+            setPassengerDocuments(cached.data);
+            if (cached.isFresh) {
+                return { data: cached.data, error: null };
+            }
+        }
+
         try {
-            setLoading(true);
+            if (!cached?.data) {
+                setLoading(true);
+            }
 
             // Scope to operator's assigned passengers automatically
             const { uid, role } = await getCurrentUserRole();
@@ -260,8 +290,10 @@ export const useDocuments = () => {
             const { data, error } = await query;
 
             if (error) throw error;
-            setPassengerDocuments(data || []);
-            return { data, error: null };
+            const res = data || [];
+            setPassengerDocuments(res);
+            queryCache.set(cacheKey, res);
+            return { data: res, error: null };
         } catch (err: any) {
             console.error('Error fetching passenger documents:', err);
             return { data: null, error: err.message };
@@ -306,17 +338,18 @@ export const useDocuments = () => {
                     bucket: uploadResult.bucket,
                     file_path: uploadResult.filePath,
                     mime_type: uploadResult.mimeType,
-                    size: uploadResult.size
+                    size: uploadResult.size,
                 }])
                 .select()
                 .single();
 
             if (insertError) {
-                // If insert fails, we should technically clean up the file, but for now throwing is safer
                 console.error('Insert failed after upload', insertError);
                 throw insertError;
             }
 
+            queryCache.invalidate('pax_docs:*');
+            queryCache.invalidate('passenger_trips:*');
             return { data: doc, error: null };
         } catch (err: any) {
             console.error('Error uploading document:', err);
@@ -330,29 +363,28 @@ export const useDocuments = () => {
         try {
             setLoading(true);
 
-            // 1. Delete from Storage
             const { error: storageError } = await supabase.storage
                 .from('triex-documents')
                 .remove([filePath]);
 
             if (storageError) {
-                // We log but continue to try to update DB if it was just a "file not found" or similar
                 console.error('Error deleting file from storage:', storageError);
             }
 
-            // 2. Clear file metadata in DB
             const { error: dbError } = await supabase
                 .from('passenger_documents')
                 .update({
                     bucket: null,
                     file_path: null,
                     mime_type: null,
-                    size: null
+                    size: null,
                 })
                 .eq('id', id);
 
             if (dbError) throw dbError;
 
+            queryCache.invalidate('pax_docs:*');
+            queryCache.invalidate('passenger_trips:*');
             await fetchPassengerDocuments();
             return { error: null };
         } catch (err: any) {
@@ -363,15 +395,10 @@ export const useDocuments = () => {
         }
     };
 
-    /**
-     * Completely deletes a document (file + database record)
-     * Unlike deleteDocumentFile which keeps the record
-     */
     const deleteDocument = async (id: string, filePath: string | null) => {
         try {
             setLoading(true);
 
-            // 1. Delete file from storage if exists
             if (filePath) {
                 const { error: storageError } = await supabase.storage
                     .from('triex-documents')
@@ -379,11 +406,9 @@ export const useDocuments = () => {
 
                 if (storageError) {
                     console.error('Error deleting file from storage:', storageError);
-                    // Continue anyway - file might not exist
                 }
             }
 
-            // 2. Delete database record completely
             const { error: dbError } = await supabase
                 .from('passenger_documents')
                 .delete()
@@ -391,6 +416,8 @@ export const useDocuments = () => {
 
             if (dbError) throw dbError;
 
+            queryCache.invalidate('pax_docs:*');
+            queryCache.invalidate('passenger_trips:*');
             await fetchPassengerDocuments();
             return { error: null };
         } catch (err: any) {
@@ -405,31 +432,27 @@ export const useDocuments = () => {
         try {
             setLoading(true);
 
-            // Get document details for notification
             const { data: doc } = await supabase
                 .from('passenger_documents')
                 .select('*, passengers(id, user_id), required_documents(*, document_types(name))')
                 .eq('id', id)
                 .single();
 
-            // Update document status
             const { error } = await supabase
                 .from('passenger_documents')
                 .update({
                     status,
                     review_comment: comment || null,
-                    reviewed_at: new Date().toISOString()
+                    reviewed_at: new Date().toISOString(),
                 })
                 .eq('id', id);
 
             if (error) throw error;
 
-            // Create notification if enabled
             if (doc) {
                 const notificationType = status === 'approved' ? 'doc_approved' : 'doc_rejected';
-                const eventKey = status === 'approved' ? 'document_approved' : 'document_approved'; // Both use same setting
+                const eventKey = 'document_approved';
 
-                // Check if notifications are enabled for this event
                 const isEnabled = await checkNotificationEnabled(eventKey);
 
                 if (isEnabled) {
@@ -440,16 +463,14 @@ export const useDocuments = () => {
                         ? `Tu documento ${doc.required_documents?.document_types?.name} ha sido aprobado`
                         : `Tu documento ${doc.required_documents?.document_types?.name} ha sido rechazado${comment ? `: ${comment}` : ''}`;
 
-                    // Create database notification
                     await supabase.from('notifications').insert({
                         passenger_id: doc.passenger_id,
                         trip_id: doc.trip_id,
                         type: notificationType,
                         title,
-                        message
+                        message,
                     });
 
-                    // Send push notification
                     const passenger = doc.passengers as any;
                     if (passenger?.user_id) {
                         try {
@@ -465,8 +486,8 @@ export const useDocuments = () => {
                                     body: pushBody,
                                     url: '/#/my-documents',
                                     tag: `document-${status}`,
-                                    requireInteraction: status === 'rejected' // Keep rejected notifications visible
-                                }
+                                    requireInteraction: status === 'rejected',
+                                },
                             });
                         } catch (pushError) {
                             console.error('Error sending push notification:', pushError);
@@ -475,6 +496,8 @@ export const useDocuments = () => {
                 }
             }
 
+            queryCache.invalidate('pax_docs:*');
+            queryCache.invalidate('passenger_trips:*');
             await fetchPassengerDocuments();
             return { error: null };
         } catch (err: any) {

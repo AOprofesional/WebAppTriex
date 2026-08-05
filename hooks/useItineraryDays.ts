@@ -1,6 +1,6 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { queryCache } from '../lib/queryCache';
 
 export interface ItineraryDay {
     id: string;
@@ -14,24 +14,27 @@ export interface ItineraryDay {
     archived_at: string | null;
 }
 
-export const useItineraryDays = (tripId: string | null) => {
-    const [days, setDays] = useState<ItineraryDay[]>([]);
-    const [loading, setLoading] = useState(true);
+export const useItineraryDays = (tripId: string | null | undefined) => {
+    const cacheKey = `itinerary_days:${tripId || 'none'}`;
+    const initialCache = tripId ? queryCache.get<ItineraryDay[]>(cacheKey) : null;
+
+    const [days, setDays] = useState<ItineraryDay[]>(initialCache?.data || []);
+    const [loading, setLoading] = useState(!initialCache && !!tripId);
     const [error, setError] = useState<string | null>(null);
+    const isFirstMount = useRef(true);
 
-    useEffect(() => {
-        if (tripId) {
-            fetchDays();
-        } else {
+    const fetchDays = async (force: boolean = false) => {
+        if (!tripId) {
+            setDays([]);
             setLoading(false);
+            return;
         }
-    }, [tripId]);
-
-    const fetchDays = async () => {
-        if (!tripId) return;
 
         try {
-            setLoading(true);
+            const currentCache = queryCache.get<ItineraryDay[]>(cacheKey);
+            if (!currentCache?.data) {
+                setLoading(true);
+            }
             setError(null);
 
             const { data, error: fetchError } = await supabase
@@ -43,21 +46,43 @@ export const useItineraryDays = (tripId: string | null) => {
 
             if (fetchError) throw fetchError;
 
-            setDays(data || []);
+            const fetchedDays = data || [];
+            setDays(fetchedDays);
+            queryCache.set(cacheKey, fetchedDays);
         } catch (err: any) {
             setError(err.message);
-            console.error('Error fetching itinerary days:', err);
+            console.error('Error fetching itinerary days:', err.message);
         } finally {
             setLoading(false);
         }
     };
 
+    useEffect(() => {
+        if (!tripId) {
+            setDays([]);
+            setLoading(false);
+            return;
+        }
+
+        const cached = queryCache.get<ItineraryDay[]>(cacheKey);
+        if (cached?.data) {
+            setDays(cached.data);
+            setLoading(false);
+
+            if (cached.isFresh && isFirstMount.current) {
+                isFirstMount.current = false;
+                return;
+            }
+        }
+
+        isFirstMount.current = false;
+        fetchDays();
+    }, [tripId]);
+
     const addDay = async () => {
         if (!tripId) return { data: null, error: 'No trip ID provided' };
 
         try {
-            // Fetch absolute max day_number for the trip from the database to avoid unique constraint 
-            // violations with previously archived days.
             const { data: maxDayData } = await supabase
                 .from('trip_itinerary_days')
                 .select('day_number')
@@ -80,7 +105,9 @@ export const useItineraryDays = (tripId: string | null) => {
             if (insertError) throw insertError;
 
             if (data) {
-                setDays([...days, data]);
+                const updated = [...days, data];
+                setDays(updated);
+                queryCache.set(cacheKey, updated);
             }
 
             return { data, error: null };
@@ -102,7 +129,9 @@ export const useItineraryDays = (tripId: string | null) => {
             if (updateError) throw updateError;
 
             if (data) {
-                setDays(days.map(d => d.id === dayId ? data : d));
+                const updated = days.map(d => d.id === dayId ? data : d);
+                setDays(updated);
+                queryCache.set(cacheKey, updated);
             }
 
             return { data, error: null };
@@ -121,7 +150,9 @@ export const useItineraryDays = (tripId: string | null) => {
 
             if (deleteError) throw deleteError;
 
-            setDays(days.filter(d => d.id !== dayId));
+            const updated = days.filter(d => d.id !== dayId);
+            setDays(updated);
+            queryCache.set(cacheKey, updated);
 
             return { error: null };
         } catch (err: any) {
@@ -136,7 +167,6 @@ export const useItineraryDays = (tripId: string | null) => {
             const [moved] = newDays.splice(fromIndex, 1);
             newDays.splice(toIndex, 0, moved);
 
-            // Update sort_index for all affected days
             const updates = newDays.map((day, index) => ({
                 id: day.id,
                 sort_index: index,
@@ -152,6 +182,7 @@ export const useItineraryDays = (tripId: string | null) => {
             );
 
             setDays(newDays);
+            queryCache.set(cacheKey, newDays);
 
             return { error: null };
         } catch (err: any) {
@@ -164,7 +195,7 @@ export const useItineraryDays = (tripId: string | null) => {
         days,
         loading,
         error,
-        fetchDays,
+        fetchDays: () => fetchDays(true),
         addDay,
         updateDay,
         deleteDay,

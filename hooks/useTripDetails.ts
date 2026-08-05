@@ -1,9 +1,10 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { Tables } from '../types/database.types';
 import { selectPrimaryTrip } from '../utils/tripSelection';
 import { calculateTripStatus } from '../utils/dateUtils';
+import { useAuth } from '../contexts/AuthContext';
+import { queryCache } from '../lib/queryCache';
 
 type Trip = Tables<'trips'>;
 type Voucher = Tables<'vouchers'>;
@@ -16,62 +17,61 @@ type TripDetails = {
     documentRequirements: DocRequirement[];
 };
 
-import { useAuth } from '../contexts/AuthContext';
-
 export const useTripDetails = (tripId?: string) => {
-    const { selectedPassengerId } = useAuth();
-    const [data, setData] = useState<TripDetails>({
+    const { user, selectedPassengerId } = useAuth();
+    const cacheKey = `trip_details:${tripId || 'active'}:${selectedPassengerId || user?.id || 'current'}`;
+
+    // Read synchronously from cache for instant 0ms screen rendering
+    const initialCache = queryCache.get<TripDetails>(cacheKey);
+
+    const [data, setData] = useState<TripDetails>(initialCache?.data || {
         trip: null,
         passenger: null,
         vouchers: [],
         documentRequirements: [],
     });
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!initialCache);
     const [error, setError] = useState<string | null>(null);
+    const isFirstMount = useRef(true);
 
-    useEffect(() => {
-        if (tripId) {
-            fetchTripDetails(tripId);
-        } else {
-            fetchActiveTrip();
-        }
-    }, [tripId, selectedPassengerId]);
-
-    const fetchActiveTrip = async () => {
+    const fetchActiveTrip = async (force: boolean = false) => {
         try {
-            setLoading(true);
+            const currentCache = queryCache.get<TripDetails>(cacheKey);
+            if (!currentCache?.data) {
+                setLoading(true);
+            }
             setError(null);
 
             // Get current user
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('No authenticated user');
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
+            if (!currentUser) throw new Error('No authenticated user');
 
             // Get passenger record
             let passengerData = null;
             
             if (selectedPassengerId) {
-                const { data } = await supabase
+                const { data: pax } = await supabase
                     .from('passengers')
                     .select('id')
                     .eq('id', selectedPassengerId)
                     .single();
-                passengerData = data;
+                passengerData = pax;
             } else {
-                const { data } = await supabase
+                const { data: pax } = await supabase
                     .from('passengers')
                     .select('id')
-                    .eq('profile_id', user.id)
+                    .eq('profile_id', currentUser.id)
                     .order('created_at', { ascending: true })
                     .limit(1)
                     .maybeSingle();
-                passengerData = data;
+                passengerData = pax;
 
                 // Fallback: buscar por email si no tiene profile_id vinculado aún
-                if (!passengerData && user.email) {
+                if (!passengerData && currentUser.email) {
                     const { data: fallback } = await supabase
                         .from('passengers')
                         .select('id')
-                        .eq('email', user.email)
+                        .eq('email', currentUser.email)
                         .is('parent_passenger_id', null)
                         .order('created_at', { ascending: true })
                         .limit(1)
@@ -79,13 +79,15 @@ export const useTripDetails = (tripId?: string) => {
 
                     if (fallback) {
                         passengerData = fallback;
-                        // Intentar vincular en background
                         (async () => { await supabase.rpc('claim_passenger_by_email'); })();
                     }
                 }
             }
 
-            if (!passengerData) throw new Error('No passenger record found');
+            if (!passengerData) {
+                setLoading(false);
+                return;
+            }
 
             // Get trip IDs for this passenger
             const { data: tripPassengers } = await supabase
@@ -123,14 +125,17 @@ export const useTripDetails = (tripId?: string) => {
             }
         } catch (err: any) {
             setError(err.message);
-            console.error('Error fetching active trip:', err);
+            console.error('Error fetching active trip:', err.message);
             setLoading(false);
         }
     };
 
     const fetchTripDetails = async (id: string, passengerIdArg?: string) => {
         try {
-            setLoading(true);
+            const currentCache = queryCache.get<TripDetails>(cacheKey);
+            if (!currentCache?.data) {
+                setLoading(true);
+            }
             setError(null);
 
             // Fetch trip
@@ -143,26 +148,26 @@ export const useTripDetails = (tripId?: string) => {
             if (tripError) throw tripError;
 
             // Get current user (to filter vouchers)
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user: currentUser } } = await supabase.auth.getUser();
             let passengerId: string | null = null;
 
-            if (user) {
+            if (currentUser) {
                 if (selectedPassengerId) {
-                    const { data: passenger } = await supabase
+                    const { data: pax } = await supabase
                         .from('passengers')
                         .select('id')
                         .eq('id', selectedPassengerId)
                         .single();
-                    passengerId = passengerIdArg || passenger?.id || null;
+                    passengerId = passengerIdArg || pax?.id || null;
                 } else {
-                    const { data: passenger } = await supabase
+                    const { data: pax } = await supabase
                         .from('passengers')
                         .select('id')
-                        .eq('profile_id', user.id)
+                        .eq('profile_id', currentUser.id)
                         .order('created_at', { ascending: true })
                         .limit(1)
                         .single();
-                    passengerId = passengerIdArg || passenger?.id || null;
+                    passengerId = passengerIdArg || pax?.id || null;
                 }
             }
 
@@ -175,12 +180,10 @@ export const useTripDetails = (tripId?: string) => {
                 .order('created_at', { ascending: false });
 
             if (passengerId) {
-                // IMPORTANT: Filter by passenger to avoid leaking other pax vouchers
                 vouchersQuery = vouchersQuery.or(`passenger_id.eq.${passengerId},passenger_id.is.null,visibility.eq.all_trip_passengers`);
             }
 
             const { data: vouchers, error: vouchersError } = await vouchersQuery;
-
             if (vouchersError) throw vouchersError;
 
             // Fetch document requirements
@@ -193,26 +196,47 @@ export const useTripDetails = (tripId?: string) => {
 
             if (docsError) throw docsError;
 
-            // Override status_operational with calculated value from dates
-            // This ensures UI always reflects reality, regardless of DB column staleness
             const tripWithCalculatedStatus = trip ? {
                 ...trip,
                 status_operational: calculateTripStatus(trip.start_date ?? '', trip.end_date ?? '')
             } : null;
 
-            setData({
+            const result: TripDetails = {
                 trip: tripWithCalculatedStatus,
                 passenger: passengerId ? { id: passengerId } : null,
                 vouchers: vouchers || [],
                 documentRequirements: documentRequirements || [],
-            });
+            };
+
+            setData(result);
+            queryCache.set(cacheKey, result);
         } catch (err: any) {
             setError(err.message);
-            console.error('Error fetching trip details:', err);
+            console.error('Error fetching trip details:', err.message);
         } finally {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        const cached = queryCache.get<TripDetails>(cacheKey);
+        if (cached?.data) {
+            setData(cached.data);
+            setLoading(false);
+
+            if (cached.isFresh && isFirstMount.current) {
+                isFirstMount.current = false;
+                return;
+            }
+        }
+
+        isFirstMount.current = false;
+        if (tripId) {
+            fetchTripDetails(tripId);
+        } else {
+            fetchActiveTrip();
+        }
+    }, [tripId, selectedPassengerId, user?.id]);
 
     return {
         ...data,
@@ -222,7 +246,7 @@ export const useTripDetails = (tripId?: string) => {
             if (data.trip) {
                 fetchTripDetails(data.trip.id);
             } else {
-                fetchActiveTrip();
+                fetchActiveTrip(true);
             }
         },
     };

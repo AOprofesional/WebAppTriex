@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { supabase } from '../lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 import toast from 'react-hot-toast';
+import { queryCache } from '../lib/queryCache';
 
 interface AuthContextType {
     user: User | null;
@@ -266,6 +267,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (event === 'SIGNED_OUT') {
                 lastFetchedUserId.current = null;
                 isFetchingPassengers.current = false;
+                queryCache.clear();
             }
 
             if (currentUser) {
@@ -319,6 +321,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const signOut = async () => {
         lastFetchedUserId.current = null;
         isFetchingPassengers.current = false;
+        queryCache.clear();
         await supabase.auth.signOut();
         setRole(null);
         setAvailablePassengers([]);
