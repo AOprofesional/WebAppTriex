@@ -120,6 +120,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
             console.log('[AuthContext] Starting fetchAvailablePassengers for:', u.id, u.email);
 
+            const passengerMap = new Map<string, any>();
+
+            // 0. Try RPC get_my_available_passengers first (bypasses RLS safely via SECURITY DEFINER)
+            try {
+                const { data: rpcData, error: rpcErr } = await supabase.rpc('get_my_available_passengers');
+                if (!rpcErr && rpcData && rpcData.length > 0) {
+                    console.log('[AuthContext] Discovered via RPC get_my_available_passengers:', rpcData);
+                    rpcData.forEach((p: any) => passengerMap.set(p.id, p));
+                } else if (rpcErr) {
+                    console.log('[AuthContext] RPC get_my_available_passengers note/fallback:', rpcErr.message);
+                }
+            } catch (rpcCatchErr) {
+                console.log('[AuthContext] RPC error ignored, falling back to direct queries:', rpcCatchErr);
+            }
+
             // 1. Fetch by profile_id
             const { data: byProfile, error: errProfile } = await supabase
                 .from('passengers')
@@ -145,7 +160,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 if (data) byEmail = data;
             }
 
-            const passengerMap = new Map<string, any>();
             (byProfile || []).forEach((p: any) => passengerMap.set(p.id, p));
             (byEmail || []).forEach((p: any) => passengerMap.set(p.id, p));
 

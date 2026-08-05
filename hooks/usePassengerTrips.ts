@@ -121,7 +121,7 @@ export const usePassengerTrips = () => {
 
             // Calculate next step for primary trip
             if (primary) {
-                const calculatedNextStep = await calculateNextStep(primary, passenger.id);
+                const calculatedNextStep = await calculateNextStep(primary, passengerData.id);
                 setNextStep(calculatedNextStep);
             } else {
                 setNextStep(null);
