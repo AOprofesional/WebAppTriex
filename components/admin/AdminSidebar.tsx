@@ -80,14 +80,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed = false, i
         fetchProfile();
         fetchPendingRedemptions();
 
-        const channel = supabase.channel('redemptions_badge')
-            .on('postgres_changes', { event: '*', schema: 'public', table: 'redemption_requests' }, () => {
-                fetchPendingRedemptions();
-            })
-            .subscribe();
+        // Polling cada 30s para el badge de canjes pendientes
+        // (Reemplaza postgres_changes que causaba CHANNEL_ERROR con el cliente Realtime)
+        const pollInterval = setInterval(fetchPendingRedemptions, 30_000);
 
         return () => {
-            supabase.removeChannel(channel);
+            clearInterval(pollInterval);
         };
     }, [user, role]);
 
