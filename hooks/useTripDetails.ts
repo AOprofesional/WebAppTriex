@@ -47,19 +47,19 @@ export const useTripDetails = (tripId?: string) => {
             if (!currentUser) throw new Error('No authenticated user');
 
             // Get passenger record
-            let passengerData = null;
+            let passengerData: { id: string; parent_passenger_id?: string | null } | null = null;
             
             if (selectedPassengerId) {
                 const { data: pax } = await supabase
                     .from('passengers')
-                    .select('id')
+                    .select('id, parent_passenger_id')
                     .eq('id', selectedPassengerId)
                     .single();
                 passengerData = pax;
             } else {
                 const { data: pax } = await supabase
                     .from('passengers')
-                    .select('id')
+                    .select('id, parent_passenger_id')
                     .eq('profile_id', currentUser.id)
                     .order('created_at', { ascending: true })
                     .limit(1)
@@ -70,7 +70,7 @@ export const useTripDetails = (tripId?: string) => {
                 if (!passengerData && currentUser.email) {
                     const { data: fallback } = await supabase
                         .from('passengers')
-                        .select('id')
+                        .select('id, parent_passenger_id')
                         .eq('email', currentUser.email)
                         .is('parent_passenger_id', null)
                         .order('created_at', { ascending: true })
@@ -95,18 +95,59 @@ export const useTripDetails = (tripId?: string) => {
                 .select('trip_id')
                 .eq('passenger_id', passengerData.id);
 
-            if (!tripPassengers || tripPassengers.length === 0) {
+            let effectiveTripIds: string[] = tripPassengers?.map(tp => tp.trip_id) || [];
+
+            // If companion has no trips of their own, inherit from parent passenger!
+            if (effectiveTripIds.length === 0 && passengerData) {
+                const parentId = passengerData.parent_passenger_id;
+                if (parentId) {
+                    const { data: parentTrips } = await supabase
+                        .from('trip_passengers')
+                        .select('trip_id')
+                        .eq('passenger_id', parentId);
+
+                    if (parentTrips && parentTrips.length > 0) {
+                        effectiveTripIds = parentTrips.map(tp => tp.trip_id);
+                    }
+                } else {
+                    // Check if parent_passenger_id exists in DB
+                    const { data: passengerFull } = await supabase
+                        .from('passengers')
+                        .select('parent_passenger_id')
+                        .eq('id', passengerData.id)
+                        .maybeSingle();
+
+                    if (passengerFull?.parent_passenger_id) {
+                        const { data: parentTrips } = await supabase
+                            .from('trip_passengers')
+                            .select('trip_id')
+                            .eq('passenger_id', passengerFull.parent_passenger_id);
+
+                        if (parentTrips && parentTrips.length > 0) {
+                            effectiveTripIds = parentTrips.map(tp => tp.trip_id);
+                        }
+                    }
+                }
+            }
+
+            if (effectiveTripIds.length === 0) {
+                const emptyResult: TripDetails = {
+                    trip: null,
+                    passenger: { id: passengerData.id },
+                    vouchers: [],
+                    documentRequirements: [],
+                };
+                setData(emptyResult);
+                queryCache.set(cacheKey, emptyResult);
                 setLoading(false);
                 return;
             }
-
-            const tripIds = tripPassengers.map(tp => tp.trip_id);
 
             // Fetch all trips for this passenger
             const { data: trips } = await supabase
                 .from('trips')
                 .select('*')
-                .in('id', tripIds)
+                .in('id', effectiveTripIds)
                 .is('archived_at', null)
                 .order('start_date', { ascending: true });
 
@@ -180,7 +221,17 @@ export const useTripDetails = (tripId?: string) => {
                 .order('created_at', { ascending: false });
 
             if (passengerId) {
-                vouchersQuery = vouchersQuery.or(`passenger_id.eq.${passengerId},passenger_id.is.null,visibility.eq.all_trip_passengers`);
+                const { data: currentPax } = await supabase
+                    .from('passengers')
+                    .select('parent_passenger_id')
+                    .eq('id', passengerId)
+                    .maybeSingle();
+
+                if (currentPax?.parent_passenger_id) {
+                    vouchersQuery = vouchersQuery.or(`passenger_id.eq.${passengerId},passenger_id.eq.${currentPax.parent_passenger_id},passenger_id.is.null,visibility.eq.all_trip_passengers`);
+                } else {
+                    vouchersQuery = vouchersQuery.or(`passenger_id.eq.${passengerId},passenger_id.is.null,visibility.eq.all_trip_passengers`);
+                }
             }
 
             const { data: vouchers, error: vouchersError } = await vouchersQuery;
