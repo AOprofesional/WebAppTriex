@@ -270,7 +270,7 @@ async function checkPendingDocuments(tripId: string, passengerId: string): Promi
             .eq('is_required', true);
 
         if (!requirements || requirements.length === 0) {
-            console.log('DEBUG: No requirements found for trip:', tripId);
+            // Sin requisitos requeridos para este viaje
             return false;
         }
 
@@ -286,7 +286,7 @@ async function checkPendingDocuments(tripId: string, passengerId: string): Promi
         // Check if any required doc is missing or pending
         for (const req of requirements) {
             const doc = passengerDocs?.find(d => d.required_document_id === req.id);
-            console.log('DEBUG: checking req', req.id, 'status:', doc?.status);
+
             // Fix: Statuses are lowercase 'pending' (assigned) or 'rejected' (failed review)
             if (!doc || doc.status === 'pending' || doc.status === 'rejected') {
                 return true; // Has pending docs

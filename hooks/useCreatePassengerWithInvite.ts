@@ -59,7 +59,7 @@ export const useCreatePassengerWithInvite = () => {
             }
 
             // 2. Crear pasajero principal
-            console.log('[useCreatePassengerWithInvite] Insertando pasajero principal:', { ...mainData, ...baseInsertData });
+
             const { data: mainPassenger, error: createError } = await supabase
                 .from('passengers')
                 .insert([{ ...mainData, ...baseInsertData }])
@@ -111,7 +111,7 @@ export const useCreatePassengerWithInvite = () => {
                     };
                 });
 
-                console.log('[useCreatePassengerWithInvite] Insertando acompañantes:', companionsToInsert);
+
 
                 const { error: companionsError } = await supabase
                     .from('passengers')
@@ -133,7 +133,7 @@ export const useCreatePassengerWithInvite = () => {
                     if (rollbackError) {
                         console.warn('[useCreatePassengerWithInvite] Rollback del titular falló:', rollbackError);
                     } else {
-                        console.log('[useCreatePassengerWithInvite] Rollback del titular exitoso para mantener integridad.');
+
                     }
 
                     const detailStr = [

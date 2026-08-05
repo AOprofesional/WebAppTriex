@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 import toast from 'react-hot-toast';
@@ -29,13 +29,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [availablePassengers, setAvailablePassengers] = useState<any[]>([]);
     const [selectedPassengerId, setSelectedPassengerId] = useState<string | null>(null);
 
-    // Formatear mensaje y cerrar sesión
+    // Guard para evitar llamadas concurrentes/duplicadas a fetchAvailablePassengers
+    const isFetchingPassengers = useRef(false);
+    const lastFetchedUserId = useRef<string | null>(null);
+
     const handleBanned = async () => {
         toast.error('Tu cuenta ha sido bloqueada. La sesión se cerrará.', { duration: 5000 });
         await signOut();
     };
 
-    // Function to fetch and update role
     const refreshRole = async () => {
         setRoleLoading(true);
         if (!user) {
@@ -46,29 +48,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         try {
             const { data, error } = await supabase.rpc('get_my_role');
-
             if (error) {
-                // Check if it's an AbortError (from React Strict Mode)
-                if (error.message?.includes('aborted')) {
-                    console.log('Role fetch aborted (likely React Strict Mode)');
-                } else {
-                    console.error('Error getting user role:', JSON.stringify(error));
+                if (!error.message?.includes('aborted')) {
+                    console.error('[Auth] Error getting user role:', error.code);
                 }
                 setRole(null);
             } else {
-                console.log('Role fetched:', data);
                 if (data === null) {
-                    // Supabase get_my_role now returns null if the user is banned
                     handleBanned();
                 } else {
                     setRole(data);
                 }
             }
         } catch (err: any) {
-            if (err.name === 'AbortError') {
-                console.log('Role fetch aborted (caught exception)');
-            } else {
-                console.error('Unexpected error fetching role:', err);
+            if (err.name !== 'AbortError') {
+                console.error('[Auth] Unexpected error fetching role:', err.code ?? err.name);
             }
             setRole(null);
         } finally {
@@ -76,39 +70,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    // Function to check if passenger is archived
     const checkArchivedStatus = async () => {
         if (!user) {
             setIsArchived(false);
             return;
         }
-
         try {
             const { data, error } = await supabase.rpc('is_passenger_archived');
-
-            if (error) {
-                // Check if it's an AbortError (from React Strict Mode)
-                if (error.message?.includes('aborted')) {
-                    console.log('Archived status check aborted (likely React Strict Mode)');
-                } else {
-                    console.error('Error checking archived status:', JSON.stringify(error));
-                }
-                setIsArchived(false);
-                return;
+            if (error && !error.message?.includes('aborted')) {
+                console.error('[Auth] Error checking archived status:', error.code);
             }
-
             setIsArchived(data === true);
         } catch (err: any) {
-            if (err.name === 'AbortError') {
-                console.log('Archived status check aborted (caught exception)');
-            } else {
-                console.error('Unexpected error checking archived status:', err);
+            if (err.name !== 'AbortError') {
+                console.error('[Auth] Unexpected error checking archived status:', err.code ?? err.name);
             }
             setIsArchived(false);
         }
     };
 
-    // Function to fetch available passengers for this profile (titular + companions)
+    // Carga los pasajeros disponibles para este perfil (titular + acompañantes).
+    // Protegido con guard para evitar llamadas duplicadas durante el ciclo de auth.
     const fetchAvailablePassengers = async (currentUser?: any) => {
         const u = currentUser || user;
         if (!u) {
@@ -117,25 +99,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return;
         }
 
-        try {
-            console.log('[AuthContext] Starting fetchAvailablePassengers for:', u.id, u.email);
+        // Evitar llamadas concurrentes o repetidas para el mismo usuario
+        if (isFetchingPassengers.current) return;
+        if (lastFetchedUserId.current === u.id) return;
 
+        isFetchingPassengers.current = true;
+        lastFetchedUserId.current = u.id;
+
+        try {
             const passengerMap = new Map<string, any>();
 
-            // 0. Try RPC get_my_available_passengers first (bypasses RLS safely via SECURITY DEFINER)
+            // 0. RPC principal (SECURITY DEFINER, bypasses RLS safely)
             try {
                 const { data: rpcData, error: rpcErr } = await supabase.rpc('get_my_available_passengers');
                 if (!rpcErr && rpcData && rpcData.length > 0) {
-                    console.log('[AuthContext] Discovered via RPC get_my_available_passengers:', rpcData);
                     rpcData.forEach((p: any) => passengerMap.set(p.id, p));
                 } else if (rpcErr) {
-                    console.log('[AuthContext] RPC get_my_available_passengers note/fallback:', rpcErr.message);
+                    console.warn('[Auth] get_my_available_passengers RPC error:', rpcErr.code);
                 }
-            } catch (rpcCatchErr) {
-                console.log('[AuthContext] RPC error ignored, falling back to direct queries:', rpcCatchErr);
+            } catch {
+                // Ignorar: el fallback a queries directas sigue adelante
             }
 
-            // 1. Fetch by profile_id
+            // 1. Fallback: buscar por profile_id
             const { data: byProfile, error: errProfile } = await supabase
                 .from('passengers')
                 .select('*')
@@ -143,47 +129,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .is('archived_at', null)
                 .order('created_at', { ascending: true });
 
-            if (errProfile) console.warn('[AuthContext] Error fetching by profile_id:', errProfile);
+            if (errProfile) console.warn('[Auth] Error by profile_id:', errProfile.code);
+            (byProfile || []).forEach((p: any) => passengerMap.set(p.id, p));
 
-            // 2. Fetch by email (both titular and companions who share the email)
-            let byEmail: any[] = [];
+            // 2. Fallback: buscar por email
             if (u.email) {
-                const cleanEmail = u.email.trim();
-                const { data, error: errEmail } = await supabase
+                const { data: byEmail, error: errEmail } = await supabase
                     .from('passengers')
                     .select('*')
-                    .ilike('email', cleanEmail)
+                    .ilike('email', u.email.trim())
                     .is('archived_at', null)
                     .order('created_at', { ascending: true });
 
-                if (errEmail) console.warn('[AuthContext] Error fetching by email:', errEmail);
-                if (data) byEmail = data;
+                if (errEmail) console.warn('[Auth] Error by email:', errEmail.code);
+                (byEmail || []).forEach((p: any) => passengerMap.set(p.id, p));
             }
 
-            (byProfile || []).forEach((p: any) => passengerMap.set(p.id, p));
-            (byEmail || []).forEach((p: any) => passengerMap.set(p.id, p));
-
-            console.log('[AuthContext] Discovered byProfile:', byProfile);
-            console.log('[AuthContext] Discovered byEmail:', byEmail);
-
-            // 3. Fetch companions linked to any discovered passenger (by parent_passenger_id)
+            // 3. Acompañantes vinculados por parent_passenger_id
             const knownIds = Array.from(passengerMap.keys());
-            let companions: any[] = [];
             if (knownIds.length > 0) {
-                const { data, error: errComp } = await supabase
+                const { data: companions, error: errComp } = await supabase
                     .from('passengers')
                     .select('*')
                     .in('parent_passenger_id', knownIds)
                     .is('archived_at', null)
                     .order('created_at', { ascending: true });
 
-                if (errComp) console.warn('[AuthContext] Error fetching companions:', errComp);
-                if (data) companions = data;
+                if (errComp) console.warn('[Auth] Error fetching companions:', errComp.code);
                 (companions || []).forEach((p: any) => passengerMap.set(p.id, p));
             }
-            console.log('[AuthContext] Discovered companions by parent_passenger_id:', companions);
 
-            // 4. Also check if this user is a companion whose parent is another passenger
+            // 4. Subir al titular si este usuario es un acompañante
             const parentIds = Array.from(passengerMap.values())
                 .map((p: any) => p.parent_passenger_id)
                 .filter(Boolean);
@@ -195,7 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     .in('id', parentIds)
                     .is('archived_at', null);
 
-                if (errParent) console.warn('[AuthContext] Error fetching parents:', errParent);
+                if (errParent) console.warn('[Auth] Error fetching parents:', errParent.code);
                 (parents || []).forEach((p: any) => passengerMap.set(p.id, p));
 
                 const { data: siblings, error: errSiblings } = await supabase
@@ -204,11 +180,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     .in('parent_passenger_id', parentIds)
                     .is('archived_at', null);
 
-                if (errSiblings) console.warn('[AuthContext] Error fetching sibling companions:', errSiblings);
+                if (errSiblings) console.warn('[Auth] Error fetching siblings:', errSiblings.code);
                 (siblings || []).forEach((p: any) => passengerMap.set(p.id, p));
             }
 
-            // 5. Also check if there are passengers sharing the same savia_file_number (booking file)
+            // 5. Pasajeros que comparten número de expediente Savia
             const saviaFiles = Array.from(passengerMap.values())
                 .map((p: any) => p.savia_file_number?.trim())
                 .filter(Boolean);
@@ -220,36 +196,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     .in('savia_file_number', saviaFiles)
                     .is('archived_at', null);
 
-                if (errFile) console.warn('[AuthContext] Error fetching file companions:', errFile);
-                console.log('[AuthContext] Discovered companions by savia_file_number:', fileCompanions);
+                if (errFile) console.warn('[Auth] Error fetching file companions:', errFile.code);
                 (fileCompanions || []).forEach((p: any) => passengerMap.set(p.id, p));
             }
 
             const allPassengers = Array.from(passengerMap.values());
-            console.log('[AuthContext] Total available passengers discovered:', allPassengers.length, allPassengers);
-
             setAvailablePassengers(allPassengers);
 
             if (allPassengers.length === 1) {
-                // If only 1 passenger exists, select it automatically
                 setSelectedPassengerId(allPassengers[0].id);
             } else if (allPassengers.length > 1) {
-                // If 2 or more passengers exist, NEVER auto-select on load/login!
-                // Keep selection ONLY if the user has ALREADY made an explicit in-memory choice in this active session
                 setSelectedPassengerId((prev) => {
                     if (prev && allPassengers.some((p: any) => p.id === prev)) {
                         return prev;
                     }
-                    return null; // Will show the ProfileSelector modal!
+                    return null;
                 });
             } else {
                 setSelectedPassengerId(null);
             }
 
         } catch (err) {
-            console.error('[AuthContext] Error fetching passengers:', err);
+            console.error('[Auth] Error fetching passengers:', (err as any)?.code ?? 'unknown');
             setAvailablePassengers([]);
             setSelectedPassengerId(null);
+        } finally {
+            isFetchingPassengers.current = false;
         }
     };
 
@@ -264,7 +236,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     useEffect(() => {
-        // Get initial session
+        // Sesión inicial
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             const currentUser = session?.user ?? null;
@@ -275,7 +247,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         });
 
-        // Listen for auth changes
+        // Escuchar cambios de auth
         const {
             data: { subscription },
         } = supabase.auth.onAuthStateChange((event, session) => {
@@ -283,10 +255,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const currentUser = session?.user ?? null;
             setUser(currentUser);
             setLoading(false);
+
             if (event === 'SIGNED_IN') {
+                // Reset del guard para permitir re-fetch al cambiar de usuario
+                lastFetchedUserId.current = null;
                 sessionStorage.removeItem('triex_selected_passenger_id');
                 setSelectedPassengerId(null);
             }
+
+            if (event === 'SIGNED_OUT') {
+                lastFetchedUserId.current = null;
+                isFetchingPassengers.current = false;
+            }
+
             if (currentUser) {
                 fetchAvailablePassengers(currentUser);
             }
@@ -295,16 +276,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return () => subscription.unsubscribe();
     }, []);
 
-    // Auto-load role and archived status when user changes
+    // Cargar rol y estado archivado cuando cambia el usuario.
+    // NO llama fetchAvailablePassengers aquí — ya se llama en onAuthStateChange arriba,
+    // esto evitaba las 6+ llamadas duplicadas visibles en consola.
     useEffect(() => {
         if (user) {
             refreshRole();
             checkArchivedStatus();
-            fetchAvailablePassengers(user);
 
             // Polling cada 60s para detectar si el usuario fue baneado
-            // (Reemplaza supabase.channel postgres_changes que causaba CHANNEL_ERROR
-            //  por incompatibilidad de RLS con el motor Realtime de Supabase)
             const banCheckInterval = setInterval(async () => {
                 try {
                     const { data: profile } = await supabase
@@ -320,7 +300,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                             handleBanned();
                         }
                     }
-                } catch (err) {
+                } catch {
                     // Ignorar errores de red en el polling
                 }
             }, 60_000);
@@ -337,6 +317,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [user]);
 
     const signOut = async () => {
+        lastFetchedUserId.current = null;
+        isFetchingPassengers.current = false;
         await supabase.auth.signOut();
         setRole(null);
         setAvailablePassengers([]);
