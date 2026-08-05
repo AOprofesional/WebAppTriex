@@ -63,8 +63,26 @@ export const useTripDetails = (tripId?: string) => {
                     .eq('profile_id', user.id)
                     .order('created_at', { ascending: true })
                     .limit(1)
-                    .single();
+                    .maybeSingle();
                 passengerData = data;
+
+                // Fallback: buscar por email si no tiene profile_id vinculado aún
+                if (!passengerData && user.email) {
+                    const { data: fallback } = await supabase
+                        .from('passengers')
+                        .select('id')
+                        .eq('email', user.email)
+                        .is('parent_passenger_id', null)
+                        .order('created_at', { ascending: true })
+                        .limit(1)
+                        .maybeSingle();
+
+                    if (fallback) {
+                        passengerData = fallback;
+                        // Intentar vincular en background
+                        supabase.rpc('claim_passenger_by_email').catch(() => {});
+                    }
+                }
             }
 
             if (!passengerData) throw new Error('No passenger record found');
@@ -99,7 +117,7 @@ export const useTripDetails = (tripId?: string) => {
             const primaryTrip = selectPrimaryTrip(trips);
 
             if (primaryTrip) {
-                await fetchTripDetails(primaryTrip.id, passenger.id);
+                await fetchTripDetails(primaryTrip.id, passengerData.id);
             } else {
                 setLoading(false);
             }
