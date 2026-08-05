@@ -19,11 +19,28 @@ interface CreatePassengerData {
     savia_file_number?: string | null;
 }
 
+export interface CreatePassengerResult {
+    success: boolean;
+    passenger: any | null;
+    inviteSent: boolean;
+    message: string;
+    errorDetails?: {
+        message: string;
+        details?: string | null;
+        hint?: string | null;
+        code?: string | null;
+        payload?: any;
+    };
+}
+
 export const useCreatePassengerWithInvite = () => {
     const [creating, setCreating] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    const createAndInvite = async (mainData: CreatePassengerData, companionsData: Omit<CreatePassengerData, 'email'>[] = []) => {
+    const createAndInvite = async (
+        mainData: CreatePassengerData, 
+        companionsData: Omit<CreatePassengerData, 'email'>[] = []
+    ): Promise<CreatePassengerResult> => {
         setCreating(true);
         setError(null);
 
@@ -42,6 +59,7 @@ export const useCreatePassengerWithInvite = () => {
             }
 
             // 2. Crear pasajero principal
+            console.log('[useCreatePassengerWithInvite] Insertando pasajero principal:', { ...mainData, ...baseInsertData });
             const { data: mainPassenger, error: createError } = await supabase
                 .from('passengers')
                 .insert([{ ...mainData, ...baseInsertData }])
@@ -49,7 +67,33 @@ export const useCreatePassengerWithInvite = () => {
                 .single();
 
             if (createError) {
-                throw new Error(`Error al crear pasajero principal: ${createError.message}`);
+                console.error('[useCreatePassengerWithInvite] Error al crear pasajero principal:', {
+                    error: createError,
+                    code: createError.code,
+                    details: createError.details,
+                    hint: createError.hint,
+                    payload: { ...mainData, ...baseInsertData }
+                });
+                const detailStr = [
+                    createError.message,
+                    createError.details ? `Detalle: ${createError.details}` : null,
+                    createError.hint ? `Pista: ${createError.hint}` : null,
+                    createError.code ? `(Código: ${createError.code})` : null
+                ].filter(Boolean).join(' | ');
+
+                return {
+                    success: false,
+                    passenger: null,
+                    inviteSent: false,
+                    message: `Error al crear pasajero principal: ${detailStr}`,
+                    errorDetails: {
+                        message: createError.message,
+                        details: createError.details,
+                        hint: createError.hint,
+                        code: createError.code,
+                        payload: { ...mainData, ...baseInsertData }
+                    }
+                };
             }
 
             // 3. Crear acompañantes si existen
@@ -67,14 +111,54 @@ export const useCreatePassengerWithInvite = () => {
                     };
                 });
 
+                console.log('[useCreatePassengerWithInvite] Insertando acompañantes:', companionsToInsert);
+
                 const { error: companionsError } = await supabase
                     .from('passengers')
                     .insert(companionsToInsert);
                 
                 if (companionsError) {
+                    console.error('[useCreatePassengerWithInvite] Error al crear acompañantes:', {
+                        error: companionsError,
+                        message: companionsError.message,
+                        details: companionsError.details,
+                        hint: companionsError.hint,
+                        code: companionsError.code,
+                        payloadSent: companionsToInsert,
+                        mainPassengerId: mainPassenger.id
+                    });
+
                     // Rollback main passenger to prevent inconsistent state
-                    await supabase.from('passengers').delete().eq('id', mainPassenger.id);
-                    throw new Error(`Error al crear acompañantes: ${companionsError.message}`);
+                    const { error: rollbackError } = await supabase.from('passengers').delete().eq('id', mainPassenger.id);
+                    if (rollbackError) {
+                        console.warn('[useCreatePassengerWithInvite] Rollback del titular falló:', rollbackError);
+                    } else {
+                        console.log('[useCreatePassengerWithInvite] Rollback del titular exitoso para mantener integridad.');
+                    }
+
+                    const detailStr = [
+                        companionsError.message,
+                        companionsError.details ? `Detalle: ${companionsError.details}` : null,
+                        companionsError.hint ? `Pista: ${companionsError.hint}` : null,
+                        companionsError.code ? `(Código: ${companionsError.code})` : null
+                    ].filter(Boolean).join(' | ');
+
+                    const fullMsg = `Error al crear acompañante: ${detailStr}`;
+                    setError(fullMsg);
+
+                    return {
+                        success: false,
+                        passenger: null,
+                        inviteSent: false,
+                        message: fullMsg,
+                        errorDetails: {
+                            message: companionsError.message,
+                            details: companionsError.details,
+                            hint: companionsError.hint,
+                            code: companionsError.code,
+                            payload: companionsToInsert
+                        }
+                    };
                 }
             }
 
@@ -92,12 +176,12 @@ export const useCreatePassengerWithInvite = () => {
 
             if (inviteError) {
                 // Pasajeros creados pero error al enviar invitación
-                console.error('Error sending invite:', inviteError);
+                console.error('[useCreatePassengerWithInvite] Error sending invite:', inviteError);
                 return {
                     success: true,
                     passenger: mainPassenger,
                     inviteSent: false,
-                    message: `Pasajeros creados, pero no se pudo enviar la invitación: ${inviteError.message}`
+                    message: `Pasajeros creados, pero no se pudo enviar la invitación por correo: ${inviteError.message}`
                 };
             }
 
@@ -105,17 +189,23 @@ export const useCreatePassengerWithInvite = () => {
                 success: true,
                 passenger: mainPassenger,
                 inviteSent: true,
-                message: `Pasajero(s) creado(s) e invitación enviada a ${mainData.email}`
+                message: companionsData.length > 0 
+                    ? `Titular y ${companionsData.length} acompañante(s) creados exitosamente. Invitación enviada a ${mainData.email}`
+                    : `Pasajero creado e invitación enviada a ${mainData.email}`
             };
 
         } catch (err: any) {
+            console.error('[useCreatePassengerWithInvite] Error inesperado:', err);
             const errorMessage = err.message || 'Error desconocido';
             setError(errorMessage);
             return {
                 success: false,
                 passenger: null,
                 inviteSent: false,
-                message: errorMessage
+                message: errorMessage,
+                errorDetails: {
+                    message: errorMessage
+                }
             };
         } finally {
             setCreating(false);

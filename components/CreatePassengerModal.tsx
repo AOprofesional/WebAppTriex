@@ -43,6 +43,8 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
     const [loadingOperators, setLoadingOperators] = useState(false);
 
     const [companions, setCompanions] = useState<any[]>([]);
+    const [submitErrorDetails, setSubmitErrorDetails] = useState<any | null>(null);
+    const [copiedError, setCopiedError] = useState(false);
 
     // Referral code validation
     const [referralCodeValid, setReferralCodeValid] = useState<boolean | null>(null);
@@ -358,6 +360,7 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
             };
         });
 
+        setSubmitErrorDetails(null);
         const result = await createAndInvite(mainData, companionsData);
 
         if (result.success && result.passenger) {
@@ -404,8 +407,10 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
             setCompanions([]);
             setReferrerId(null);
             setReferralCodeValid(null);
+            setSubmitErrorDetails(null);
             setActiveTab('personal');
         } else {
+            setSubmitErrorDetails(result.errorDetails || { message: result.message });
             toast.error(result.message);
         }
     };
@@ -855,6 +860,58 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                             )}
                         </div>
                     </div>
+
+                    {/* Error Report Card */}
+                    {submitErrorDetails && (
+                        <div className="mt-6 p-4 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl text-red-900 dark:text-red-200 text-sm animate-in fade-in">
+                            <div className="flex items-start justify-between gap-2 mb-2">
+                                <div className="flex items-center gap-2 font-bold text-red-700 dark:text-red-400">
+                                    <span className="material-symbols-outlined text-red-600">error</span>
+                                    <span>Error al crear pasajero o acompañante</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(JSON.stringify(submitErrorDetails, null, 2));
+                                        setCopiedError(true);
+                                        setTimeout(() => setCopiedError(false), 3000);
+                                    }}
+                                    className="px-2.5 py-1 text-xs bg-red-100 dark:bg-red-900/60 hover:bg-red-200 dark:hover:bg-red-800 text-red-800 dark:text-red-200 rounded-lg flex items-center gap-1.5 transition font-medium cursor-pointer"
+                                >
+                                    <span className="material-symbols-outlined text-sm">{copiedError ? 'check' : 'content_copy'}</span>
+                                    {copiedError ? '¡Copiado!' : 'Copiar detalle'}
+                                </button>
+                            </div>
+                            <p className="font-semibold text-xs mb-1 text-red-800 dark:text-red-300">
+                                {submitErrorDetails.message}
+                            </p>
+                            {submitErrorDetails.details && (
+                                <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-1">
+                                    <strong>Detalle Supabase:</strong> {submitErrorDetails.details}
+                                </p>
+                            )}
+                            {submitErrorDetails.hint && (
+                                <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-1">
+                                    <strong>Pista:</strong> {submitErrorDetails.hint}
+                                </p>
+                            )}
+                            {submitErrorDetails.code && (
+                                <p className="text-xs text-zinc-500 font-mono mb-2">
+                                    Código PostgreSQL: {submitErrorDetails.code}
+                                </p>
+                            )}
+                            {submitErrorDetails.payload && (
+                                <details className="mt-2 bg-red-100/50 dark:bg-red-900/20 p-2 rounded-lg text-xs font-mono">
+                                    <summary className="cursor-pointer text-xs font-bold text-red-800 dark:text-red-300">
+                                        Ver datos enviados al servidor ({Array.isArray(submitErrorDetails.payload) ? `${submitErrorDetails.payload.length} acompañante(s)` : 'Titular'})
+                                    </summary>
+                                    <pre className="mt-1 text-[11px] whitespace-pre-wrap max-h-36 overflow-y-auto">
+                                        {JSON.stringify(submitErrorDetails.payload, null, 2)}
+                                    </pre>
+                                </details>
+                            )}
+                        </div>
+                    )}
 
                     {/* Actions */}
                     <div className="flex gap-3 pt-6 border-t border-zinc-200 dark:border-zinc-800">
