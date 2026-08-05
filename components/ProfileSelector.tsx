@@ -8,7 +8,7 @@ export const ProfileSelector: React.FC = () => {
     if (selectedPassengerId !== null) return null;
 
     return (
-        <div className="fixed inset-0 z-[100] bg-zinc-950/80 backdrop-blur-md flex flex-col items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] bg-zinc-950/80 backdrop-blur-md flex flex-col items-center justify-center p-4">
             <div className="w-full max-w-md bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-6 sm:p-8 shadow-2xl animate-fade-in">
                 <div className="text-center mb-6">
                     <div className="flex justify-center mb-4">

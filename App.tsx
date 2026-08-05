@@ -158,7 +158,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         <GlobalSurveyWrapper />
 
         {/* Profile Selector Modal */}
-        {!hideNavOn.some(path => location.pathname.startsWith(path)) && <ProfileSelector />}
+        {!['/login', '/signup', '/reset-password', '/update-password'].some(path => location.pathname.startsWith(path)) && <ProfileSelector />}
 
         {/* Create Password Modal - Only for Magic Link users */}
         <CreatePasswordModal
