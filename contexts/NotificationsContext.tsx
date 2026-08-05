@@ -18,15 +18,20 @@ interface NotificationsContextType {
 
 const NotificationsContext = createContext<NotificationsContextType | undefined>(undefined);
 
+// Intervalo de polling en ms (30 segundos)
+const POLL_INTERVAL_MS = 30_000;
+
 export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [unreadCount, setUnreadCount] = useState(0);
-    const isFirstFetch = useRef(true);
-    // Track last seen notification IDs to detect genuinely new ones for toasts
+
+    // Track IDs ya conocidos para detectar notificaciones genuinamente nuevas
     const knownNotifIds = useRef<Set<string>>(new Set());
+    const isFirstFetch = useRef(true);
+    const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
         if (!user?.id) {
@@ -36,72 +41,20 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
             return;
         }
 
+        // Reset al cambiar de usuario
         isFirstFetch.current = true;
         knownNotifIds.current = new Set();
+
+        // Fetch inicial
         fetchNotifications();
 
-        let channel: ReturnType<typeof supabase.channel> | null = null;
-
-        const setupChannel = async () => {
-            const { data: passengerData } = await supabase
-                .from('passengers')
-                .select('id')
-                .eq('profile_id', user.id)
-                .maybeSingle();
-
-            if (!passengerData?.id) return;
-
-            // Nombre estable (sin Math.random) para evitar canales huérfanos acumulados
-            const channelId = `notifications-ctx-${user.id}`;
-
-            channel = supabase
-                .channel(channelId)
-                .on('postgres_changes',
-                    {
-                        event: '*',
-                        schema: 'public',
-                        table: 'notifications',
-                        // Filtro con passenger_id para que RLS de Supabase no rechace el canal
-                        filter: `passenger_id=eq.${passengerData.id}`,
-                    },
-                    (payload) => {
-                        // Si es un INSERT nuevo, mostrar toast flotante
-                        if (payload.eventType === 'INSERT' && !isFirstFetch.current) {
-                            const newNotif = payload.new as Notification;
-                            if (!knownNotifIds.current.has(newNotif.id)) {
-                                knownNotifIds.current.add(newNotif.id);
-                                toast(`🔔  ${newNotif.title}`, {
-                                    duration: 5000,
-                                    position: 'top-right',
-                                    style: {
-                                        background: '#f97316',
-                                        color: '#fff',
-                                        borderRadius: '14px',
-                                        padding: '14px 20px',
-                                        fontSize: '15px',
-                                        fontWeight: '600',
-                                        fontFamily: "'Plus Jakarta Sans', sans-serif",
-                                        boxShadow: '0 4px 20px rgba(249, 115, 22, 0.45)',
-                                        maxWidth: '340px',
-                                    },
-                                });
-                            }
-                        }
-                        isFirstFetch.current = false;
-                        fetchNotifications();
-                    }
-                )
-                .subscribe((status, err) => {
-                    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                        console.warn(`[NotificationsContext] Canal ${channelId} error:`, status, err?.message ?? '');
-                    }
-                });
-        };
-
-        setupChannel();
+        // Polling cada 30s para detectar nuevas notificaciones
+        pollTimerRef.current = setInterval(() => {
+            fetchNotifications();
+        }, POLL_INTERVAL_MS);
 
         return () => {
-            if (channel) supabase.removeChannel(channel);
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current);
         };
     }, [user?.id]);
 
@@ -141,7 +94,30 @@ export const NotificationsProvider: React.FC<{ children: React.ReactNode }> = ({
 
             const fresh = data || [];
 
-            // Registrar IDs conocidos para evitar toasts duplicados en re-fetches
+            // Detectar notificaciones nuevas (después del primer fetch) y mostrar toast
+            if (!isFirstFetch.current) {
+                for (const notif of fresh) {
+                    if (!knownNotifIds.current.has(notif.id)) {
+                        toast(`🔔  ${notif.title}`, {
+                            duration: 5000,
+                            position: 'top-right',
+                            style: {
+                                background: '#f97316',
+                                color: '#fff',
+                                borderRadius: '14px',
+                                padding: '14px 20px',
+                                fontSize: '15px',
+                                fontWeight: '600',
+                                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                                boxShadow: '0 4px 20px rgba(249, 115, 22, 0.45)',
+                                maxWidth: '340px',
+                            },
+                        });
+                    }
+                }
+            }
+
+            // Registrar todos los IDs conocidos
             fresh.forEach(n => knownNotifIds.current.add(n.id));
 
             setNotifications(fresh);
