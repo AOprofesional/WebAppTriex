@@ -149,10 +149,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             (byProfile || []).forEach((p: any) => passengerMap.set(p.id, p));
             (byEmail || []).forEach((p: any) => passengerMap.set(p.id, p));
 
-            // 3. Fetch companions linked to any discovered passenger
+            console.log('[AuthContext] Discovered byProfile:', byProfile);
+            console.log('[AuthContext] Discovered byEmail:', byEmail);
+
+            // 3. Fetch companions linked to any discovered passenger (by parent_passenger_id)
             const knownIds = Array.from(passengerMap.keys());
+            let companions: any[] = [];
             if (knownIds.length > 0) {
-                const { data: companions, error: errComp } = await supabase
+                const { data, error: errComp } = await supabase
                     .from('passengers')
                     .select('*')
                     .in('parent_passenger_id', knownIds)
@@ -160,8 +164,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     .order('created_at', { ascending: true });
 
                 if (errComp) console.warn('[AuthContext] Error fetching companions:', errComp);
+                if (data) companions = data;
                 (companions || []).forEach((p: any) => passengerMap.set(p.id, p));
             }
+            console.log('[AuthContext] Discovered companions by parent_passenger_id:', companions);
 
             // 4. Also check if this user is a companion whose parent is another passenger
             const parentIds = Array.from(passengerMap.values())
@@ -186,6 +192,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 if (errSiblings) console.warn('[AuthContext] Error fetching sibling companions:', errSiblings);
                 (siblings || []).forEach((p: any) => passengerMap.set(p.id, p));
+            }
+
+            // 5. Also check if there are passengers sharing the same savia_file_number (booking file)
+            const saviaFiles = Array.from(passengerMap.values())
+                .map((p: any) => p.savia_file_number?.trim())
+                .filter(Boolean);
+
+            if (saviaFiles.length > 0) {
+                const { data: fileCompanions, error: errFile } = await supabase
+                    .from('passengers')
+                    .select('*')
+                    .in('savia_file_number', saviaFiles)
+                    .is('archived_at', null);
+
+                if (errFile) console.warn('[AuthContext] Error fetching file companions:', errFile);
+                console.log('[AuthContext] Discovered companions by savia_file_number:', fileCompanions);
+                (fileCompanions || []).forEach((p: any) => passengerMap.set(p.id, p));
             }
 
             const allPassengers = Array.from(passengerMap.values());
