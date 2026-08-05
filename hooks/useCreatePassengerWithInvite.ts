@@ -163,13 +163,19 @@ export const useCreatePassengerWithInvite = () => {
             }
 
             // 4. Enviar magic link de invitación
+            const fullName = `${mainData.first_name || ''} ${mainData.last_name || ''}`.trim();
             const { error: inviteError } = await supabase.auth.signInWithOtp({
                 email: mainData.email,
                 options: {
                     emailRedirectTo: `${window.location.origin}/auth/callback`,
                     data: {
                         passenger_id: mainPassenger.id,
-                        invited_by: 'admin'
+                        invited_by: 'admin',
+                        full_name: fullName,
+                        first_name: mainData.first_name,
+                        last_name: mainData.last_name,
+                        role: 'passenger',
+                        phone: mainData.phone || null
                     }
                 }
             });

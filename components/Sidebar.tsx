@@ -127,11 +127,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
           {availablePassengers && availablePassengers.length > 1 && (
             <button
-              onClick={() => { switchPassenger(''); onClose(); }}
-              className="w-full flex items-center gap-4 px-4 text-zinc-500 font-bold text-sm mb-4"
+              onClick={() => { switchPassenger(null); onClose(); }}
+              className="w-full flex items-center gap-4 px-4 text-zinc-600 dark:text-zinc-400 hover:text-primary dark:hover:text-primary font-bold text-sm mb-2 transition-colors"
             >
               <span className="material-symbols-outlined">swap_horiz</span>
-              Cambiar perfil
+              Cambiar perfil ({availablePassengers.length})
             </button>
           )}
 

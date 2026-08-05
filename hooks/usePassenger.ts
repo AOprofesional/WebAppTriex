@@ -75,6 +75,7 @@ export const usePassenger = () => {
                     .from('passengers')
                     .select('*')
                     .eq('email', user.email)
+                    .is('parent_passenger_id', null)
                     .order('created_at', { ascending: true })
                     .limit(1)
                     .maybeSingle();

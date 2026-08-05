@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePassenger } from '../hooks/usePassenger';
 import { usePassengerTrips } from '../hooks/usePassengerTrips';
+import { useAuth } from '../contexts/AuthContext';
 import { ProfilePhotoModal } from '../components/ProfilePhotoModal';
 import { PageLoading } from '../components/PageLoading';
 import { supabase } from '../lib/supabase';
@@ -13,6 +14,7 @@ export const Profile: React.FC = () => {
   const navigate = useNavigate();
   const toast = useToast();
   const confirm = useConfirm();
+  const { availablePassengers, switchPassenger } = useAuth();
   const { passenger, loading, uploadAvatar, removeAvatar } = usePassenger();
   const { primaryTrip } = usePassengerTrips();
   const [isDarkMode, setIsDarkMode] = useState(document.documentElement.classList.contains('dark'));
@@ -107,6 +109,30 @@ export const Profile: React.FC = () => {
           Miembro desde {memberSince}
         </p>
       </div>
+
+      {/* Switch Profile Card if user has companions/multiple profiles */}
+      {availablePassengers && availablePassengers.length > 1 && (
+        <button
+          onClick={() => switchPassenger(null)}
+          className="w-full mb-6 p-4 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 rounded-2xl flex items-center justify-between shadow-sm hover:border-[#E0592A] hover:bg-[#E0592A]/5 dark:hover:bg-[#E0592A]/10 transition-all group active:scale-[0.98]"
+        >
+          <div className="flex items-center gap-3 text-left">
+            <div className="w-10 h-10 rounded-xl bg-[#E0592A]/10 text-[#E0592A] flex items-center justify-center group-hover:bg-[#E0592A] group-hover:text-white transition-colors">
+              <span className="material-symbols-outlined text-2xl">diversity_3</span>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Perfil Activo</p>
+              <p className="text-sm font-bold text-zinc-900 dark:text-white">
+                {passenger.first_name} {passenger.last_name} ({passenger.parent_passenger_id ? 'Acompañante' : 'Titular'})
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1 text-xs font-bold text-[#E0592A]">
+            <span>Cambiar</span>
+            <span className="material-symbols-outlined text-sm group-hover:translate-x-0.5 transition-transform">swap_horiz</span>
+          </div>
+        </button>
+      )}
 
       {/* Orange Pass Banner */}
       <button

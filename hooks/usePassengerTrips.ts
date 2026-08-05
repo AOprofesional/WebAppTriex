@@ -67,6 +67,7 @@ export const usePassengerTrips = () => {
                         .from('passengers')
                         .select('id, first_name, last_name')
                         .eq('email', user.email)
+                        .is('parent_passenger_id', null)
                         .order('created_at', { ascending: true })
                         .limit(1)
                         .maybeSingle();
@@ -89,7 +90,7 @@ export const usePassengerTrips = () => {
             const { data: tripPassengers, error: tpError } = await supabase
                 .from('trip_passengers')
                 .select('trip_id')
-                .eq('passenger_id', passenger.id);
+                .eq('passenger_id', passengerData.id);
 
             if (tpError) throw tpError;
 

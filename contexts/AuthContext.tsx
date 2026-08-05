@@ -108,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    // Function to fetch available passengers for this profile
+    // Function to fetch available passengers for this profile (titular + companions)
     const fetchAvailablePassengers = async () => {
         if (!user) {
             setAvailablePassengers([]);
@@ -117,32 +117,104 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         try {
-            const { data, error } = await supabase
+            // 1. Fetch primary passengers directly linked to this profile_id
+            const { data: primaryData, error: primaryError } = await supabase
                 .from('passengers')
                 .select('*')
                 .eq('profile_id', user.id)
                 .is('archived_at', null)
                 .order('created_at', { ascending: true });
 
-            if (error) throw error;
-            
-            setAvailablePassengers(data || []);
-            
-            // If they only have one passenger, auto-select it
-            if (data && data.length === 1) {
-                setSelectedPassengerId(data[0].id);
+            if (primaryError) throw primaryError;
+
+            let allPassengers: any[] = primaryData || [];
+
+            // If we found primary passenger(s), also fetch all companions linked by parent_passenger_id
+            if (primaryData && primaryData.length > 0) {
+                const primaryIds = primaryData.map(p => p.id);
+                const { data: companions, error: compError } = await supabase
+                    .from('passengers')
+                    .select('*')
+                    .in('parent_passenger_id', primaryIds)
+                    .is('archived_at', null)
+                    .order('created_at', { ascending: true });
+
+                if (!compError && companions && companions.length > 0) {
+                    const existingIds = new Set(allPassengers.map(p => p.id));
+                    companions.forEach(c => {
+                        if (!existingIds.has(c.id)) {
+                            allPassengers.push(c);
+                        }
+                    });
+                }
+            } else if (user.email) {
+                // Fallback: search by email
+                const { data: byEmail } = await supabase
+                    .from('passengers')
+                    .select('*')
+                    .eq('email', user.email)
+                    .is('archived_at', null)
+                    .order('created_at', { ascending: true });
+
+                if (byEmail && byEmail.length > 0) {
+                    allPassengers = byEmail;
+                    const titulars = byEmail.filter(p => !p.parent_passenger_id);
+                    if (titulars.length > 0) {
+                        const titularIds = titulars.map(t => t.id);
+                        const { data: companions } = await supabase
+                            .from('passengers')
+                            .select('*')
+                            .in('parent_passenger_id', titularIds)
+                            .is('archived_at', null)
+                            .order('created_at', { ascending: true });
+
+                        if (companions && companions.length > 0) {
+                            const existingIds = new Set(allPassengers.map(p => p.id));
+                            companions.forEach(c => {
+                                if (!existingIds.has(c.id)) {
+                                    allPassengers.push(c);
+                                }
+                            });
+                        }
+                    }
+                }
             }
-            // If they have multiple, we leave selectedPassengerId as null 
-            // so the UI can prompt them to select
-            
+
+            setAvailablePassengers(allPassengers);
+
+            // Check if there is an active selection in sessionStorage
+            const savedPassengerId = sessionStorage.getItem('triex_selected_passenger_id');
+
+            if (allPassengers.length === 1) {
+                setSelectedPassengerId(allPassengers[0].id);
+                sessionStorage.setItem('triex_selected_passenger_id', allPassengers[0].id);
+            } else if (allPassengers.length > 1) {
+                // If they have multiple (titular + companions)
+                if (savedPassengerId && allPassengers.some(p => p.id === savedPassengerId)) {
+                    setSelectedPassengerId(savedPassengerId);
+                } else {
+                    // Prompt user with ProfileSelector
+                    setSelectedPassengerId(null);
+                }
+            } else {
+                setSelectedPassengerId(null);
+            }
+
         } catch (err) {
             console.error('Error fetching passengers:', err);
             setAvailablePassengers([]);
+            setSelectedPassengerId(null);
         }
     };
 
     const switchPassenger = (id: string | null) => {
-        setSelectedPassengerId(id);
+        if (id) {
+            setSelectedPassengerId(id);
+            sessionStorage.setItem('triex_selected_passenger_id', id);
+        } else {
+            setSelectedPassengerId(null);
+            sessionStorage.removeItem('triex_selected_passenger_id');
+        }
     };
 
     useEffect(() => {
