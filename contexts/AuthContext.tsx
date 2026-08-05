@@ -28,7 +28,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [roleLoading, setRoleLoading] = useState(true);
     const [isArchived, setIsArchived] = useState(false);
     const [availablePassengers, setAvailablePassengers] = useState<any[]>([]);
-    const [selectedPassengerId, setSelectedPassengerId] = useState<string | null>(null);
+    const [selectedPassengerId, setSelectedPassengerId] = useState<string | null>(() => {
+        try {
+            return localStorage.getItem('triex_selected_passenger_id') || sessionStorage.getItem('triex_selected_passenger_id');
+        } catch {
+            return null;
+        }
+    });
 
     // Guard para evitar llamadas concurrentes/duplicadas a fetchAvailablePassengers
     const isFetchingPassengers = useRef(false);
@@ -205,11 +211,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setAvailablePassengers(allPassengers);
 
             if (allPassengers.length === 1) {
-                setSelectedPassengerId(allPassengers[0].id);
+                const singleId = allPassengers[0].id;
+                setSelectedPassengerId(singleId);
+                try {
+                    localStorage.setItem('triex_selected_passenger_id', singleId);
+                    sessionStorage.setItem('triex_selected_passenger_id', singleId);
+                } catch {}
             } else if (allPassengers.length > 1) {
                 setSelectedPassengerId((prev) => {
-                    if (prev && allPassengers.some((p: any) => p.id === prev)) {
-                        return prev;
+                    const storedId = prev || (typeof window !== 'undefined' ? (localStorage.getItem('triex_selected_passenger_id') || sessionStorage.getItem('triex_selected_passenger_id')) : null);
+                    if (storedId && allPassengers.some((p: any) => p.id === storedId)) {
+                        try {
+                            localStorage.setItem('triex_selected_passenger_id', storedId);
+                            sessionStorage.setItem('triex_selected_passenger_id', storedId);
+                        } catch {}
+                        return storedId;
                     }
                     return null;
                 });
@@ -229,10 +245,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const switchPassenger = (id: string | null) => {
         if (id) {
             setSelectedPassengerId(id);
-            sessionStorage.setItem('triex_selected_passenger_id', id);
+            try {
+                localStorage.setItem('triex_selected_passenger_id', id);
+                sessionStorage.setItem('triex_selected_passenger_id', id);
+            } catch {}
         } else {
             setSelectedPassengerId(null);
-            sessionStorage.removeItem('triex_selected_passenger_id');
+            try {
+                localStorage.removeItem('triex_selected_passenger_id');
+                sessionStorage.removeItem('triex_selected_passenger_id');
+            } catch {}
         }
     };
 
@@ -260,13 +282,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (event === 'SIGNED_IN') {
                 // Reset del guard para permitir re-fetch al cambiar de usuario
                 lastFetchedUserId.current = null;
-                sessionStorage.removeItem('triex_selected_passenger_id');
-                setSelectedPassengerId(null);
             }
 
             if (event === 'SIGNED_OUT') {
                 lastFetchedUserId.current = null;
                 isFetchingPassengers.current = false;
+                try {
+                    localStorage.removeItem('triex_selected_passenger_id');
+                    sessionStorage.removeItem('triex_selected_passenger_id');
+                } catch {}
+                setSelectedPassengerId(null);
                 queryCache.clear();
             }
 
@@ -321,11 +346,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const signOut = async () => {
         lastFetchedUserId.current = null;
         isFetchingPassengers.current = false;
+        try {
+            localStorage.removeItem('triex_selected_passenger_id');
+            sessionStorage.removeItem('triex_selected_passenger_id');
+        } catch {}
+        setSelectedPassengerId(null);
         queryCache.clear();
         await supabase.auth.signOut();
         setRole(null);
         setAvailablePassengers([]);
-        setSelectedPassengerId(null);
     };
 
     const value = {
