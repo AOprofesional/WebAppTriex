@@ -76,7 +76,7 @@ export const usePassengerTrips = () => {
 
                     if (fallback) {
                         data = fallback;
-                        supabase.rpc('claim_passenger_by_email').catch(() => {});
+                        (async () => { await supabase.rpc('claim_passenger_by_email'); })();
                     }
                 }
                 passengerData = data;

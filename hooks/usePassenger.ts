@@ -84,9 +84,8 @@ export const usePassenger = () => {
                     console.error('Error fetching passenger by email:', fallbackError);
                 } else if (fallback) {
                     data = fallback;
-                    supabase.rpc('claim_passenger_by_email').catch(err =>
-                        console.warn('Auto-claim attempt:', err.message)
-                    );
+                    // Intentar vincular en background
+                    (async () => { await supabase.rpc('claim_passenger_by_email'); })();
                 }
             }
 

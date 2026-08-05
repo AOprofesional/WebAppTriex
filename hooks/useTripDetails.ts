@@ -80,7 +80,7 @@ export const useTripDetails = (tripId?: string) => {
                     if (fallback) {
                         passengerData = fallback;
                         // Intentar vincular en background
-                        supabase.rpc('claim_passenger_by_email').catch(() => {});
+                        (async () => { await supabase.rpc('claim_passenger_by_email'); })();
                     }
                 }
             }
