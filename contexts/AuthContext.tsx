@@ -302,29 +302,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             checkArchivedStatus();
             fetchAvailablePassengers(user);
 
-            // Setup Realtime subscription for banned_until changes
-            const profileSubscription = supabase
-                .channel(`public:profiles:id=eq.${user.id}`)
-                .on(
-                    'postgres_changes',
-                    {
-                        event: 'UPDATE',
-                        schema: 'public',
-                        table: 'profiles',
-                        filter: `id=eq.${user.id}`,
-                    },
-                    (payload) => {
-                        const newProfile = payload.new;
-                        if (newProfile && newProfile.banned_until) {
+            // Polling cada 60s para detectar si el usuario fue baneado
+            // (Reemplaza supabase.channel postgres_changes que causaba CHANNEL_ERROR
+            //  por incompatibilidad de RLS con el motor Realtime de Supabase)
+            const banCheckInterval = setInterval(async () => {
+                try {
+                    const { data: profile } = await supabase
+                        .from('profiles')
+                        .select('banned_until')
+                        .eq('id', user.id)
+                        .maybeSingle();
+
+                    if (profile?.banned_until) {
+                        const bannedUntil = new Date(profile.banned_until);
+                        if (bannedUntil > new Date()) {
                             console.log('User has been banned. Forcing logout.');
                             handleBanned();
                         }
                     }
-                )
-                .subscribe();
+                } catch (err) {
+                    // Ignorar errores de red en el polling
+                }
+            }, 60_000);
 
             return () => {
-                supabase.removeChannel(profileSubscription);
+                clearInterval(banCheckInterval);
             };
         } else {
             setRole(null);
