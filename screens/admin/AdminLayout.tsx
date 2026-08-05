@@ -52,9 +52,9 @@ export const AdminLayout: React.FC = () => {
             />
 
             {/* Main Content */}
-            <div className="flex-1 min-w-0 transition-all duration-300 ml-0 md:ml-64 relative">
+            <div className="flex-1 min-w-0 ml-0 md:ml-64 relative">
                 {/* Top Header */}
-                <header className="h-16 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between px-4 md:px-8 sticky top-0 z-30">
+                <header className="h-16 bg-white dark:bg-zinc-900 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between px-4 md:px-8 sticky top-0 z-20">
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setIsSidebarOpen(true)}

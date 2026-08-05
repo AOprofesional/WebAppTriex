@@ -259,7 +259,7 @@ export const AdminDocumentReview: React.FC = () => {
 
             {/* Document Review Modal */}
             {selectedGroup.length > 0 && primaryDoc && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
                     <div className="bg-white dark:bg-zinc-900 rounded-2xl w-full max-w-5xl max-h-[90vh] overflow-auto">
                         <div className="p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                             <div>
