@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { validateProfileImage } from '../utils/profileImageUpload';
 
 interface ProfilePhotoModalProps {
@@ -21,6 +21,17 @@ export const ProfilePhotoModal: React.FC<ProfilePhotoModalProps> = ({
     const [uploading, setUploading] = useState(false);
     const [dragActive, setDragActive] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const activeObjectUrlRef = useRef<string | null>(null);
+
+    // Clean up object URLs on unmount or close
+    useEffect(() => {
+        return () => {
+            if (activeObjectUrlRef.current) {
+                URL.revokeObjectURL(activeObjectUrlRef.current);
+                activeObjectUrlRef.current = null;
+            }
+        };
+    }, []);
 
     if (!isOpen) return null;
 
@@ -29,16 +40,30 @@ export const ProfilePhotoModal: React.FC<ProfilePhotoModalProps> = ({
 
         const validation = validateProfileImage(file);
         if (!validation.valid) {
-            setError(validation.error || 'Invalid file');
+            setError(validation.error || 'Archivo no válido');
             return;
         }
 
         setSelectedFile(file);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            setPreviewUrl(reader.result as string);
-        };
-        reader.readAsDataURL(file);
+
+        // Revoke previous object URL if any
+        if (activeObjectUrlRef.current) {
+            URL.revokeObjectURL(activeObjectUrlRef.current);
+            activeObjectUrlRef.current = null;
+        }
+
+        try {
+            const url = URL.createObjectURL(file);
+            activeObjectUrlRef.current = url;
+            setPreviewUrl(url);
+        } catch {
+            // Fallback to FileReader if createObjectURL fails
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setPreviewUrl(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
     };
 
     const handleDrag = (e: React.DragEvent) => {
@@ -75,9 +100,7 @@ export const ProfilePhotoModal: React.FC<ProfilePhotoModalProps> = ({
 
         try {
             await onUpload(selectedFile);
-            onClose();
-            setPreviewUrl(null);
-            setSelectedFile(null);
+            handleClose();
         } catch (err: any) {
             setError(err.message || 'Error al subir la foto');
         } finally {
@@ -93,7 +116,7 @@ export const ProfilePhotoModal: React.FC<ProfilePhotoModalProps> = ({
 
         try {
             await onRemove();
-            onClose();
+            handleClose();
         } catch (err: any) {
             setError(err.message || 'Error al eliminar la foto');
         } finally {
@@ -103,6 +126,10 @@ export const ProfilePhotoModal: React.FC<ProfilePhotoModalProps> = ({
 
     const handleClose = () => {
         if (uploading) return;
+        if (activeObjectUrlRef.current) {
+            URL.revokeObjectURL(activeObjectUrlRef.current);
+            activeObjectUrlRef.current = null;
+        }
         setPreviewUrl(null);
         setSelectedFile(null);
         setError(null);
@@ -110,8 +137,8 @@ export const ProfilePhotoModal: React.FC<ProfilePhotoModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-            <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl max-w-md w-full overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-zinc-100 dark:border-zinc-800">
                 {/* Header */}
                 <div className="p-6 border-b border-zinc-200 dark:border-zinc-800">
                     <div className="flex items-center justify-between">
@@ -132,7 +159,7 @@ export const ProfilePhotoModal: React.FC<ProfilePhotoModalProps> = ({
                 <div className="p-6 space-y-6">
                     {/* Preview */}
                     <div className="flex justify-center">
-                        <div className="relative w-40 h-40 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 border-4 border-zinc-200 dark:border-zinc-700">
+                        <div className="relative w-40 h-40 rounded-full overflow-hidden bg-zinc-100 dark:bg-zinc-800 border-4 border-zinc-200 dark:border-zinc-700 shadow-inner">
                             {previewUrl || currentPhotoUrl ? (
                                 <img
                                     src={previewUrl || currentPhotoUrl || ''}
@@ -153,15 +180,16 @@ export const ProfilePhotoModal: React.FC<ProfilePhotoModalProps> = ({
                         onDragLeave={handleDrag}
                         onDragOver={handleDrag}
                         onDrop={handleDrop}
-                        className={`border-2 border-dashed rounded-2xl p-8 text-center transition-colors ${dragActive
-                                ? 'border-primary bg-primary/5'
+                        className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all ${
+                            dragActive
+                                ? 'border-primary bg-primary/5 scale-[0.99]'
                                 : 'border-zinc-300 dark:border-zinc-700 hover:border-primary/50'
-                            }`}
+                        }`}
                     >
                         <input
                             type="file"
                             id="photo-upload"
-                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                            accept="image/*"
                             onChange={handleFileInput}
                             className="hidden"
                         />
@@ -179,14 +207,14 @@ export const ProfilePhotoModal: React.FC<ProfilePhotoModalProps> = ({
                                 o hacé clic para seleccionar
                             </p>
                             <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-2">
-                                JPG, PNG o WebP - Máx 2MB
+                                JPG, PNG o WebP - Máx 15MB
                             </p>
                         </label>
                     </div>
 
                     {/* Error Message */}
                     {error && (
-                        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl animate-fade-in">
                             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
                         </div>
                     )}
@@ -205,11 +233,11 @@ export const ProfilePhotoModal: React.FC<ProfilePhotoModalProps> = ({
                                 <button
                                     onClick={handleUpload}
                                     disabled={uploading}
-                                    className="flex-1 py-3 bg-primary text-white rounded-2xl font-bold transition-transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                                    className="flex-1 py-3 bg-primary text-white rounded-2xl font-bold transition-transform active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
                                 >
                                     {uploading ? (
                                         <>
-                                            <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                                            <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
                                             Subiendo...
                                         </>
                                     ) : (

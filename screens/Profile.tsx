@@ -51,10 +51,12 @@ export const Profile: React.FC = () => {
 
   const handleUploadAvatar = async (file: File) => {
     await uploadAvatar(file);
+    toast.success('Foto actualizada', 'Tu foto de perfil se guardó correctamente');
   };
 
   const handleRemoveAvatar = async () => {
     await removeAvatar();
+    toast.success('Foto eliminada', 'Se restableció el avatar por defecto');
   };
 
   // Get initials from name
