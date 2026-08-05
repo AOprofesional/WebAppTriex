@@ -109,88 +109,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     // Function to fetch available passengers for this profile (titular + companions)
-    const fetchAvailablePassengers = async () => {
-        if (!user) {
+    const fetchAvailablePassengers = async (currentUser?: any) => {
+        const u = currentUser || user;
+        if (!u) {
             setAvailablePassengers([]);
             setSelectedPassengerId(null);
             return;
         }
 
         try {
-            // 1. Fetch primary passengers directly linked to this profile_id
-            const { data: primaryData, error: primaryError } = await supabase
+            // 1. Fetch by profile_id
+            const { data: byProfile } = await supabase
                 .from('passengers')
                 .select('*')
-                .eq('profile_id', user.id)
+                .eq('profile_id', u.id)
                 .is('archived_at', null)
                 .order('created_at', { ascending: true });
 
-            if (primaryError) throw primaryError;
+            // 2. Fetch by email (both titular and companions who share the email)
+            const { data: byEmail } = u.email ? await supabase
+                .from('passengers')
+                .select('*')
+                .ilike('email', u.email.trim())
+                .is('archived_at', null)
+                .order('created_at', { ascending: true }) : { data: [] };
 
-            let allPassengers: any[] = primaryData || [];
+            const passengerMap = new Map<string, any>();
+            (byProfile || []).forEach((p: any) => passengerMap.set(p.id, p));
+            (byEmail || []).forEach((p: any) => passengerMap.set(p.id, p));
 
-            // If we found primary passenger(s), also fetch all companions linked by parent_passenger_id
-            if (primaryData && primaryData.length > 0) {
-                const primaryIds = primaryData.map(p => p.id);
-                const { data: companions, error: compError } = await supabase
+            // 3. Fetch companions linked to any discovered passenger
+            const knownIds = Array.from(passengerMap.keys());
+            if (knownIds.length > 0) {
+                const { data: companions } = await supabase
                     .from('passengers')
                     .select('*')
-                    .in('parent_passenger_id', primaryIds)
+                    .in('parent_passenger_id', knownIds)
                     .is('archived_at', null)
                     .order('created_at', { ascending: true });
 
-                if (!compError && companions && companions.length > 0) {
-                    const existingIds = new Set(allPassengers.map(p => p.id));
-                    companions.forEach(c => {
-                        if (!existingIds.has(c.id)) {
-                            allPassengers.push(c);
-                        }
-                    });
-                }
-            } else if (user.email) {
-                // Fallback: search by email
-                const { data: byEmail } = await supabase
-                    .from('passengers')
-                    .select('*')
-                    .eq('email', user.email)
-                    .is('archived_at', null)
-                    .order('created_at', { ascending: true });
-
-                if (byEmail && byEmail.length > 0) {
-                    allPassengers = byEmail;
-                    const titulars = byEmail.filter(p => !p.parent_passenger_id);
-                    if (titulars.length > 0) {
-                        const titularIds = titulars.map(t => t.id);
-                        const { data: companions } = await supabase
-                            .from('passengers')
-                            .select('*')
-                            .in('parent_passenger_id', titularIds)
-                            .is('archived_at', null)
-                            .order('created_at', { ascending: true });
-
-                        if (companions && companions.length > 0) {
-                            const existingIds = new Set(allPassengers.map(p => p.id));
-                            companions.forEach(c => {
-                                if (!existingIds.has(c.id)) {
-                                    allPassengers.push(c);
-                                }
-                            });
-                        }
-                    }
-                }
+                (companions || []).forEach((p: any) => passengerMap.set(p.id, p));
             }
 
+            const allPassengers = Array.from(passengerMap.values());
             setAvailablePassengers(allPassengers);
 
-            // Check if there is an active selection in sessionStorage
             const savedPassengerId = sessionStorage.getItem('triex_selected_passenger_id');
 
             if (allPassengers.length === 1) {
                 setSelectedPassengerId(allPassengers[0].id);
                 sessionStorage.setItem('triex_selected_passenger_id', allPassengers[0].id);
             } else if (allPassengers.length > 1) {
-                // If they have multiple (titular + companions)
-                if (savedPassengerId && allPassengers.some(p => p.id === savedPassengerId)) {
+                // If they have multiple profiles, only keep selection if valid and exists
+                if (savedPassengerId && allPassengers.some((p: any) => p.id === savedPassengerId)) {
                     setSelectedPassengerId(savedPassengerId);
                 } else {
                     // Prompt user with ProfileSelector
@@ -221,17 +192,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Get initial session
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
-            setUser(session?.user ?? null);
+            const currentUser = session?.user ?? null;
+            setUser(currentUser);
             setLoading(false);
+            if (currentUser) {
+                fetchAvailablePassengers(currentUser);
+            }
         });
 
         // Listen for auth changes
         const {
             data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
+        } = supabase.auth.onAuthStateChange((event, session) => {
             setSession(session);
-            setUser(session?.user ?? null);
+            const currentUser = session?.user ?? null;
+            setUser(currentUser);
             setLoading(false);
+            if (event === 'SIGNED_IN') {
+                sessionStorage.removeItem('triex_selected_passenger_id');
+                setSelectedPassengerId(null);
+            }
+            if (currentUser) {
+                fetchAvailablePassengers(currentUser);
+            }
         });
 
         return () => subscription.unsubscribe();
@@ -242,7 +225,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (user) {
             refreshRole();
             checkArchivedStatus();
-            fetchAvailablePassengers();
+            fetchAvailablePassengers(user);
 
             // Setup Realtime subscription for banned_until changes
             const profileSubscription = supabase
