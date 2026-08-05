@@ -5,18 +5,18 @@ interface CreatePassengerData {
     first_name: string;
     last_name: string;
     email: string;
-    phone?: string;
+    phone?: string | null;
     passenger_type_id: number;
-    birth_date?: string;
-    cuil?: string;
-    document_type?: 'DNI' | 'Pasaporte' | 'Otro';
-    document_number?: string;
-    profile_id?: string;
-    referred_by_passenger_id?: string;
-    referred_by_code_raw?: string;
-    referral_linked_at?: string;
-    assigned_to?: string;
-    savia_file_number?: string;
+    birth_date?: string | null;
+    cuil?: string | null;
+    document_type?: 'DNI' | 'Pasaporte' | 'Otro' | null;
+    document_number?: string | null;
+    profile_id?: string | null;
+    referred_by_passenger_id?: string | null;
+    referred_by_code_raw?: string | null;
+    referral_linked_at?: string | null;
+    assigned_to?: string | null;
+    savia_file_number?: string | null;
 }
 
 export const useCreatePassengerWithInvite = () => {
@@ -30,7 +30,7 @@ export const useCreatePassengerWithInvite = () => {
         try {
             // 1. Obtener datos de auth y rol
             const { data: authData } = await supabase.auth.getUser();
-            const { data: roleData, error: roleError } = await supabase.rpc('get_my_role');
+            const { data: roleData } = await supabase.rpc('get_my_role');
 
             const baseInsertData: any = {
                 created_by: authData.user?.id
@@ -54,18 +54,26 @@ export const useCreatePassengerWithInvite = () => {
 
             // 3. Crear acompañantes si existen
             if (companionsData.length > 0) {
-                const companionsToInsert = companionsData.map(comp => ({
-                    ...comp,
-                    email: mainData.email, // Comparten el mismo email
-                    parent_passenger_id: mainPassenger.id, // Vinculados al principal
-                    ...baseInsertData
-                }));
+                const companionsToInsert = companionsData.map(comp => {
+                    const docNum = comp.document_number?.trim() || null;
+                    const docType = docNum ? (comp.document_type || 'DNI') : null;
+                    return {
+                        ...comp,
+                        document_type: docType,
+                        document_number: docNum,
+                        email: mainData.email, // Comparten el mismo email
+                        parent_passenger_id: mainPassenger.id, // Vinculados al principal
+                        ...baseInsertData
+                    };
+                });
 
                 const { error: companionsError } = await supabase
                     .from('passengers')
                     .insert(companionsToInsert);
                 
                 if (companionsError) {
+                    // Rollback main passenger to prevent inconsistent state
+                    await supabase.from('passengers').delete().eq('id', mainPassenger.id);
                     throw new Error(`Error al crear acompañantes: ${companionsError.message}`);
                 }
             }

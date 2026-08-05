@@ -223,7 +223,7 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
     };
 
     const handleAddCompanion = () => {
-        setCompanions([...companions, { first_name: '', last_name: '', document_number: '' }]);
+        setCompanions([...companions, { first_name: '', last_name: '', document_type: 'DNI', document_number: '' }]);
     };
 
     const handleRemoveCompanion = (index: number) => {
@@ -325,31 +325,38 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
         }
 
         // 3. Create Passenger (Atomic)
+        const docNumber = formData.document_number?.trim() || null;
+        const docType = docNumber ? (formData.document_type || 'DNI') : null;
+
         const mainData = {
-            first_name: formData.first_name,
-            last_name: formData.last_name,
-            email: formData.email,
-            phone: formData.phone || undefined,
+            first_name: formData.first_name.trim(),
+            last_name: formData.last_name.trim(),
+            email: formData.email.trim(),
+            phone: formData.phone?.trim() || null,
             passenger_type_id: formData.passenger_type_id,
-            birth_date: formData.birth_date || undefined,
-            cuil: formData.cuil || undefined,
-            document_type: formData.document_type || undefined,
-            document_number: formData.document_number || undefined,
-            savia_file_number: formData.savia_file_number || undefined,
+            birth_date: formData.birth_date || null,
+            cuil: formData.cuil?.trim() || null,
+            document_type: docType,
+            document_number: docNumber,
+            savia_file_number: formData.savia_file_number?.trim() || null,
             profile_id: existingProfileId,
-            referred_by_passenger_id: finalReferrerId || undefined,
-            referred_by_code_raw: finalReferralCode || undefined,
-            referral_linked_at: finalReferralCode ? new Date().toISOString() : undefined,
-            assigned_to: isAdmin && formData.assigned_to ? formData.assigned_to : undefined
+            referred_by_passenger_id: finalReferrerId || null,
+            referred_by_code_raw: finalReferralCode || null,
+            referral_linked_at: finalReferralCode ? new Date().toISOString() : null,
+            assigned_to: isAdmin && formData.assigned_to ? formData.assigned_to : null
         };
 
-        const companionsData = companions.map(c => ({
-            first_name: c.first_name,
-            last_name: c.last_name,
-            document_type: c.document_number ? 'DNI' : undefined,
-            document_number: c.document_number || undefined,
-            passenger_type_id: formData.passenger_type_id,
-        }));
+        const companionsData = companions.map(c => {
+            const cDocNumber = c.document_number?.trim() || null;
+            const cDocType = cDocNumber ? (c.document_type || 'DNI') : null;
+            return {
+                first_name: c.first_name.trim(),
+                last_name: c.last_name.trim(),
+                document_type: cDocType,
+                document_number: cDocNumber,
+                passenger_type_id: formData.passenger_type_id,
+            };
+        });
 
         const result = await createAndInvite(mainData, companionsData);
 
@@ -554,11 +561,23 @@ export const CreatePassengerModal: React.FC<CreatePassengerModalProps> = ({ isOp
                                                         placeholder="Apellido"
                                                     />
                                                 </div>
-                                                <div className="md:col-span-2">
-                                                    <label className="block text-xs font-medium text-zinc-500 mb-1">DNI/Pasaporte (Opcional)</label>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-zinc-500 mb-1">Tipo de Documento</label>
+                                                    <select
+                                                        value={comp.document_type || 'DNI'}
+                                                        onChange={(e) => handleCompanionChange(index, 'document_type', e.target.value)}
+                                                        className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                    >
+                                                        <option value="DNI">DNI</option>
+                                                        <option value="Pasaporte">Pasaporte</option>
+                                                        <option value="Otro">Otro</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-zinc-500 mb-1">Número de Documento (Opcional)</label>
                                                     <input
                                                         type="text"
-                                                        value={comp.document_number}
+                                                        value={comp.document_number || ''}
                                                         onChange={(e) => handleCompanionChange(index, 'document_number', e.target.value)}
                                                         className="w-full px-3 py-2 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
                                                         placeholder="Número de documento"
