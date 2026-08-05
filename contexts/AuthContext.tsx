@@ -118,21 +118,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         try {
+            console.log('[AuthContext] Starting fetchAvailablePassengers for:', u.id, u.email);
+
             // 1. Fetch by profile_id
-            const { data: byProfile } = await supabase
+            const { data: byProfile, error: errProfile } = await supabase
                 .from('passengers')
                 .select('*')
                 .eq('profile_id', u.id)
                 .is('archived_at', null)
                 .order('created_at', { ascending: true });
 
+            if (errProfile) console.warn('[AuthContext] Error fetching by profile_id:', errProfile);
+
             // 2. Fetch by email (both titular and companions who share the email)
-            const { data: byEmail } = u.email ? await supabase
-                .from('passengers')
-                .select('*')
-                .ilike('email', u.email.trim())
-                .is('archived_at', null)
-                .order('created_at', { ascending: true }) : { data: [] };
+            let byEmail: any[] = [];
+            if (u.email) {
+                const cleanEmail = u.email.trim();
+                const { data, error: errEmail } = await supabase
+                    .from('passengers')
+                    .select('*')
+                    .ilike('email', cleanEmail)
+                    .is('archived_at', null)
+                    .order('created_at', { ascending: true });
+
+                if (errEmail) console.warn('[AuthContext] Error fetching by email:', errEmail);
+                if (data) byEmail = data;
+            }
 
             const passengerMap = new Map<string, any>();
             (byProfile || []).forEach((p: any) => passengerMap.set(p.id, p));
@@ -141,38 +152,65 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // 3. Fetch companions linked to any discovered passenger
             const knownIds = Array.from(passengerMap.keys());
             if (knownIds.length > 0) {
-                const { data: companions } = await supabase
+                const { data: companions, error: errComp } = await supabase
                     .from('passengers')
                     .select('*')
                     .in('parent_passenger_id', knownIds)
                     .is('archived_at', null)
                     .order('created_at', { ascending: true });
 
+                if (errComp) console.warn('[AuthContext] Error fetching companions:', errComp);
                 (companions || []).forEach((p: any) => passengerMap.set(p.id, p));
             }
 
+            // 4. Also check if this user is a companion whose parent is another passenger
+            const parentIds = Array.from(passengerMap.values())
+                .map((p: any) => p.parent_passenger_id)
+                .filter(Boolean);
+
+            if (parentIds.length > 0) {
+                const { data: parents, error: errParent } = await supabase
+                    .from('passengers')
+                    .select('*')
+                    .in('id', parentIds)
+                    .is('archived_at', null);
+
+                if (errParent) console.warn('[AuthContext] Error fetching parents:', errParent);
+                (parents || []).forEach((p: any) => passengerMap.set(p.id, p));
+
+                const { data: siblings, error: errSiblings } = await supabase
+                    .from('passengers')
+                    .select('*')
+                    .in('parent_passenger_id', parentIds)
+                    .is('archived_at', null);
+
+                if (errSiblings) console.warn('[AuthContext] Error fetching sibling companions:', errSiblings);
+                (siblings || []).forEach((p: any) => passengerMap.set(p.id, p));
+            }
+
             const allPassengers = Array.from(passengerMap.values());
+            console.log('[AuthContext] Total available passengers discovered:', allPassengers.length, allPassengers);
+
             setAvailablePassengers(allPassengers);
 
-            const savedPassengerId = sessionStorage.getItem('triex_selected_passenger_id');
-
             if (allPassengers.length === 1) {
+                // If only 1 passenger exists, select it automatically
                 setSelectedPassengerId(allPassengers[0].id);
-                sessionStorage.setItem('triex_selected_passenger_id', allPassengers[0].id);
             } else if (allPassengers.length > 1) {
-                // If they have multiple profiles, only keep selection if valid and exists
-                if (savedPassengerId && allPassengers.some((p: any) => p.id === savedPassengerId)) {
-                    setSelectedPassengerId(savedPassengerId);
-                } else {
-                    // Prompt user with ProfileSelector
-                    setSelectedPassengerId(null);
-                }
+                // If 2 or more passengers exist, NEVER auto-select on load/login!
+                // Keep selection ONLY if the user has ALREADY made an explicit in-memory choice in this active session
+                setSelectedPassengerId((prev) => {
+                    if (prev && allPassengers.some((p: any) => p.id === prev)) {
+                        return prev;
+                    }
+                    return null; // Will show the ProfileSelector modal!
+                });
             } else {
                 setSelectedPassengerId(null);
             }
 
         } catch (err) {
-            console.error('Error fetching passengers:', err);
+            console.error('[AuthContext] Error fetching passengers:', err);
             setAvailablePassengers([]);
             setSelectedPassengerId(null);
         }
