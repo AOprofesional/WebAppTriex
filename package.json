@@ -8,7 +8,25 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:login": "playwright test tests/example.spec.ts",
+    "test:e2e:auth": "playwright test tests/auth.spec.ts",
+    "test:e2e:passenger": "playwright test tests/passenger.spec.ts",
+    "test:e2e:operator": "playwright test tests/operator.spec.ts",
+    "test:e2e:admin": "playwright test tests/admin.spec.ts",
+    "test:e2e:crud": "playwright test tests/passengers-crud.spec.ts",
+    "test:e2e:trips": "playwright test tests/trips-crud.spec.ts",
+    "test:e2e:vouchers": "playwright test tests/vouchers-crud.spec.ts",
+    "test:e2e:documents": "playwright test tests/documents-crud.spec.ts",
+    "test:e2e:points": "playwright test tests/orange-pass.spec.ts",
+    "test:e2e:communications": "playwright test tests/communications.spec.ts",
+    "test:e2e:surveys": "playwright test tests/surveys.spec.ts",
+    "test:e2e:users": "playwright test tests/users-crud.spec.ts",
+    "test:e2e:pdf": "node scripts/generate_pdf_report.cjs",
+    "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.91.0",
@@ -19,6 +37,7 @@
     "react-router-dom": "^7.12.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/container-queries": "^0.1.1",
     "@tailwindcss/forms": "^0.5.11",
     "@tailwindcss/typography": "^0.5.19",

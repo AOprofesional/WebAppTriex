@@ -1,0 +1,1297 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Reporte Ejecutivo de Pruebas Automatizadas E2E y CRUD</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+
+        @page {
+            size: A4;
+            margin: 16mm 14mm 16mm 14mm;
+            @bottom-right {
+                content: "Página " counter(page) " de " counter(pages);
+                font-family: 'Plus Jakarta Sans', sans-serif;
+                font-size: 8pt;
+                color: #71717a;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #18181b;
+            background: #ffffff;
+            line-height: 1.45;
+            font-size: 9.5pt;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .header-container {
+            border-bottom: 2px solid #f4f4f5;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .brand-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #E0592A, #F97316);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 8pt;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        h1 {
+            font-size: 18pt;
+            font-weight: 800;
+            color: #09090b;
+            letter-spacing: -0.03em;
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 9.5pt;
+            color: #71717a;
+            font-weight: 500;
+        }
+
+        .meta-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px 14px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 20px;
+            font-size: 8pt;
+        }
+
+        .meta-item strong {
+            color: #475569;
+            font-weight: 600;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 22px;
+        }
+
+        .metric-card {
+            background: #ffffff;
+            border: 1px solid #e4e4e7;
+            border-radius: 12px;
+            padding: 12px 14px;
+            text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+
+        .metric-card.highlight {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+
+        .metric-value {
+            font-size: 20pt;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 2px;
+            letter-spacing: -0.02em;
+        }
+
+        .metric-value.green { color: #16a34a; }
+        .metric-value.orange { color: #E0592A; }
+        .metric-value.dark { color: #18181b; }
+
+        .metric-label {
+            font-size: 7pt;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #71717a;
+        }
+
+        .section-title {
+            font-size: 12pt;
+            font-weight: 800;
+            color: #09090b;
+            letter-spacing: -0.02em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: "";
+            width: 4px;
+            height: 15px;
+            background: #E0592A;
+            border-radius: 2px;
+            display: inline-block;
+        }
+
+        .module-block {
+            background: #ffffff;
+            border: 1px solid #e4e4e7;
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 12px;
+            page-break-inside: avoid;
+        }
+
+        .module-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .module-title {
+            font-size: 10pt;
+            font-weight: 700;
+            color: #09090b;
+        }
+
+        .module-tag {
+            font-size: 7pt;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 5px;
+            background: #f4f4f5;
+            color: #52525b;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .module-tag.success {
+            background: #dcfce7;
+            color: #15803d;
+        }
+
+        .module-desc {
+            font-size: 8pt;
+            color: #52525b;
+            margin-bottom: 8px;
+            line-height: 1.35;
+        }
+
+        .cases-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 3px 10px;
+            background: #fafafa;
+            border-radius: 6px;
+            padding: 6px 10px;
+        }
+
+        .case-item {
+            font-size: 7.5pt;
+            color: #3f3f46;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .case-bullet {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #16a34a;
+            flex-shrink: 0;
+        }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 8pt;
+            margin-bottom: 16px;
+        }
+
+        .summary-table th {
+            background: #f4f4f5;
+            text-align: left;
+            padding: 7px 9px;
+            font-weight: 700;
+            color: #3f3f46;
+            border-bottom: 1px solid #e4e4e7;
+        }
+
+        .summary-table td {
+            padding: 7px 9px;
+            border-bottom: 1px solid #f4f4f5;
+            color: #27272a;
+        }
+
+        .summary-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 7pt;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 4px;
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .footer-note {
+            margin-top: 24px;
+            padding-top: 10px;
+            border-top: 1px solid #f4f4f5;
+            font-size: 7.5pt;
+            color: #a1a1aa;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ═══ PORTADA / RESUMEN EJECUTIVO ═══ -->
+    <div class="header-container">
+        <div>
+            <div class="brand-badge">Triex Travel Platform</div>
+            <h1>Reporte Ejecutivo de Pruebas Automatizadas E2E y CRUD</h1>
+            <p class="subtitle">Triex WebApp (Plataforma Integral de Gestión de Viajes)</p>
+        </div>
+        <div style="text-align: right;">
+            <div style="font-size: 7.5pt; color: #71717a; font-weight: 600;">ESTADO DE LA SUITE</div>
+            <div style="font-size: 13pt; font-weight: 800; color: #16a34a;">PASÓ (100%)</div>
+        </div>
+    </div>
+
+    <div class="meta-grid">
+        <div class="meta-item"><strong>Entorno de Pruebas:</strong> Producción / Staging (https://www.triex.app)</div>
+        <div class="meta-item"><strong>Fecha de Ejecución:</strong> 19 de agosto de 2026, 09:48 p. m.</div>
+        <div class="meta-item"><strong>Motor de Automatización:</strong> Playwright v1.58+ / Chromium Headless</div>
+        <div class="meta-item"><strong>Modo de Ejecución:</strong> 2 Workers Paralelos con Trazabilidad y Video</div>
+    </div>
+
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-value dark">131</div>
+            <div class="metric-label">Pruebas Totales</div>
+        </div>
+        <div class="metric-card highlight">
+            <div class="metric-value green">131</div>
+            <div class="metric-label">Casos Exitosos</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-value green">0</div>
+            <div class="metric-label">Fallos / Errores</div>
+        </div>
+        <div class="metric-card highlight">
+            <div class="metric-value green">100%</div>
+            <div class="metric-label">Tasa de Aprobación</div>
+        </div>
+    </div>
+
+    <div class="section-title">Resumen por Módulo del Sistema</div>
+    <table class="summary-table">
+        <thead>
+            <tr>
+                <th>Módulo Evaluado</th>
+                <th>Archivo de Suite</th>
+                <th>Roles Evaluados</th>
+                <th>Casos</th>
+                <th>Resultado</th>
+            </tr>
+        </thead>
+        <tbody>
+            
+                <tr>
+                    <td><strong>1. UI Pública y Validación de Login</strong></td>
+                    <td style="font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #52525b;">tests/example.spec.ts</td>
+                    <td>Público / Anónimo</td>
+                    <td><strong>13</strong></td>
+                    <td><span class="status-pill">✓ 100% Pass</span></td>
+                </tr>
+            
+                <tr>
+                    <td><strong>2. Autenticación y Control de Roles</strong></td>
+                    <td style="font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #52525b;">tests/auth.spec.ts</td>
+                    <td>Pasajero / Operador / Administrador</td>
+                    <td><strong>10</strong></td>
+                    <td><span class="status-pill">✓ 100% Pass</span></td>
+                </tr>
+            
+                <tr>
+                    <td><strong>3. Experiencia y Pantallas del Pasajero</strong></td>
+                    <td style="font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #52525b;">tests/passenger.spec.ts</td>
+                    <td>Pasajero</td>
+                    <td><strong>12</strong></td>
+                    <td><span class="status-pill">✓ 100% Pass</span></td>
+                </tr>
+            
+                <tr>
+                    <td><strong>4. Panel Operativo y Permisos de Operador</strong></td>
+                    <td style="font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #52525b;">tests/operator.spec.ts</td>
+                    <td>Operador</td>
+                    <td><strong>12</strong></td>
+                    <td><span class="status-pill">✓ 100% Pass</span></td>
+                </tr>
+            
+                <tr>
+                    <td><strong>5. Supervisión y Panel de Administrador</strong></td>
+                    <td style="font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #52525b;">tests/admin.spec.ts</td>
+                    <td>Administrador</td>
+                    <td><strong>10</strong></td>
+                    <td><span class="status-pill">✓ 100% Pass</span></td>
+                </tr>
+            
+                <tr>
+                    <td><strong>6. CRUD Completo de Pasajeros</strong></td>
+                    <td style="font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #52525b;">tests/passengers-crud.spec.ts</td>
+                    <td>Operador / Administrador</td>
+                    <td><strong>15</strong></td>
+                    <td><span class="status-pill">✓ 100% Pass</span></td>
+                </tr>
+            
+                <tr>
+                    <td><strong>7. CRUD Completo de Viajes</strong></td>
+                    <td style="font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #52525b;">tests/trips-crud.spec.ts</td>
+                    <td>Operador / Administrador</td>
+                    <td><strong>12</strong></td>
+                    <td><span class="status-pill">✓ 100% Pass</span></td>
+                </tr>
+            
+                <tr>
+                    <td><strong>8. CRUD Completo de Vouchers</strong></td>
+                    <td style="font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #52525b;">tests/vouchers-crud.spec.ts</td>
+                    <td>Operador / Administrador</td>
+                    <td><strong>12</strong></td>
+                    <td><span class="status-pill">✓ 100% Pass</span></td>
+                </tr>
+            
+                <tr>
+                    <td><strong>9. Gestión de Documentación Requerida</strong></td>
+                    <td style="font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #52525b;">tests/documents-crud.spec.ts</td>
+                    <td>Operador / Administrador / Pasajero</td>
+                    <td><strong>8</strong></td>
+                    <td><span class="status-pill">✓ 100% Pass</span></td>
+                </tr>
+            
+                <tr>
+                    <td><strong>10. Programa de Fidelización Orange Pass y Puntos</strong></td>
+                    <td style="font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #52525b;">tests/orange-pass.spec.ts</td>
+                    <td>Operador / Administrador / Pasajero</td>
+                    <td><strong>6</strong></td>
+                    <td><span class="status-pill">✓ 100% Pass</span></td>
+                </tr>
+            
+                <tr>
+                    <td><strong>11. Comunicaciones y Notificaciones Push</strong></td>
+                    <td style="font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #52525b;">tests/communications.spec.ts</td>
+                    <td>Operador / Administrador / Pasajero</td>
+                    <td><strong>6</strong></td>
+                    <td><span class="status-pill">✓ 100% Pass</span></td>
+                </tr>
+            
+                <tr>
+                    <td><strong>12. Encuestas de Satisfacción</strong></td>
+                    <td style="font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #52525b;">tests/surveys.spec.ts</td>
+                    <td>Operador / Administrador</td>
+                    <td><strong>5</strong></td>
+                    <td><span class="status-pill">✓ 100% Pass</span></td>
+                </tr>
+            
+                <tr>
+                    <td><strong>13. Gestión de Usuarios y Seguridad de Roles</strong></td>
+                    <td style="font-family: 'JetBrains Mono', monospace; font-size: 7.5pt; color: #52525b;">tests/users-crud.spec.ts</td>
+                    <td>Administrador / Operador</td>
+                    <td><strong>10</strong></td>
+                    <td><span class="status-pill">✓ 100% Pass</span></td>
+                </tr>
+            
+        </tbody>
+    </table>
+
+    <div class="page-break"></div>
+
+    <!-- ═══ DETALLE DE CADA MÓDULO ═══ -->
+    <div class="section-title">Detalle Exhaustivo por Módulo y Casos de Prueba</div>
+
+    
+        <div class="module-block">
+            <div class="module-header">
+                <div class="module-title">1. UI Pública y Validación de Login</div>
+                <div class="module-tag success">13 Tests Pasados</div>
+            </div>
+            <div class="module-desc">
+                <strong>Rol:</strong> Público / Anónimo &nbsp;|&nbsp; <strong>Archivo:</strong> <code>tests/example.spec.ts</code><br/>
+                Verificación exhaustiva de la pantalla de acceso, inputs de correo y contraseña, toggle de visibilidad, links de recuperación, Magic Link y branding corporativo.
+            </div>
+            <div class="cases-grid">
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Página principal carga y muestra título y encabezados</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Formulario de inicio de sesión con email y contraseña</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Acción de ingreso con credenciales completas</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Muestra botón "¿Olvidaste tu contraseña?"</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Campo de envío para Magic Link</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Toggle interactivo de visibilidad de contraseña (mostrar/ocultar)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Validación visual de error con credenciales incorrectas</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Navegación a /reset-password desde login</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Validación de formato de email en Magic Link</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Footer con copyright y enlaces legales de Triex</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Responsividad móvil en pantalla de autenticación</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Prevención de envío de formularios vacíos</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Manejo de estados de carga en botón de ingreso</div>
+                    </div>
+                
+            </div>
+        </div>
+        
+    
+        <div class="module-block">
+            <div class="module-header">
+                <div class="module-title">2. Autenticación y Control de Roles</div>
+                <div class="module-tag success">10 Tests Pasados</div>
+            </div>
+            <div class="module-desc">
+                <strong>Rol:</strong> Pasajero / Operador / Administrador &nbsp;|&nbsp; <strong>Archivo:</strong> <code>tests/auth.spec.ts</code><br/>
+                Validación de rutas protegidas, persistencia de sesión por Supabase Auth, control de acceso basado en roles (RBAC) y redirecciones según perfil.
+            </div>
+            <div class="cases-grid">
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Login exitoso como pasajero y render de navegación principal</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Login exitoso como operador y redirección al panel operativo /admin</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Login exitoso como administrador y acceso al dashboard global</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Protección de ruta raíz (/) sin sesión -> Redirección a /login</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Protección de ruta /mytrip sin sesión -> Redirección a /login</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Protección de ruta /points sin sesión -> Redirección a /login</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Protección de ruta /profile sin sesión -> Redirección a /login</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Protección de ruta /admin sin sesión -> Redirección a /login</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Restricción de acceso de pasajero a rutas /admin</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Cierre de sesión seguro y limpieza de almacenamiento local</div>
+                    </div>
+                
+            </div>
+        </div>
+        
+    
+        <div class="module-block">
+            <div class="module-header">
+                <div class="module-title">3. Experiencia y Pantallas del Pasajero</div>
+                <div class="module-tag success">12 Tests Pasados</div>
+            </div>
+            <div class="module-desc">
+                <strong>Rol:</strong> Pasajero &nbsp;|&nbsp; <strong>Archivo:</strong> <code>tests/passenger.spec.ts</code><br/>
+                Verificación de la experiencia móvil y de escritorio del pasajero: Home, Mi Viaje, Itinerario interactivo, Documentos, Puntos, Perfil y Configuración.
+            </div>
+            <div class="cases-grid">
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Home: Carga de bienvenida, contador de días para el viaje y accesos rápidos</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Mi Viaje: Visualización de información de destino, fechas y detalles del grupo</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Itinerario: Carga de actividades diarias y detalle de eventos</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Documentos y Vouchers: Visualización de lista en /travel-docs</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Orange Pass: Acceso a número de membresía y puntos en /points</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Perfil: Consulta de datos personales del pasajero en /profile</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Notificaciones: Carga de bandeja de avisos en /notifications</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>BottomNav: Presencia de barra de navegación inferior en dispositivos móviles</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Seguridad: Configuración de seguridad y cambio de clave en /security-settings</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Preferencias de notificación en /notification-settings</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Asistente de carga de documentación requerida en /upload</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Manejo de estado offline / sincronización de datos de viaje</div>
+                    </div>
+                
+            </div>
+        </div>
+        
+    
+        <div class="module-block">
+            <div class="module-header">
+                <div class="module-title">4. Panel Operativo y Permisos de Operador</div>
+                <div class="module-tag success">12 Tests Pasados</div>
+            </div>
+            <div class="module-desc">
+                <strong>Rol:</strong> Operador &nbsp;|&nbsp; <strong>Archivo:</strong> <code>tests/operator.spec.ts</code><br/>
+                Verificación de las capacidades del operador asignado: visualización de sus viajes, pasajeros a cargo, subida de vouchers y restricciones de configuración.
+            </div>
+            <div class="cases-grid">
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Dashboard: Métricas operativas de viajes y pasajeros asignados</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Pasajeros: Listado filtrado exclusivamente por los asignados al operador</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Viajes: Gestión de itinerarios y estado de viaje (Previo, En curso, Finalizado)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Vouchers: Subida y vinculación de vouchers por viaje y pasajero</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Documentos: Revisión de requisitos y estado de cumplimiento</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Puntos: Consulta de membresías Orange Pass y libro mayor operativo</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Comunicaciones: Envío de avisos directos y por viaje</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Restricción: Bloqueo de acceso a Gestión de Usuarios (/admin/users)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Restricción: Bloqueo de configuración general del sistema (/admin/settings)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Sidebar del operador con enlaces restringidos según RBAC</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Edición de perfil propio de operador en /edit-personal-info</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Sincronización en tiempo real de notificaciones operativas</div>
+                    </div>
+                
+            </div>
+        </div>
+        
+    
+        <div class="module-block">
+            <div class="module-header">
+                <div class="module-title">5. Supervisión y Panel de Administrador</div>
+                <div class="module-tag success">10 Tests Pasados</div>
+            </div>
+            <div class="module-desc">
+                <strong>Rol:</strong> Administrador &nbsp;|&nbsp; <strong>Archivo:</strong> <code>tests/admin.spec.ts</code><br/>
+                Evaluación de las capacidades globales de administración: acceso a métricas de toda la empresa, gestión total de recursos y auditoría.
+            </div>
+            <div class="cases-grid">
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Dashboard Global: Métricas acumuladas de todos los operadores y viajes</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Pasajeros: Visualización completa y filtro por operador asignado</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Viajes: Creación, asignación de operadores y archivo de viajes</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Vouchers: Control centralizado de todos los documentos y enlaces</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Documentación: Revisión, aprobación y rechazo de archivos de pasajeros</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Orange Pass: Balance total de puntos en circulación y gestión de canjes</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Usuarios: Creación, asignación de roles y reseteo de claves</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Configuración: Parámetros del sistema y textos de encuestas</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Comunicaciones: Notificaciones masivas a todos los pasajeros activos</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>Auditoría y registros de actividad del sistema</div>
+                    </div>
+                
+            </div>
+        </div>
+        <div class="page-break"></div>
+    
+        <div class="module-block">
+            <div class="module-header">
+                <div class="module-title">6. CRUD Completo de Pasajeros</div>
+                <div class="module-tag success">15 Tests Pasados</div>
+            </div>
+            <div class="module-desc">
+                <strong>Rol:</strong> Operador / Administrador &nbsp;|&nbsp; <strong>Archivo:</strong> <code>tests/passengers-crud.spec.ts</code><br/>
+                Ciclo de vida completo del Pasajero: creación con validaciones, edición de datos, búsqueda en tiempo real, filtros de tipo y estado, archivo y eliminación permanente.
+            </div>
+            <div class="cases-grid">
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[READ] Carga de tabla de pasajeros y contadores de estado</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[READ] Búsqueda de pasajeros con debounce automático por nombre/email</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[READ] Conmutación entre pasajeros Activos y Archivados</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[READ] Filtros por tipo de pasajero (Adulto, Menor, Coordinador)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[CREATE] Botón "Nuevo Pasajero" abre modal interactivo</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[CREATE] Formulario completo: Nombre, Apellido, Email, DNI, Teléfono y Viaje</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[CREATE] Validación de unicidad de correo y DNI</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[CREATE] Comprobación de persistencia y aparición en la tabla</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[UPDATE] Botón de editar abre modal "Editar Pasajero"</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[UPDATE] Modificación de datos de contacto y actualización en BD</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[UPDATE] Edición de información personal propia en /edit-personal-info</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ARCHIVE] Acción de archivar con diálogo modal de confirmación (ConfirmDialog)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN READ] Filtro de pasajeros por operador asignado</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN RESTORE] Restauración de pasajeros desde la bandeja de archivados</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN DELETE] Eliminación permanente de registros archivados</div>
+                    </div>
+                
+            </div>
+        </div>
+        
+    
+        <div class="module-block">
+            <div class="module-header">
+                <div class="module-title">7. CRUD Completo de Viajes</div>
+                <div class="module-tag success">12 Tests Pasados</div>
+            </div>
+            <div class="module-desc">
+                <strong>Rol:</strong> Operador / Administrador &nbsp;|&nbsp; <strong>Archivo:</strong> <code>tests/trips-crud.spec.ts</code><br/>
+                Ciclo de vida de Viajes: creación con asignación de categoría Orange Pass, alternancia de vistas (Grid/Tabla), filtros operativos por estado, edición y archivo.
+            </div>
+            <div class="cases-grid">
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[READ] Carga de vista de viajes con selector de modo de visualización</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[READ] Alternar entre vista de tarjetas (grid) y vista de tabla (list)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[READ] Filtrado por pestañas de estado operativo (Previo, En curso, Finalizado)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[READ] Conmutación entre viajes Activos y Archivados</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[READ] Búsqueda de viajes por nombre o destino en tiempo real</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[CREATE] Botón "Nuevo Viaje" abre modal con pestañas de configuración</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[CREATE] Carga de Info General: Nombre, Código Interno, Destino y Fechas</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[CREATE] Configuración de categoría Orange Pass (Brasil, Caribe, Europa, etc.)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[CREATE] Guardado y verificación de aparición inmediata en la lista</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[UPDATE] Apertura y edición desde modal "Editar Viaje"</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ARCHIVE] Diálogo de confirmación para archivar viaje</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN ARCHIVED] Opciones de restauración y eliminación definitiva para administradores</div>
+                    </div>
+                
+            </div>
+        </div>
+        
+    
+        <div class="module-block">
+            <div class="module-header">
+                <div class="module-title">8. CRUD Completo de Vouchers</div>
+                <div class="module-tag success">12 Tests Pasados</div>
+            </div>
+            <div class="module-desc">
+                <strong>Rol:</strong> Operador / Administrador &nbsp;|&nbsp; <strong>Archivo:</strong> <code>tests/vouchers-crud.spec.ts</code><br/>
+                Ciclo de vida de Vouchers: soporte multiformato (PDF, Imagen, Enlace externo), asignación grupal o individual, vista previa, edición y archivo.
+            </div>
+            <div class="cases-grid">
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[READ] Carga de tabla de vouchers y contadores por formato (Total, PDFs, Imágenes, Enlaces)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[READ] Filtros dinámicos por tipo de voucher (Hotel, Traslado, Excursión, etc.)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[READ] Filtro por formato de archivo y por viaje asignado</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[READ] Conmutación entre vouchers Activos y Archivados</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[READ] Búsqueda en tiempo real por título y proveedor</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[CREATE] Modal "Nuevo Voucher" con carga asíncrona de tipos y viajes</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[CREATE] Creación completa con formato Link Externo y asignación a todo el grupo</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[CREATE] Verificación de guardado y recarga reactiva de la tabla</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[VIEW] Modal de vista previa "Detalle del Voucher"</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[UPDATE] Modal de edición "Editar Voucher" con datos pre-cargados</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ARCHIVE] Confirmación de archivo con ConfirmDialog</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN ARCHIVED] Panel de recuperación y eliminación permanente en archivados</div>
+                    </div>
+                
+            </div>
+        </div>
+        
+    
+        <div class="module-block">
+            <div class="module-header">
+                <div class="module-title">9. Gestión de Documentación Requerida</div>
+                <div class="module-tag success">8 Tests Pasados</div>
+            </div>
+            <div class="module-desc">
+                <strong>Rol:</strong> Operador / Administrador / Pasajero &nbsp;|&nbsp; <strong>Archivo:</strong> <code>tests/documents-crud.spec.ts</code><br/>
+                Flujo integral de documentación: configuración de requisitos por viaje, bandeja de revisión de documentos subidos por pasajeros, estado de cumplimiento y asistente de carga.
+            </div>
+            <div class="cases-grid">
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Carga de panel con 3 pestañas: Requisitos, Revisión y Cumplimiento</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Selección de viaje y visualización de requisitos configurados</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Configuración y guardado de nuevo requisito obligatorio con fecha límite</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Pestaña de Revisión: filtros por estado (Pendiente, Aprobado, Rechazado)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Pestaña de Cumplimiento: matriz de estado documental de pasajeros</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN] Acceso y navegación irrestricta entre todas las pestañas de documentación</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[PASSENGER] Consulta de checklist de documentos requeridos en /travel-docs</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[PASSENGER] Acceso al asistente de carga y captura en /upload</div>
+                    </div>
+                
+            </div>
+        </div>
+        <div class="page-break"></div>
+    
+        <div class="module-block">
+            <div class="module-header">
+                <div class="module-title">10. Programa de Fidelización Orange Pass y Puntos</div>
+                <div class="module-tag success">6 Tests Pasados</div>
+            </div>
+            <div class="module-desc">
+                <strong>Rol:</strong> Operador / Administrador / Pasajero &nbsp;|&nbsp; <strong>Archivo:</strong> <code>tests/orange-pass.spec.ts</code><br/>
+                Control del programa de lealtad: estadísticas de puntos en circulación, miembros activos, libro mayor de transacciones, solicitudes de canje y tarjeta digital del pasajero.
+            </div>
+            <div class="cases-grid">
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Dashboard con métricas: Puntos en Circulación, Miembros Activos y Por Vencer (30d)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Pestaña Miembros: listado de usuarios Orange Pass, balances y códigos de referido</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Pestaña Transacciones: libro mayor (Ledger) con detalle de acreditaciones y compras</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Pestaña Solicitudes de Canje: filtros de estado (Pendientes, Aprobados, Rechazados)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN] Supervisión global y navegación de todos los registros del programa</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[PASSENGER] Tarjeta digital Orange Pass en /points con balance de puntos y número de socio</div>
+                    </div>
+                
+            </div>
+        </div>
+        
+    
+        <div class="module-block">
+            <div class="module-header">
+                <div class="module-title">11. Comunicaciones y Notificaciones Push</div>
+                <div class="module-tag success">6 Tests Pasados</div>
+            </div>
+            <div class="module-desc">
+                <strong>Rol:</strong> Operador / Administrador / Pasajero &nbsp;|&nbsp; <strong>Archivo:</strong> <code>tests/communications.spec.ts</code><br/>
+                Sistema de mensajería y alertas: filtros de historial, panel de configuración de notificaciones automáticas del sistema, modal de envío manual y bandeja del pasajero.
+            </div>
+            <div class="cases-grid">
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Panel de comunicaciones con filtros de lectura (Todas, Sin leer, Éxito, Advertencias)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Despliegue del panel de reglas de notificación automática</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Modal interactivo "Enviar Notificación" (individual, por viaje o grupal)</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Historial de notificaciones enviadas y registro de entregas</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN] Envío de notificaciones masivas a nivel de plataforma</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[PASSENGER] Bandeja de entrada de notificaciones personales en /notifications</div>
+                    </div>
+                
+            </div>
+        </div>
+        
+    
+        <div class="module-block">
+            <div class="module-header">
+                <div class="module-title">12. Encuestas de Satisfacción</div>
+                <div class="module-tag success">5 Tests Pasados</div>
+            </div>
+            <div class="module-desc">
+                <strong>Rol:</strong> Operador / Administrador &nbsp;|&nbsp; <strong>Archivo:</strong> <code>tests/surveys.spec.ts</code><br/>
+                Medición de satisfacción y NPS: Encuestas Post-Viaje (métricas generales, desglose de calificaciones y filtro de solo detractores) y Encuestas Iniciales Pre-Viaje.
+            </div>
+            <div class="cases-grid">
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Switcher principal entre Encuesta Post-Viaje y Encuesta Inicial Pre-Viaje</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Encuesta Post-Viaje: alternar entre vista de Resumen (NPS) y Listado de respuestas</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Filtros de búsqueda por pasajero/destino y aislamiento de Solo Detractores</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR] Encuesta Inicial: visualización de expectativas de viaje y facilidad de reserva</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN] Acceso completo a auditoría de satisfacción en ambos tipos de encuestas</div>
+                    </div>
+                
+            </div>
+        </div>
+        
+    
+        <div class="module-block">
+            <div class="module-header">
+                <div class="module-title">13. Gestión de Usuarios y Seguridad de Roles</div>
+                <div class="module-tag success">10 Tests Pasados</div>
+            </div>
+            <div class="module-desc">
+                <strong>Rol:</strong> Administrador / Operador &nbsp;|&nbsp; <strong>Archivo:</strong> <code>tests/users-crud.spec.ts</code><br/>
+                Control de accesos y administración de cuentas de equipo: grid de usuarios, asignación de roles (Operador, Admin, Super Admin), edición, reseteo de claves y validación de seguridad.
+            </div>
+            <div class="cases-grid">
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN READ] Grid de tarjetas de usuarios con badges de rol, último acceso y permisos asignados</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN FILTERS] Filtro por rol (Operador, Administrador, Super Admin) y búsqueda por nombre/email</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN CREATE] Modal "Nuevo Usuario" con validación de email, nombre completo y rol</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN UPDATE] Modal "Editar Usuario" con actualización de perfil</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN ACTIONS] Confirmación segura para reseteo de contraseña de usuarios</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR SECURITY] Verificación de restricción de acceso a Usuarios para operadores</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[OPERATOR SECURITY] Ausencia del enlace a Usuarios en la barra lateral del operador</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN BLOCK] Bloqueo y desbloqueo temporal de cuentas de usuario</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN PERMISSIONS] Verificación de la matriz de permisos por rol</div>
+                    </div>
+                
+                    <div class="case-item">
+                        <div class="case-bullet"></div>
+                        <div>[ADMIN AUDIT] Validación de protección de cuenta de Super Administrador principal</div>
+                    </div>
+                
+            </div>
+        </div>
+        
+    
+
+    <div class="footer-note">
+        Documento generado automáticamente por la suite de calidad de software de Triex • 19 de agosto de 2026, 09:48 p. m.
+    </div>
+
+</body>
+</html>
+    

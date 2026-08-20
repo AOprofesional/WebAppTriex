@@ -35,3 +35,10 @@ Thumbs.db
 
 # Tests automatizados (TestSprite)
 testsprite_tests/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
