@@ -231,90 +231,6 @@ export const AdminSettings: React.FC = () => {
         }
     };
 
-    const handleTimezoneChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newValue = e.target.value;
-        const { error } = await updateSetting('timezone', newValue);
-
-        if (error) {
-            toast.error('Error al guardar zona horaria');
-        } else {
-            toast.success('Zona horaria actualizada');
-        }
-    };
-
-    const handleLanguageChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const newValue = e.target.value;
-        const { error } = await updateSetting('language', newValue);
-
-        if (error) {
-            toast.error('Error al guardar idioma');
-        } else {
-            toast.success('Idioma actualizado');
-        }
-    };
-
-    const handleExportData = async () => {
-        const confirmResult = await confirm({
-            title: 'Exportar Datos',
-            message: 'Se descargará un archivo JSON con todos los datos del sistema (viajes, pasajeros, vouchers, notificaciones, puntos y canjes). ¿Deseas continuar?',
-            confirmText: 'Exportar',
-            confirmVariant: 'success'
-        });
-
-        if (!confirmResult.confirmed) return;
-
-        try {
-            toast.loading('Exportando datos...', { id: 'export' });
-
-            // Get all data from main tables
-            const { data: trips } = await supabase.from('trips').select('*');
-            const { data: passengers } = await supabase.from('passengers').select('*');
-            const { data: vouchers } = await supabase.from('vouchers').select('*');
-            const { data: notifications } = await supabase.from('notifications').select('*');
-            const { data: points } = await supabase.from('orange_points_ledger').select('*');
-            const { data: redemptions } = await supabase.from('redemption_requests').select('*');
-
-            const exportData = {
-                exportDate: new Date().toISOString(),
-                trips,
-                passengers,
-                vouchers,
-                notifications,
-                points,
-                redemptions
-            };
-
-            // Create downloadable JSON file
-            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `triex-backup-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            toast.success('Datos exportados correctamente', { id: 'export' });
-        } catch (error) {
-            console.error('Error exporting data:', error);
-            toast.error('Error al exportar datos', { id: 'export' });
-        }
-    };
-
-    const handleRestartSystem = async () => {
-        const confirmResult = await confirm({
-            title: 'Reiniciar Sistema',
-            message: 'Esta acción reiniciará el sistema. Todos los usuarios serán desconectados temporalmente. ¿Estás seguro?',
-            confirmText: 'Reiniciar',
-            confirmVariant: 'danger'
-        });
-
-        if (!confirmResult.confirmed) return;
-
-        toast.error('Función no disponible en esta versión');
-    };
-
     const settingsSections = [
         {
             title: 'Apariencia',
@@ -344,27 +260,6 @@ export const AdminSettings: React.FC = () => {
                     type: 'toggle',
                     value: settings.push_notifications,
                     onChange: handleTogglePushNotifications
-                },
-            ]
-        },
-        {
-            title: 'Sistema',
-            items: [
-                {
-                    label: 'Zona horaria',
-                    description: 'Configurar la zona horaria del sistema',
-                    type: 'select',
-                    value: settings.timezone,
-                    options: ['America/Buenos_Aires', 'America/Mexico_City', 'Europe/Madrid', 'America/Sao_Paulo', 'America/Santiago'],
-                    onChange: handleTimezoneChange
-                },
-                {
-                    label: 'Idioma',
-                    description: 'Idioma del panel de administración',
-                    type: 'select',
-                    value: settings.language,
-                    options: ['Español', 'English', 'Português'],
-                    onChange: handleLanguageChange
                 },
             ]
         },
