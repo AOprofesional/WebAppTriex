@@ -10,6 +10,7 @@ import { useDocuments } from '../hooks/useDocuments';
 
 import { useOrangePass } from '../hooks/useOrangePass';
 import { formatPoints } from '../utils/orangePassHelpers';
+import { parseLocalDate } from '../utils/dateUtils';
 import { NotificationPermissionBanner } from '../components/NotificationPermissionBanner';
 import { SalesTeamModal } from '../components/SalesTeamModal';
 
@@ -46,8 +47,8 @@ export const Home: React.FC = () => {
 
   // Format date range
   const formatDateRange = (startDate: string, endDate: string) => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start = parseLocalDate(startDate);
+    const end = parseLocalDate(endDate);
     const startDay = start.getDate();
     const endDay = end.getDate();
     const startMonth = start.toLocaleDateString('es-AR', { month: 'short' });

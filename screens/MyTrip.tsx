@@ -9,6 +9,7 @@ import { useSurvey } from '../hooks/useSurvey';
 import { SurveyModal } from '../components/SurveyModal';
 import { SalesTeamModal } from '../components/SalesTeamModal';
 import { getSignedUrl } from '../lib/storageHelpers';
+import { parseLocalDate } from '../utils/dateUtils';
 
 export const MyTrip: React.FC = () => {
   const navigate = useNavigate();
@@ -54,8 +55,8 @@ export const MyTrip: React.FC = () => {
   const formatDateRange = (startDate: string | null, endDate: string | null) => {
     if (!startDate || !endDate) return 'Por confirmar';
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start = parseLocalDate(startDate);
+    const end = parseLocalDate(endDate);
 
     // Validate dates
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {

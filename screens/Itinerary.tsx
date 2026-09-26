@@ -6,6 +6,7 @@ import { useItineraryDays } from '../hooks/useItineraryDays';
 import { useItineraryItems } from '../hooks/useItineraryItems';
 import { PageLoading } from '../components/PageLoading';
 import { SalesTeamModal } from '../components/SalesTeamModal';
+import { parseLocalDate } from '../utils/dateUtils';
 
 export const Itinerary: React.FC = () => {
   const { primaryTrip, loading: tripsLoading } = usePassengerTrips();
@@ -119,7 +120,7 @@ export const Itinerary: React.FC = () => {
             >
               {days.map((day, index) => {
                 const isSelected = selectedDayId === day.id;
-                const dDate = day.date ? new Date(day.date) : null;
+                const dDate = day.date ? parseLocalDate(day.date) : null;
                 const dayOfWeek = dDate ? dDate.toLocaleDateString('es-AR', { weekday: 'short' }) : '';
                 const dayOfMonth = dDate ? dDate.getDate() : '';
 

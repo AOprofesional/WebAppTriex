@@ -1,4 +1,14 @@
 /**
+ * Parse a date string in YYYY-MM-DD format as LOCAL time (not UTC).
+ * Using `new Date("YYYY-MM-DD")` interprets the string as UTC midnight,
+ * which in UTC-3 shows the previous day. This function avoids that offset.
+ */
+export const parseLocalDate = (dateStr: string): Date => {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day); // months are 0-indexed in JS
+};
+
+/**
  * Calculate trip operational status based on dates
  * @param startDate - Trip start date (ISO string or Date)
  * @param endDate - Trip end date (ISO string or Date)
